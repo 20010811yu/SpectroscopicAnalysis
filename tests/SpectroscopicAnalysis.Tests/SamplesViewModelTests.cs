@@ -1,6 +1,7 @@
 ﻿using CommunityToolkit.Mvvm.ComponentModel;
 using SpectroscopicAnalysis.Host.Data.Models;
 using SpectroscopicAnalysis.Host.Data.Repositories;
+using SpectroscopicAnalysis.Host.LoggingAlarm;
 using SpectroscopicAnalysis.Host.Ui;
 using SpectroscopicAnalysis.Host.ViewModels;
 
@@ -41,6 +42,30 @@ internal sealed class FakeUiDispatcher : IUiDispatcher
     public Task InvokeAsync(Action action) { action(); return Task.CompletedTask; }
 }
 
+/// <summary>Fake 确认弹窗：返回预设结果（默认确认），记录弹窗内容供断言。</summary>
+internal sealed class FakeDialogService : IDialogService
+{
+    /// <summary>下次 Confirm 的返回值（默认 true = 确认）。</summary>
+    public bool Result { get; set; } = true;
+
+    public List<string> Messages { get; } = new();
+
+    public bool Confirm(string title, string message)
+    {
+        Messages.Add($"{title}|{message}");
+        return Result;
+    }
+}
+
+/// <summary>Fake 错误收集：记录 (错误码, 消息, 样品) 供断言，不做 I/O。</summary>
+internal sealed class FakeErrorCollector : IErrorCollector
+{
+    public List<(int Code, string Message, string? SampleId)> Collected { get; } = new();
+
+    public void Collect(int errorCode, string message, string? sampleId = null, Exception? exception = null) =>
+        Collected.Add((errorCode, message, sampleId));
+}
+
 /// <summary>样品档案 ViewModel 测试：数据加载 / 展示映射 / 类型筛选（开发计划 D4 先行项验收）。</summary>
 public sealed class SamplesViewModelTests
 {
@@ -61,14 +86,17 @@ public sealed class SamplesViewModelTests
         LastHeightCheckTime = new DateTime(2026, 11, 7, 8, 0, 0),
     };
 
-    private static SamplesViewModel CreateWith(params SctSample[] samples)
+    private static SamplesViewModel CreateWith(params SctSample[] samples) =>
+        CreateWith(new FakeDialogService(), samples);
+
+    private static SamplesViewModel CreateWith(FakeDialogService dialogs, params SctSample[] samples)
     {
         var repo = new FakeSampleRepository();
         foreach (var s in samples)
         {
             repo.Store.Add(s);
         }
-        return new SamplesViewModel(repo, new FakeUiDispatcher());
+        return new SamplesViewModel(repo, new FakeUiDispatcher(), dialogs, new FakeErrorCollector());
     }
 
     [Fact]
@@ -147,42 +175,19 @@ public sealed class SamplesViewModelTests
     }
 
     [Fact]
-    public async Task RequestDelete_两步确认_单行待确认()
+    public async Task Delete_弹窗确认后级联删除并从集合移除()
     {
-        var vm = CreateWith(
-            Make("SUS-001", SampleType.SettingUp),
-            Make("SUS-002", SampleType.SettingUp));
-        await vm.LoadCommand.ExecuteAsync(null);
-
-        var row1 = vm.SctSamples[0];
-        var row2 = vm.SctSamples[1];
-
-        vm.RequestDeleteCommand.Execute(row1);
-        Assert.True(row1.IsConfirmDelete);
-        Assert.False(row2.IsConfirmDelete);
-
-        // 点击另一行：确认态转移到新行
-        vm.RequestDeleteCommand.Execute(row2);
-        Assert.False(row1.IsConfirmDelete);
-        Assert.True(row2.IsConfirmDelete);
-
-        // 再次点击同一行：取消确认态（两步确认的中途撤销）
-        vm.RequestDeleteCommand.Execute(row2);
-        Assert.False(row2.IsConfirmDelete);
-    }
-
-    [Fact]
-    public async Task ConfirmDelete_调用级联删除并从集合移除()
-    {
-        var vm = CreateWith(
+        var dialogs = new FakeDialogService();
+        var vm = CreateWith(dialogs,
             Make("SUS-001", SampleType.SettingUp),
             Make("P-20261110-07", SampleType.Production));
         await vm.LoadCommand.ExecuteAsync(null);
 
         var row = vm.SctSamples.First(r => r.SampleId == "SUS-001");
-        vm.RequestDeleteCommand.Execute(row);
-        await vm.ConfirmDeleteCommand.ExecuteAsync(row);
+        await vm.DeleteCommand.ExecuteAsync(row);
 
+        Assert.Single(dialogs.Messages);                    // 弹窗确认已弹出且携带样品上下文
+        Assert.Contains("SUS-001", dialogs.Messages[0]);
         Assert.Empty(vm.SctSamples);                        // 台账唯一的 SCT 行已移除
         Assert.DoesNotContain(vm.SctSamples, r => r.SampleId == "SUS-001");
         Assert.Single(vm.ProductionSamples);                // 生产样品不受影响
@@ -190,25 +195,37 @@ public sealed class SamplesViewModelTests
     }
 
     [Fact]
-    public async Task ConfirmDelete_生产样品行删除后HasProduction重算()
+    public async Task Delete_弹窗取消则不删除()
+    {
+        var dialogs = new FakeDialogService { Result = false };
+        var vm = CreateWith(dialogs, Make("SUS-001", SampleType.SettingUp));
+        await vm.LoadCommand.ExecuteAsync(null);
+
+        await vm.DeleteCommand.ExecuteAsync(vm.SctSamples[0]);
+
+        Assert.Single(vm.SctSamples);                       // 行数据保持原样
+        Assert.Null(vm.DeleteError);
+    }
+
+    [Fact]
+    public async Task Delete_生产样品行删除后HasProduction重算()
     {
         var vm = CreateWith(Make("P-20261110-07", SampleType.Production));
         await vm.LoadCommand.ExecuteAsync(null);
         Assert.True(vm.HasProduction);
 
-        var row = vm.ProductionSamples[0];
-        vm.RequestDeleteCommand.Execute(row);
-        await vm.ConfirmDeleteCommand.ExecuteAsync(row);
+        await vm.DeleteCommand.ExecuteAsync(vm.ProductionSamples[0]);
 
         Assert.False(vm.HasProduction);                     // 删除后空态恢复
     }
 
     [Fact]
-    public async Task ConfirmDelete_空参数不抛异常()
+    public async Task Delete_空参数不抛异常()
     {
         var vm = CreateWith(Make("SUS-001", SampleType.SettingUp));
         await vm.LoadCommand.ExecuteAsync(null);
-        vm.ConfirmDeleteCommand.Execute(null);
+        await vm.DeleteCommand.ExecuteAsync(null);
         Assert.Single(vm.SctSamples);                       // 状态不变
     }
 }
+

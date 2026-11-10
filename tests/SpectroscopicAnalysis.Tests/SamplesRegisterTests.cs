@@ -11,10 +11,10 @@ public sealed class SamplesRegisterTests
     /// <summary>填入合法表单值。</summary>
     private static SamplesViewModel CreateValidForm(FakeSampleRepository repo)
     {
-        var vm = new SamplesViewModel(repo, new FakeUiDispatcher());
+        var vm = new SamplesViewModel(repo, new FakeUiDispatcher(), new FakeDialogService(), new FakeErrorCollector());
         vm.RegSampleId = "REG-001";
         vm.RegSampleName = "注册测试样品";
-        vm.RegSampleType = "设置样";
+        vm.RegSampleType = SampleType.SettingUp;
         vm.RegAlloyType = "6xxx";
         vm.RegRackPosition = "D01";
         vm.RegInitialThickness = "15.5";
@@ -59,6 +59,53 @@ public sealed class SamplesRegisterTests
         Assert.Contains("已存在", vm.RegisterError);
         Assert.Single(repo.Store); // 未新增
         Assert.True(vm.IsRegisterOpen); // 面板保持打开等待修正
+    }
+
+    [Fact]
+    public async Task 货架位置重复_拒绝且提示占用样品()
+    {
+        var repo = new FakeSampleRepository();
+        repo.Store.Add(MakeSample("SUS-001", SampleType.SettingUp));
+        var vm = CreateValidForm(repo);
+        vm.RegRackPosition = "A01"; // 与 SUS-001 重复
+
+        await vm.RegisterCommand.ExecuteAsync(null);
+
+        Assert.NotNull(vm.RegisterError);
+        Assert.Contains("货架位置已占用", vm.RegisterError);
+        Assert.Contains("SUS-001", vm.RegisterError);
+        Assert.Single(repo.Store); // 未新增
+    }
+
+    [Fact]
+    public async Task 初始厚度不大于最小厚度_拒绝()
+    {
+        var repo = new FakeSampleRepository();
+        var vm = CreateValidForm(repo);
+        vm.RegInitialThickness = "6.0";
+        vm.RegMinThickness = "6.0"; // 相等也应拒绝
+
+        await vm.RegisterCommand.ExecuteAsync(null);
+
+        Assert.Equal("初始厚度必须大于最小厚度", vm.RegisterError);
+        Assert.Empty(repo.Store);
+    }
+
+    [Fact]
+    public async Task 编号与架位同时重复_错误聚合提示()
+    {
+        var repo = new FakeSampleRepository();
+        repo.Store.Add(MakeSample("SUS-001", SampleType.SettingUp));
+        var vm = CreateValidForm(repo);
+        vm.RegSampleId = "SUS-001";
+        vm.RegRackPosition = "A01";
+
+        await vm.RegisterCommand.ExecuteAsync(null);
+
+        Assert.NotNull(vm.RegisterError);
+        Assert.Contains("样品编号已存在", vm.RegisterError, StringComparison.Ordinal);
+        Assert.Contains("货架位置已占用", vm.RegisterError, StringComparison.Ordinal);
+        Assert.Single(repo.Store);
     }
 
     [Fact]

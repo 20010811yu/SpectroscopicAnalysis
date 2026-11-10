@@ -3,12 +3,14 @@ using SpectroscopicAnalysis.Host.ViewModels;
 
 namespace SpectroscopicAnalysis.Tests;
 
-/// <summary>主窗口 ViewModel 测试：导航切换与缩放档位（开发计划 D2 验收项）。</summary>
+/// <summary>
+/// 主窗口 ViewModel 测试：导航切换与缩放档位（开发计划 D2 验收项）。
+/// </summary>
 public sealed class MainViewModelTests
 {
     private static MainViewModel CreateMain() => new(
         new DashboardViewModel(),
-        new SamplesViewModel(new FakeSampleRepository(), new FakeUiDispatcher()),
+        new SamplesViewModel(new FakeSampleRepository(), new FakeUiDispatcher(), new FakeDialogService(), new FakeErrorCollector()),
         new SctViewModel(),
         new CoefficientsViewModel(),
         new AlarmsViewModel(),
@@ -58,13 +60,13 @@ public sealed class MainViewModelTests
     }
 
     [Theory]
-    [InlineData("2.0")]   // 不在档位表
+    [InlineData("2.0")]   // 不在档位
     [InlineData("abc")]   // 非数字
     [InlineData(null)]    // 空参数
     public void SetScale_非法档位被拒绝(string? scaleText)
     {
         var main = CreateMain();
         main.SetScaleCommand.Execute(scaleText);
-        Assert.Equal(1.0, main.UiScale);   // 保持原值
+        Assert.Equal(1.0, main.UiScale);   // 保持原档位
     }
 }

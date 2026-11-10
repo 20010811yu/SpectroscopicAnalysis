@@ -3,6 +3,7 @@ using System.Windows;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Serilog;
+using SpectroscopicAnalysis.Host.LoggingAlarm;
 using SpectroscopicAnalysis.Host.Data;
 using SpectroscopicAnalysis.Host.Data.Database;
 using SpectroscopicAnalysis.Host.Data.Repositories;
@@ -35,6 +36,8 @@ public partial class App
 
                 // UI 层：调度抽象（MVVM 分层要求）+ 页面 ViewModel（单例，导航共享状态）
                 services.AddSingleton<Ui.IUiDispatcher, Ui.UiDispatcher>();
+                services.AddSingleton<IErrorCollector, ErrorCollector>();
+                services.AddSingleton<Ui.IDialogService, Ui.DialogService>();
                 services.AddSingleton<ViewModels.DashboardViewModel>();
                 services.AddSingleton<ViewModels.SamplesViewModel>();
                 services.AddSingleton<ViewModels.SctViewModel>();

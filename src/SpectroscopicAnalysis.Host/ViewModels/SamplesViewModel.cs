@@ -3,32 +3,31 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using SpectroscopicAnalysis.Host.Data.Models;
 using SpectroscopicAnalysis.Host.Data.Repositories;
+using SpectroscopicAnalysis.Host.LoggingAlarm;
 using SpectroscopicAnalysis.Host.Ui;
 
 namespace SpectroscopicAnalysis.Host.ViewModels;
 
 /// <summary>
 /// 台账行展示模型：领域数据 → 展示文本映射（开发规范 3.3：VM 负责映射为展示模型）。
-/// SampleTypeKey 为类型键（筛选用，非绑定字段）；Status 为原始枚举串（视图 DataTrigger 切换徽章颜色）；
-/// IsConfirmDelete 为删除两步确认态（视图 DataTrigger 切换按钮样式）。
+/// SampleTypeKey 为类型键（筛选用，非绑定字段）；Status 为原始枚举串（视图 DataTrigger 切换徽章颜色）。
 /// </summary>
 public sealed partial class SampleRowItem : ObservableObject
 {
-    [ObservableProperty]
-    private bool _isConfirmDelete;
-
     public required string SampleId { get; init; }
     public required string SampleName { get; init; }
     public required string SampleTypeKey { get; init; }
     public required string TypeDisplay { get; init; }
     public string? AlloyType { get; init; }
     public string? RackPosition { get; init; }
+    public required string AssociatedMethodText { get; init; }
     public required string ThicknessText { get; init; }
     public required string MinThicknessText { get; init; }
     public required string UsageText { get; init; }
     public required string Status { get; init; }
     public required string StatusText { get; init; }
     public required string LastHeightText { get; init; }
+    public required string LastUseText { get; init; }
 }
 
 /// <summary>
@@ -41,6 +40,8 @@ public sealed partial class SamplesViewModel : ObservableObject, IPageLifecycle
 
     private readonly ISctSampleRepository _samples;
     private readonly IUiDispatcher _ui;
+    private readonly IDialogService _dialogs;
+    private readonly IErrorCollector _errors;
 
     /// <summary>全部台账行（非生产样品），未筛选。</summary>
     private List<SampleRowItem> _allSctRows = new();
@@ -69,10 +70,11 @@ public sealed partial class SamplesViewModel : ObservableObject, IPageLifecycle
 
     // ==================== 样品注册（任务清单"入库初始化"） ====================
 
-    /// <summary>样品类型下拉选项（展示文本：设置样/控制样/类型标准化样/生产样品）。</summary>
-    public static readonly IReadOnlyList<string> SampleTypeOptions = new[]
+    /// <summary>样品类型下拉选项（类型键：设置样/控制样/类型标准化样；生产样品随分析流程入库，不开放录入）。
+    /// 必须为实例属性供 XAML ItemsSource 绑定（静态字段不可绑定）。</summary>
+    public IReadOnlyList<string> SampleTypeOptions { get; } = new[]
     {
-        "设置样", "控制样", "类型标准化样", "生产样品",
+        SampleType.SettingUp, SampleType.Control, SampleType.TypeStd,
     };
 
     [ObservableProperty]
@@ -85,7 +87,7 @@ public sealed partial class SamplesViewModel : ObservableObject, IPageLifecycle
     private string _regSampleName = string.Empty;
 
     [ObservableProperty]
-    private string _regSampleType = SampleTypeOptions[0];
+    private string _regSampleType = SampleType.SettingUp;
 
     [ObservableProperty]
     private string? _regAlloyType;
@@ -143,14 +145,39 @@ public sealed partial class SamplesViewModel : ObservableObject, IPageLifecycle
         RegisterError = null;
         try
         {
-            var duplicate = await Task.Run(() => _samples.GetById(sample.SampleId) is not null);
-            if (duplicate)
+            // 重复校验聚合（编号/架位一次后台查询完成，全部通过才入库）
+            var dupError = await Task.Run(() =>
             {
-                RegisterError = $"样品编号已存在：{sample.SampleId}";
+                var errors = new List<string>();
+                if (_samples.GetById(sample.SampleId) is not null)
+                {
+                    errors.Add($"样品编号已存在：{sample.SampleId}");
+                }
+                var occupant = _samples.GetAll().FirstOrDefault(s =>
+                    string.Equals(s.RackPosition?.Trim(), sample.RackPosition, StringComparison.Ordinal));
+                if (occupant is not null)
+                {
+                    errors.Add($"货架位置已占用：{sample.RackPosition}（现有样品 {occupant.SampleId}）");
+                }
+                return errors.Count > 0 ? string.Join("\n", errors) : null;
+            });
+            if (dupError is not null)
+            {
+                RegisterError = dupError;
+                _errors.Collect(ErrorCodes.SampleRegisterRejected, dupError, sample.SampleId);
                 return;
             }
 
-            await Task.Run(() => _samples.Insert(sample));
+            try
+            {
+                await Task.Run(() => _samples.Insert(sample));
+            }
+            catch (Microsoft.Data.Sqlite.SqliteException ex)
+            {
+                RegisterError = $"入库失败：{ex.Message}";
+                _errors.Collect(ErrorCodes.SampleInsertFailed, "样品入库写库失败", sample.SampleId, ex);
+                return;
+            }
             _ui.Invoke(() =>
             {
                 ClearRegisterForm();
@@ -187,6 +214,10 @@ public sealed partial class SamplesViewModel : ObservableObject, IPageLifecycle
         if (!double.TryParse(RegMinThickness, out var min) || min <= 0)
         {
             return "最小厚度必须为大于 0 的数值";
+        }
+        if (init <= min)
+        {
+            return "初始厚度必须大于最小厚度";
         }
         if (!int.TryParse(RegMaxUsageCount, out var maxUsage) || maxUsage < 1)
         {
@@ -225,9 +256,10 @@ public sealed partial class SamplesViewModel : ObservableObject, IPageLifecycle
         RegisterError = null;
     }
 
-    /// <summary>展示文本 → 类型键（与 SampleRowItem 映射一致）。</summary>
+    /// <summary>下拉选项 → 类型键（选项本身即类型键；保留归一化入口便于后续扩展展示别名）。</summary>
     private static string TypeDisplayToKey(string display) => display switch
     {
+        SampleType.SettingUp or SampleType.Control or SampleType.TypeStd or SampleType.Production => display,
         "设置样" => SampleType.SettingUp,
         "控制样" => SampleType.Control,
         "类型标准化样" => SampleType.TypeStd,
@@ -235,10 +267,12 @@ public sealed partial class SamplesViewModel : ObservableObject, IPageLifecycle
         _ => display,
     };
 
-    public SamplesViewModel(ISctSampleRepository samples, IUiDispatcher ui)
+    public SamplesViewModel(ISctSampleRepository samples, IUiDispatcher ui, IDialogService dialogs, IErrorCollector errors)
     {
         _samples = samples;
         _ui = ui;
+        _dialogs = dialogs;
+        _errors = errors;
     }
 
     /// <summary>导航进入时加载（导航路径为 fire-and-forget；测试可 await LoadCommand.ExecuteAsync 保证确定性）。</summary>
@@ -293,27 +327,11 @@ public sealed partial class SamplesViewModel : ObservableObject, IPageLifecycle
         SctSamples = new ObservableCollection<SampleRowItem>(filtered);
     }
 
-    // ==================== 样品删除（两步确认，危险操作） ====================
+    // ==================== 样品删除（弹窗确认，危险操作） ====================
 
-    /// <summary>第一步：标记待删除行（同时复位其他行的确认态，保证单行待确认）。</summary>
+    /// <summary>删除：先弹窗确认（不动行数据），确认后事务级联删除（样品+标准值+控制限；操作日志保留）。</summary>
     [RelayCommand]
-    private void RequestDelete(SampleRowItem? row)
-    {
-        if (row is null)
-        {
-            return;
-        }
-
-        DeleteError = null;
-        foreach (var r in _allSctRows)
-        {
-            r.IsConfirmDelete = ReferenceEquals(r, row) && !r.IsConfirmDelete;
-        }
-    }
-
-    /// <summary>第二步：确认删除——事务级联删除（样品+标准值+控制限；操作日志保留）后刷新集合。</summary>
-    [RelayCommand]
-    private async Task ConfirmDeleteAsync(SampleRowItem? row)
+    private async Task DeleteAsync(SampleRowItem? row)
     {
         if (row is null || IsLoading)
         {
@@ -321,6 +339,11 @@ public sealed partial class SamplesViewModel : ObservableObject, IPageLifecycle
         }
 
         DeleteError = null;
+        if (!_dialogs.Confirm("删除样品", $"确认删除样品「{row.SampleId} {row.SampleName}」？\n将级联删除其标准值与控制限（操作日志保留）。"))
+        {
+            return;
+        }
+
         var snapshot = row;
         try
         {
@@ -337,6 +360,7 @@ public sealed partial class SamplesViewModel : ObservableObject, IPageLifecycle
         catch (Microsoft.Data.Sqlite.SqliteException ex)
         {
             DeleteError = $"删除失败：{ex.Message}";
+            _errors.Collect(ErrorCodes.SampleDeleteFailed, "样品删除失败", snapshot.SampleId, ex);
         }
     }
 
@@ -355,6 +379,7 @@ public sealed partial class SamplesViewModel : ObservableObject, IPageLifecycle
         },
         AlloyType = s.AlloyType,
         RackPosition = s.RackPosition,
+        AssociatedMethodText = s.AssociatedMethod ?? string.Empty,
         ThicknessText = $"{s.CurrentThickness:0.0#} / {s.InitialThickness:0.0#}",
         MinThicknessText = $"{s.MinThickness:0.0#}",
         UsageText = $"{s.UsageCount}/{s.MaxUsageCount}",
@@ -368,5 +393,6 @@ public sealed partial class SamplesViewModel : ObservableObject, IPageLifecycle
             _ => s.Status,
         },
         LastHeightText = s.LastHeightCheckTime?.ToString("MM-dd HH:mm") ?? "—",
+        LastUseText = s.LastUseTime?.ToString("MM-dd HH:mm") ?? "—",
     };
 }

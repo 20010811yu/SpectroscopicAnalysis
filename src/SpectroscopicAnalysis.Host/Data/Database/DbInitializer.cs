@@ -1,3 +1,6 @@
+using System.Data;
+using System.Data.Common;
+
 namespace SpectroscopicAnalysis.Host.Data.Database;
 
 /// <summary>
@@ -20,6 +23,7 @@ public sealed class DbInitializer
             SampleType          TEXT NOT NULL CHECK (SampleType IN ('SettingUp','Control','TypeStd','Production')),
             AlloyType           TEXT,
             RackPosition        TEXT,
+            AssociatedMethod    TEXT,
             InitialThickness    REAL NOT NULL,
             CurrentThickness    REAL NOT NULL,
             MinThickness        REAL NOT NULL,
@@ -93,7 +97,7 @@ public sealed class DbInitializer
         "CREATE INDEX IF NOT EXISTS IX_Coefficient_Method_Current ON CorrectionCoefficient(MethodID, Element, IsCurrent);",
     };
 
-    /// <summary>创建全部表与索引（单事务执行）。</summary>
+    /// <summary>创建全部表与索引（单事务执行）；并迁移存量库缺失列。</summary>
     public void EnsureCreated()
     {
         using var conn = _db.Open();
@@ -105,6 +109,36 @@ public sealed class DbInitializer
             cmd.CommandText = sql;
             cmd.ExecuteNonQuery();
         }
+        // 存量库迁移：建表脚本对旧库不生效（IF NOT EXISTS），缺失列按表逐个补齐
+        AddColumnIfMissing(conn, tx, "SCT_Sample", "AssociatedMethod", "TEXT");
         tx.Commit();
+    }
+
+    /// <summary>列不存在时 ALTER TABLE 补列（幂等；SQLite 仅支持 ADD COLUMN）。</summary>
+    private static void AddColumnIfMissing(DbConnection conn, DbTransaction tx, string table, string column, string type)
+    {
+        var exists = false;
+        using (var cmd = conn.CreateCommand())
+        {
+            cmd.Transaction = tx;
+            cmd.CommandText = $"PRAGMA table_info({table});";
+            using var reader = cmd.ExecuteReader();
+            while (reader.Read())
+            {
+                if (string.Equals(reader.GetString(1), column, StringComparison.OrdinalIgnoreCase))
+                {
+                    exists = true;
+                    break;
+                }
+            }
+        }
+
+        if (!exists)
+        {
+            using var alter = conn.CreateCommand();
+            alter.Transaction = tx;
+            alter.CommandText = $"ALTER TABLE {table} ADD COLUMN {column} {type};";
+            alter.ExecuteNonQuery();
+        }
     }
 }

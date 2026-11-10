@@ -5,7 +5,9 @@ using SpectroscopicAnalysis.Tests.Data;
 
 namespace SpectroscopicAnalysis.Tests.Data;
 
-/// <summary>级联删除测试：样品 + 标准值 + 控制限同删，操作日志保留（开发规范第 5 节审计要求）。</summary>
+/// <summary>
+/// 级联删除测试：样品 + 标准值 + 控制限同删，操作日志保留（开发规范第 5 节审计要求）。
+/// </summary>
 public sealed class RepositoryDeleteTests
 {
     private const string SeedSampleId = "CTL-TEST";

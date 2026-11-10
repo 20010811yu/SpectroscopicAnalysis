@@ -4,7 +4,9 @@ using SpectroscopicAnalysis.Host.Data.Database;
 
 namespace SpectroscopicAnalysis.Tests.Data;
 
-/// <summary>建表脚本测试：幂等性 + 表完整性（开发计划 D3 验收项）。</summary>
+/// <summary>
+/// 建表脚本测试：幂等性 + 表完整性（开发计划 D3 验收项）。
+/// </summary>
 public sealed class DbInitializerTests
 {
     private static readonly string[] ExpectedTables =

@@ -6,7 +6,9 @@ using SpectroscopicAnalysis.Tests.Data;
 
 namespace SpectroscopicAnalysis.Tests.Data;
 
-/// <summary>样品仓储测试：CRUD / 事务更新 / 外键约束（开发计划 D3 验收项）。</summary>
+/// <summary>
+/// 样品仓储测试：CRUD / 事务更新 / 外键约束（开发计划 D3 验收项）。
+/// </summary>
 public sealed class SctSampleRepositoryTests
 {
     /// <summary>测试上下文：独立临时库 + 已建表 + 仓储；释放时清理库文件。</summary>

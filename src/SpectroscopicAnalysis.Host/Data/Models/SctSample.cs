@@ -26,6 +26,7 @@ public sealed class SctSample
     public string SampleType { get; set; } = string.Empty;
     public string? AlloyType { get; set; }
     public string? RackPosition { get; set; }
+    public string? AssociatedMethod { get; set; }
     public double InitialThickness { get; set; }
     public double CurrentThickness { get; set; }
     public double MinThickness { get; set; }

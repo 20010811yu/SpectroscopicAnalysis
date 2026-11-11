@@ -148,7 +148,7 @@
                         <TextBlock Text="生产样品（按日期）" Style="{StaticResource Text.CardTitle}" VerticalAlignment="Center" />
                         <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
                             <TextBlock Text="入库日期" Style="{StaticResource Text.Caption}" VerticalAlignment="Center" Margin="0,0,8,0" />
-                            <DatePicker SelectedDate="{Binding SelectedDate}" MinWidth="140" Style="{StaticResource DatePickerStyle}" />
+                            <DatePicker SelectedDate="{Binding SelectedDate}" MinWidth="140" />
                         </StackPanel>
                     </DockPanel>
                     <TextBlock Text="所选日期暂无生产样品记录（生产样品随分析流程入库）" Style="{StaticResource Text.Caption}"

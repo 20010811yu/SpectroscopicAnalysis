@@ -328,12 +328,12 @@ public sealed class SamplesViewModelTests
 
         vm.NextPageCommand.Execute(null);
         Assert.Equal(2, vm.CurrentPage);
-        Assert.Equal("S-021", vm.SctSamples[0].SampleId);
+        Assert.Equal("S-016", vm.SctSamples[0].SampleId);
         Assert.True(vm.HasPrevPage && vm.HasNextPage);
 
         vm.NextPageCommand.Execute(null);
         Assert.Equal(3, vm.CurrentPage);
-        Assert.Equal(5, vm.SctSamples.Count);               // 末页 45 - 40 = 5 条
+        Assert.Equal(15, vm.SctSamples.Count);              // 末页 45 - 30 = 15 条
         Assert.False(vm.HasNextPage);
         Assert.False(vm.NextPageCommand.CanExecute(null));  // 末页"下一页"禁用
 
@@ -366,7 +366,7 @@ public sealed class SamplesViewModelTests
     public async Task Paging_删除末页最后一条后页码回退()
     {
         var dialogs = new FakeDialogService();
-        var many = MakeMany(21);
+        var many = MakeMany(16);
         var vm = CreateWith(dialogs, many.ToArray());
         await vm.LoadCommand.ExecuteAsync(null);
 
@@ -376,7 +376,7 @@ public sealed class SamplesViewModelTests
 
         Assert.Equal(1, vm.CurrentPage);                    // 末页空 → 回退第 1 页
         Assert.Equal(SamplesViewModel.PageSize, vm.SctSamples.Count);
-        Assert.Equal(20, vm.TotalCount);
+        Assert.Equal(15, vm.TotalCount);
     }
 }
 

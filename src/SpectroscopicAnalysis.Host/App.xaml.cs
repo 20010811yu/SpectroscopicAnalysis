@@ -32,6 +32,11 @@ public partial class App
                 services.AddSingleton(new Db(dbPath));
                 services.AddSingleton<DbInitializer>();
                 services.AddSingleton<ISctSampleRepository, SctSampleRepository>();
+                // 子表仓储（样品档案页「切换数据表」；前两者可删除，后两者只读）
+                services.AddSingleton<ISctCertifiedValueRepository, SctCertifiedValueRepository>();
+                services.AddSingleton<IControlLimitRepository, ControlLimitRepository>();
+                services.AddSingleton<ICorrectionCoefficientRepository, CorrectionCoefficientRepository>();
+                services.AddSingleton<ISctOperationLogRepository, SctOperationLogRepository>();
                 services.AddSingleton<SeedData>();
 
                 // UI 层：调度抽象（MVVM 分层要求）+ 页面 ViewModel（单例，导航共享状态）

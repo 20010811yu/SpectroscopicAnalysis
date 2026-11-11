@@ -50,10 +50,17 @@
             <Setter Property="FontWeight" Value="Normal" />
         </Style>
     </UserControl.Resources>
-    <ScrollViewer VerticalScrollBarVisibility="Auto">
-        <StackPanel Margin="16">
+    <!-- 页面分区布局：台账表格占满剩余高度（Star），生产样品卡片固定在最下方 -->
+    <Grid Margin="16">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
 
-            <DockPanel Margin="{DynamicResource Spacing.CardGap}">
+        <DockPanel Grid.Row="0" Margin="{DynamicResource Spacing.CardGap}">
                 <TextBlock Text="样品档案" Style="{StaticResource Text.PageTitle}" VerticalAlignment="Center" />
                 <Button Content="＋ 录入新标样" Command="{Binding ToggleRegisterCommand}"
                         HorizontalAlignment="Right" VerticalAlignment="Center"
@@ -62,7 +69,7 @@
             </DockPanel>
 
             <!-- 样品注册表单（入库初始化：当前厚度=初始厚度、使用次数=0、状态=Normal） -->
-            <Border Style="{StaticResource Card}" Margin="{DynamicResource Spacing.CardGap}"
+            <Border Grid.Row="1" Style="{StaticResource Card}" Margin="{DynamicResource Spacing.CardGap}"
                     Visibility="{Binding IsRegisterOpen, Converter={StaticResource BoolToVisibility}}">
                 <StackPanel>
                     <TextBlock Text="录入新标样" Style="{StaticResource Text.CardTitle}" Margin="0,0,0,12" />
@@ -121,7 +128,7 @@
             </Border>
 
             <!-- 类型筛选 + 关键词查询 -->
-            <DockPanel Margin="{DynamicResource Spacing.CardGap}">
+            <DockPanel Grid.Row="2" Margin="{DynamicResource Spacing.CardGap}">
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" DockPanel.Dock="Right" Margin="12,0,0,0">
                     <TextBox Width="200" VerticalAlignment="Center"
                              Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}">
@@ -206,10 +213,16 @@
                 </StackPanel>
             </DockPanel>
 
-            <!-- SCT 样品台账（真实数据） -->
-            <Border Style="{StaticResource Card}" Margin="{DynamicResource Spacing.CardGap}">
-                <StackPanel>
-                    <DockPanel Margin="0,0,0,8">
+            <!-- SCT 样品台账（真实数据；撑满剩余高度，内部滚动） -->
+            <Border Grid.Row="3" Style="{StaticResource Card}" Margin="{DynamicResource Spacing.CardGap}">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+                    <DockPanel Grid.Row="0" Margin="0,0,0,8">
                         <TextBlock Text="SCT 样品台账" Style="{StaticResource Text.CardTitle}" />
                         <TextBlock Text="{Binding DeleteError}" HorizontalAlignment="Right"
                                    Foreground="{DynamicResource Brush.Status.Failed}" TextWrapping="Wrap" MaxWidth="600">
@@ -225,12 +238,11 @@
                             </TextBlock.Style>
                         </TextBlock>
                     </DockPanel>
-                    <!-- 高度上限（非固定值）：超过时表格内部出现滚动条，鼠标滚轮滚动表格自身而非整页 -->
-                    <DataGrid ItemsSource="{Binding SctSamples}" AutoGenerateColumns="False"
+                    <!-- 表格撑满卡片剩余高度（行 3 为 Star），内部滚动，滚轮滚动表格行 -->
+                    <DataGrid Grid.Row="1" ItemsSource="{Binding SctSamples}" AutoGenerateColumns="False"
                               IsReadOnly="True" CanUserAddRows="False" CanUserSortColumns="False"
                               CanUserResizeColumns="True" CanUserResizeRows="False"
                               ScrollViewer.CanContentScroll="True"
-                              MaxHeight="300"
                               HeadersVisibility="Column" GridLinesVisibility="Horizontal"
                               BorderThickness="0" Background="Transparent"
                               RowBackground="Transparent" AlternatingRowBackground="Transparent"
@@ -319,7 +331,7 @@
                         </DataGrid.Columns>
                     </DataGrid>
                     <!-- 分页栏（每页 15 条；整组靠右，总数在“下一页”右侧） -->
-                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,8,0,0">
+                    <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,8,0,0">
                         <Button Content="上一页" Command="{Binding PrevPageCommand}" Padding="10,3"
                                 FontSize="{DynamicResource FontSize.Caption}" Cursor="Hand" />
                         <TextBlock Text="{Binding PageDisplay}" VerticalAlignment="Center" Margin="8,0"
@@ -330,12 +342,12 @@
                             <Run Text="共 " /><Run Text="{Binding TotalCount, Mode=OneWay}" /><Run Text=" 条" />
                         </TextBlock>
                     </StackPanel>
-                    <TextBlock Text="使用次数达到上限自动标记「需测高」；厚度低于最小厚度自动「禁用」并报警更换；删除经弹窗二次确认（级联删除标准值与控制限，操作日志保留）" Style="{StaticResource Text.Caption}" Margin="0,8,0,0" />
-                </StackPanel>
+                    <TextBlock Grid.Row="3" Text="使用次数达到上限自动标记「需测高」；厚度低于最小厚度自动「禁用」并报警更换；删除经弹窗二次确认（级联删除标准值与控制限，操作日志保留）" Style="{StaticResource Text.Caption}" Margin="0,8,0,0" />
+                </Grid>
             </Border>
 
-            <!-- 生产样品（真实数据；种子库暂无，显示空态） -->
-            <Border Style="{StaticResource Card}">
+            <!-- 生产样品（真实数据；固定在页面最下方） -->
+            <Border Grid.Row="4" Style="{StaticResource Card}">
                 <StackPanel>
                     <TextBlock Text="生产样品（今日）" Style="{StaticResource Text.CardTitle}" Margin="0,0,0,8" />
                     <TextBlock Text="暂无生产样品记录（生产样品随分析流程入库）" Style="{StaticResource Text.Caption}"
@@ -359,6 +371,5 @@
                 </StackPanel>
             </Border>
 
-        </StackPanel>
-    </ScrollViewer>
+    </Grid>
 </UserControl>

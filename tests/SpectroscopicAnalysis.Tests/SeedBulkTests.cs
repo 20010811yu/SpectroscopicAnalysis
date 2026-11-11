@@ -28,12 +28,21 @@ public sealed class SeedBulkTests
                 cmd.CommandText = $"SELECT COUNT(*) FROM {table}";
                 return (long)cmd.ExecuteScalar()!;
             }
+            long CountWhere(string table, string where)
+            {
+                using var cmd = conn.CreateCommand();
+                cmd.CommandText = $"SELECT COUNT(*) FROM {table} WHERE {where}";
+                return (long)cmd.ExecuteScalar()!;
+            }
 
             Assert.Equal(3000, Count("SCT_Sample"));
             Assert.True(Count("SCT_CertifiedValue") >= 5000, $"CertifiedValue={Count("SCT_CertifiedValue")}");
             Assert.True(Count("ControlLimit") >= 5000, $"ControlLimit={Count("ControlLimit")}");
             Assert.True(Count("CorrectionCoefficient") >= 5000, $"Coeff={Count("CorrectionCoefficient")}");
             Assert.True(Count("SCT_OperationLog") >= 5000, $"Log={Count("SCT_OperationLog")}");
+            Assert.True(Count("Production_Sample") >= 3000, $"Production={Count("Production_Sample")}");
+            Assert.True(Count("Analysis_Result") >= 3000, $"AnalysisResult={Count("Analysis_Result")}");
+            Assert.Equal(0, CountWhere("SCT_Sample", "SampleType = 'Production'"));
 
             // 幂等：再次注入不增量
             seed.SeedDemo();

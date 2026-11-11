@@ -122,50 +122,25 @@ public sealed class SctSampleRepositoryIntegrationTests : IDisposable
     }
 
     [Fact]
-    public void GetProductionPage_游标分页与日期过滤()
+    public void 生产样独立建档_SCT_Sample仅存SCT样品()
     {
-        var today = DateTime.Today;
-        for (var i = 1; i <= 45; i++)
+        _repo.Insert(new SctSample
         {
-            _repo.Insert(new SctSample
-            {
-                SampleId = $"P-{i:000}",
-                SampleName = $"生产样 {i}",
-                SampleType = SampleType.Production,
-                InitialThickness = 20,
-                CurrentThickness = 20,
-                MinThickness = 5,
-                MaxUsageCount = 100,
-                CreatedTime = i <= 5 ? today.AddDays(-1) : today, // 前 5 条昨日入库
-            });
-        }
+            SampleId = "PRD-LEGACY-01",
+            SampleName = "遗留生产样",
+            SampleType = SampleType.Production,
+            InitialThickness = 20,
+            CurrentThickness = 20,
+            MinThickness = 5,
+            MaxUsageCount = 100,
+            CreatedTime = DateTime.Today,
+        });
 
-        _repo.Insert(new SctSample { SampleId = "S-001", SampleName = "设置样", SampleType = SampleType.SettingUp, InitialThickness = 10, CurrentThickness = 10, MinThickness = 5, MaxUsageCount = 10, CreatedTime = today });
+        // EnsureCreated 的启动清理：SCT_Sample 中不再保留生产样行（生产样由 Production_Sample 表提供）
+        new DbInitializer(_db).EnsureCreated();
 
-        // 第一页（今日）：20 条（昨日 5 条被日期过滤排除，今日共 40 条）
-        var page1 = _repo.GetProductionPage(today, null, null, 20);
-        Assert.Equal(20, page1.Count);
-        Assert.Equal("P-006", page1[0].SampleId);
-        Assert.Equal("P-025", page1[^1].SampleId);
-
-        // 下一页：after 游标
-        var page2 = _repo.GetProductionPage(today, page1[^1].SampleId, null, 20);
-        Assert.Equal(20, page2.Count);
-        Assert.Equal("P-026", page2[0].SampleId);
-        Assert.Equal("P-045", page2[^1].SampleId);
-        Assert.Equal(40, _repo.CountProduction(today));
-
-        // 上一页：before 游标，升序返回
-        var back = _repo.GetProductionPage(today, null, page2[0].SampleId, 20);
-        Assert.Equal(20, back.Count);
-        Assert.Equal("P-006", back[0].SampleId);
-        Assert.Equal("P-025", back[^1].SampleId);
-
-        // 昨日日期
-        var yesterday = _repo.GetProductionPage(today.AddDays(-1), null, null, 20);
-        Assert.Equal(5, yesterday.Count);
-        Assert.Equal("P-001", yesterday[0].SampleId);
-        Assert.Equal(5, _repo.CountProduction(today.AddDays(-1)));
+        Assert.Null(_repo.GetById("PRD-LEGACY-01"));
+        Assert.Equal(0, _repo.GetAll().Count(s => s.SampleType == SampleType.Production));
     }
 
     public void Dispose()

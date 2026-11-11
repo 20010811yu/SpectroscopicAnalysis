@@ -32,47 +32,6 @@ internal sealed class FakeSampleRepository : ISctSampleRepository
     }
 
     public void UpdateAfterSpark(string sampleId, double currentThickness, string status, DateTime usedAt) { }
-
-    public IReadOnlyList<SctSample> GetProductionPage(DateTime? createdOn, string? afterSampleId, string? beforeSampleId, int pageSize)
-    {
-        var query = Store.Where(s => s.SampleType == SampleType.Production);
-        if (createdOn is not null)
-        {
-            var day = createdOn.Value.Date;
-            query = query.Where(s => s.CreatedTime >= day && s.CreatedTime < day.AddDays(1));
-        }
-
-        if (afterSampleId is not null)
-        {
-            query = query.Where(s => string.CompareOrdinal(s.SampleId, afterSampleId) > 0);
-        }
-
-        if (beforeSampleId is not null)
-        {
-            query = query.Where(s => string.CompareOrdinal(s.SampleId, beforeSampleId) < 0);
-        }
-
-        var ordered = query.OrderBy(s => s.SampleId, StringComparer.Ordinal).ToList();
-        if (beforeSampleId is not null)
-        {
-            // 与真实 SQL（DESC LIMIT 后反转）等价：游标前的最后 pageSize 条，保持升序返回
-            return ordered.TakeLast(pageSize).ToList();
-        }
-
-        return ordered.Take(pageSize).ToList();
-    }
-
-    public int CountProduction(DateTime? createdOn)
-    {
-        var query = Store.Where(s => s.SampleType == SampleType.Production);
-        if (createdOn is not null)
-        {
-            var day = createdOn.Value.Date;
-            query = query.Where(s => s.CreatedTime >= day && s.CreatedTime < day.AddDays(1));
-        }
-
-        return query.Count();
-    }
 }
 
 /// <summary>Fake 调度器：同步执行（保证测试确定性）。</summary>
@@ -183,8 +142,9 @@ public sealed class SamplesViewModelTests
     }
 
     [Fact]
-    public async Task Load_台账含生产样品且可按类型筛选()
+    public async Task Load_台账含各类型SCT样品且可按类型筛选()
     {
+        // 生产样已独立建档（Production_Sample），SCT 台账仅承载 SettingUp/Control/TypeStd
         var vm = CreateWith(
             Make("SUS-001", SampleType.SettingUp),
             Make("CTL-002", SampleType.Control, SampleStatus.NeedMeasure),
@@ -193,12 +153,12 @@ public sealed class SamplesViewModelTests
 
         await vm.LoadCommand.ExecuteAsync(null);
 
-        Assert.Equal(4, vm.SctSamples.Count);                    // 全部类型均在台账
-        vm.SetFilterCommand.Execute(SampleType.Production);
+        Assert.Equal(4, vm.SctSamples.Count);                    // 仓储返回的行全部展示
+        vm.SetFilterCommand.Execute(SampleType.Control);
         var filtered = vm.SctSamples.ToList();
         Assert.Single(filtered);
-        Assert.Equal("P-20261110-07", filtered[0].SampleId);     // 生产样筛选生效
-        Assert.Equal("生产样", filtered[0].TypeDisplay);
+        Assert.Equal("CTL-002", filtered[0].SampleId);
+        Assert.Equal("控制样", filtered[0].TypeDisplay);
     }
 
     [Fact]
@@ -264,7 +224,7 @@ public sealed class SamplesViewModelTests
         var dialogs = new FakeDialogService();
         var vm = CreateWith(dialogs,
             Make("SUS-001", SampleType.SettingUp),
-            Make("P-20261110-07", SampleType.Production));
+            Make("TS-6061-01", SampleType.TypeStd));
         await vm.LoadCommand.ExecuteAsync(null);
 
         var row = vm.SctSamples.First(r => r.SampleId == "SUS-001");
@@ -272,7 +232,7 @@ public sealed class SamplesViewModelTests
 
         Assert.Single(dialogs.Messages);                    // 弹窗确认已弹出且携带样品上下文
         Assert.Contains("SUS-001", dialogs.Messages[0]);
-        Assert.Single(vm.SctSamples);                       // 被删行已移除（仅剩生产样行）
+        Assert.Single(vm.SctSamples);                       // 被删行已移除
         Assert.DoesNotContain(vm.SctSamples, r => r.SampleId == "SUS-001");
         Assert.Null(vm.DeleteError);
     }
@@ -291,15 +251,15 @@ public sealed class SamplesViewModelTests
     }
 
     [Fact]
-    public async Task Delete_生产样品可从台账删除()
+    public async Task Delete_多行样品可逐行删除()
     {
         var dialogs = new FakeDialogService();
-        var vm = CreateWith(dialogs, Make("P-20261110-07", SampleType.Production));
+        var vm = CreateWith(dialogs, Make("SUS-001", SampleType.SettingUp), Make("TS-6061-01", SampleType.TypeStd));
         await vm.LoadCommand.ExecuteAsync(null);
 
         await vm.DeleteCommand.ExecuteAsync(vm.SctSamples[0]);
 
-        Assert.Empty(vm.SctSamples);                        // 生产样品删除后从台账移除
+        Assert.Single(vm.SctSamples);                       // 删除后剩余一行
         Assert.Null(vm.DeleteError);
     }
 

@@ -3,40 +3,43 @@ using SpectroscopicAnalysis.Host.ViewModels;
 
 namespace SpectroscopicAnalysis.Tests;
 
-/// <summary>主控台 ViewModel 测试：「生产样品（今日）」模块加载与映射（模块自样品档案页迁入）。</summary>
+/// <summary>主控台 ViewModel 测试：生产样表格加载/映射/日期过滤/游标分页（数据源 Production_Sample）。</summary>
 public sealed class DashboardViewModelTests
 {
-    private static SctSample Make(string id, string type, string status = SampleStatus.Normal, DateTime? created = null) => new()
+    private static ProductionSample Make(string id, string status = ProductionStatus.Normal, DateTime? created = null) => new()
     {
         SampleId = id,
-        SampleName = id,
-        SampleType = type,
+        SampleName = $"生产样 {id}",
         AlloyType = "6xxx",
+        RackPosition = "D01",
         Status = status,
         CreatedTime = created ?? DateTime.Today, // 默认今日入库（与默认筛选日期一致）
     };
 
-    private static DashboardViewModel CreateWith(params SctSample[] samples)
+    private static DashboardViewModel CreateWith(params ProductionSample[] samples)
     {
-        var repo = new FakeSampleRepository();
+        var repo = new FakeProductionSampleRepository();
         repo.Store.AddRange(samples);
         return new DashboardViewModel(repo, new FakeUiDispatcher(), new FakeErrorCollector());
     }
 
     [Fact]
-    public async Task Load_仅生产样品进入表格_状态映射正确()
+    public async Task Load_生产样进入表格_状态映射正确()
     {
         var vm = CreateWith(
-            Make("SUS-001", SampleType.SettingUp),
-            Make("P-20261110-07", SampleType.Production),
-            Make("P-20261110-08", SampleType.Production, SampleStatus.NeedMeasure));
+            Make("P-001", ProductionStatus.Normal),
+            Make("P-002", ProductionStatus.Analyzing),
+            Make("P-003", ProductionStatus.Completed),
+            Make("P-004", ProductionStatus.Failed));
 
         await vm.LoadCommand.ExecuteAsync(null);
 
-        Assert.Equal(2, vm.ProductionSamples.Count);            // 仅生产样品
-        Assert.DoesNotContain(vm.ProductionSamples, r => r.SampleId == "SUS-001");
+        Assert.Equal(4, vm.ProductionSamples.Count);
         Assert.Equal("● 正常", vm.ProductionSamples[0].StatusText);
-        Assert.Equal("▲ 需测高", vm.ProductionSamples[1].StatusText);
+        Assert.Equal("● 分析中", vm.ProductionSamples[1].StatusText);
+        Assert.Equal("✓ 已完成", vm.ProductionSamples[2].StatusText);
+        Assert.Equal("✖ 失败", vm.ProductionSamples[3].StatusText);
+        Assert.Equal("生产样 P-001", vm.ProductionSamples[0].SampleName); // 名称列映射
         Assert.True(vm.HasProduction);
     }
 
@@ -53,7 +56,7 @@ public sealed class DashboardViewModelTests
     [Fact]
     public async Task Load_导航入口与加载命令一致()
     {
-        var vm = CreateWith(Make("P-20261110-07", SampleType.Production));
+        var vm = CreateWith(Make("P-001"));
 
         // OnNavigatedTo 为 fire-and-forget，与导航路径等价地直接 await 加载命令保证确定性
         await vm.LoadCommand.ExecuteAsync(null);
@@ -65,8 +68,8 @@ public sealed class DashboardViewModelTests
     public async Task Load_按日期过滤_仅显当日入库()
     {
         var vm = CreateWith(
-            Make("P-TODAY-01", SampleType.Production, created: DateTime.Today),
-            Make("P-YESTD-01", SampleType.Production, created: DateTime.Today.AddDays(-1)));
+            Make("P-TODAY-01", created: DateTime.Today),
+            Make("P-YESTD-01", created: DateTime.Today.AddDays(-1)));
 
         await vm.LoadCommand.ExecuteAsync(null);
 
@@ -83,22 +86,13 @@ public sealed class DashboardViewModelTests
         Assert.Equal("P-YESTD-01", vm.ProductionSamples[0].SampleId);
     }
 
-    /// <summary>等待 fire-and-forget 重查完成（IsLoading 回落即表示本次加载结束）。</summary>
-    private static async Task WaitIdleAsync(DashboardViewModel vm)
-    {
-        for (var i = 0; i < 100 && vm.IsLoading; i++)
-        {
-            await Task.Delay(10);
-        }
-    }
-
     [Fact]
     public async Task NextPage_游标翻页_取下一页数据()
     {
-        var repo = new FakeSampleRepository();
+        var repo = new FakeProductionSampleRepository();
         for (var i = 1; i <= 45; i++)
         {
-            repo.Store.Add(Make($"P-{i:000}", SampleType.Production));
+            repo.Store.Add(Make($"P-{i:000}"));
         }
 
         var vm = new DashboardViewModel(repo, new FakeUiDispatcher(), new FakeErrorCollector());
@@ -114,10 +108,10 @@ public sealed class DashboardViewModelTests
     [Fact]
     public async Task NextPage_PrevPage_往返游标正确()
     {
-        var repo = new FakeSampleRepository();
+        var repo = new FakeProductionSampleRepository();
         for (var i = 1; i <= 45; i++)
         {
-            repo.Store.Add(Make($"P-{i:000}", SampleType.Production));
+            repo.Store.Add(Make($"P-{i:000}"));
         }
 
         var vm = new DashboardViewModel(repo, new FakeUiDispatcher(), new FakeErrorCollector());
@@ -149,6 +143,15 @@ public sealed class DashboardViewModelTests
         Assert.Equal(1, vm.CurrentPage);
         Assert.Equal("P-001", vm.ProductionSamples[0].SampleId);
         Assert.False(vm.HasPrevPage);
+    }
+
+    /// <summary>等待 fire-and-forget 重查完成（IsLoading 回落即表示本次加载结束）。</summary>
+    private static async Task WaitIdleAsync(DashboardViewModel vm)
+    {
+        for (var i = 0; i < 100 && vm.IsLoading; i++)
+        {
+            await Task.Delay(10);
+        }
     }
 
     /// <summary>翻页命令为 fire-and-forget 异步路径；经 AsyncRelayCommand 的 ExecutionTask 等待其完成（确定性）。</summary>

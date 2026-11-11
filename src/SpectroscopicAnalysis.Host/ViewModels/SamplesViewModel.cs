@@ -209,11 +209,11 @@ public sealed partial class SamplesViewModel : ObservableObject, IPageLifecycle
 
     // ==================== 样品注册（任务清单"入库初始化"） ====================
 
-    /// <summary>样品类型下拉选项（类型键：设置样/控制样/类型标准化样；生产样品随分析流程入库，不开放录入）。
+    /// <summary>样品类型下拉选项（类型键：设置样/控制样/类型标准化样/生产样）。
     /// 必须为实例属性供 XAML ItemsSource 绑定（静态字段不可绑定）。</summary>
     public IReadOnlyList<string> SampleTypeOptions { get; } = new[]
     {
-        SampleType.SettingUp, SampleType.Control, SampleType.TypeStd,
+        SampleType.SettingUp, SampleType.Control, SampleType.TypeStd, SampleType.Production,
     };
 
     [ObservableProperty]
@@ -449,13 +449,13 @@ public sealed partial class SamplesViewModel : ObservableObject, IPageLifecycle
         }
     }
 
-    /// <summary>加载样品台账（生产样品展示已移交主控台 DashboardViewModel，台账仅保留非生产样品）。</summary>
+    /// <summary>加载样品台账（含生产样，供类型筛选切换查看）。</summary>
     private async Task LoadSamplesAsync()
     {
         var rows = await Task.Run(() => _samples.GetAll().Select(MapRow).ToList());
         _ui.Invoke(() =>
         {
-            _allSctRows = rows.Where(r => r.SampleTypeKey != SampleType.Production).ToList();
+            _allSctRows = rows.ToList();
             ApplyFilter(FilterKey);
         });
     }
@@ -853,7 +853,7 @@ public sealed partial class SamplesViewModel : ObservableObject, IPageLifecycle
             SampleType.SettingUp => "设置样",
             SampleType.Control => "控制样",
             SampleType.TypeStd => "类型标准化样",
-            SampleType.Production => "生产样品",
+            SampleType.Production => "生产样",
             _ => s.SampleType,
         },
         AlloyType = s.AlloyType,

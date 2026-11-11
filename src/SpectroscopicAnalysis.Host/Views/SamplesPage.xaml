@@ -177,6 +177,19 @@
                         </Style>
                     </Button.Style>
                 </Button>
+                <Button Content="生产样" Command="{Binding SetFilterCommand}" CommandParameter="Production" Margin="0,0,8,0">
+                    <Button.Style>
+                        <Style TargetType="Button" BasedOn="{StaticResource ModeBtn}">
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding FilterKey}" Value="Production">
+                                    <Setter Property="Background" Value="{DynamicResource Brush.Primary}" />
+                                    <Setter Property="Foreground" Value="White" />
+                                    <Setter Property="FontWeight" Value="SemiBold" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Button.Style>
+                </Button>
                 </StackPanel>
                 <!-- 状态筛选（下拉选择；与类型筛选组合生效；仅样品台账表显示） -->
                 <StackPanel Orientation="Horizontal" Margin="16,0,0,0"

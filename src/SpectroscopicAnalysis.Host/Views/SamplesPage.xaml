@@ -3,36 +3,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
     <!-- 样品档案：数据绑定视图（真实 SQLite 数据；状态徽章经 Status DataTrigger 切换颜色） -->
     <UserControl.Resources>
-        <!-- 表格行/单元格/列头样式已上移至 Themes/Styles.xaml（与主控台生产样品表格共用） -->
-        <!-- 分页按钮：可用时蓝底白字；禁用时灰底灰字（首/末页状态，由命令 CanExecute 自动切换） -->
-        <Style x:Key="PagerBtn" TargetType="Button">
-            <Setter Property="Background" Value="{DynamicResource Brush.Primary}" />
-            <Setter Property="Foreground" Value="White" />
-            <Setter Property="FontSize" Value="{DynamicResource FontSize.Caption}" />
-            <Setter Property="Padding" Value="12,4" />
-            <Setter Property="Cursor" Value="Hand" />
-            <Setter Property="BorderThickness" Value="0" />
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="Button">
-                        <Border x:Name="Bg" CornerRadius="4" Background="{TemplateBinding Background}"
-                                Padding="{TemplateBinding Padding}">
-                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
-                        </Border>
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="Bg" Property="Background" Value="{DynamicResource Brush.Primary.Hover}" />
-                            </Trigger>
-                            <Trigger Property="IsEnabled" Value="False">
-                                <Setter Property="Background" Value="{DynamicResource Brush.Bg.Disabled}" />
-                                <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Secondary}" />
-                                <Setter Property="Cursor" Value="Arrow" />
-                            </Trigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
+        <!-- 表格行/单元格/列头样式与通用按钮（PrimaryBtn/DangerBtn/SecondaryBtn）均在 Themes/Styles.xaml 定义 -->
     </UserControl.Resources>
     <!-- 页面分区布局：台账表格占满剩余高度（Star），生产样品卡片固定在最下方 -->
     <Grid Margin="16">
@@ -49,8 +20,7 @@
                 <Button Content="＋ 录入新标样" Command="{Binding ToggleRegisterCommand}"
                         HorizontalAlignment="Right" VerticalAlignment="Center"
                         Visibility="{Binding IsSampleTable, Converter={StaticResource BoolToVisibility}}"
-                        Background="{DynamicResource Brush.Primary}" Foreground="White"
-                        FontSize="{DynamicResource FontSize.Caption}" Padding="10,5" Cursor="Hand" />
+                        Style="{StaticResource PrimaryBtn}" Padding="10,5" />
             </DockPanel>
 
             <!-- 样品注册表单（入库初始化：当前厚度=初始厚度、使用次数=0、状态=Normal；仅样品台账表且面板展开时显示） -->
@@ -117,10 +87,9 @@
                     </TextBlock>
 
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                        <Button Content="取消" Command="{Binding CancelRegisterCommand}" Margin="0,0,8,0" />
+                        <Button Content="取消" Command="{Binding CancelRegisterCommand}" Style="{StaticResource SecondaryBtn}" Margin="0,0,8,0" />
                         <Button Content="确认入库" Command="{Binding RegisterCommand}"
-                                Background="{DynamicResource Brush.Primary}" Foreground="White"
-                                FontSize="{DynamicResource FontSize.Caption}" Padding="14,6" Cursor="Hand" />
+                                Style="{StaticResource PrimaryBtn}" Padding="14,6" />
                     </StackPanel>
                 </StackPanel>
             </Border>
@@ -152,8 +121,7 @@
                             <KeyBinding Key="Enter" Command="{Binding SearchCommand}" />
                         </TextBox.InputBindings>
                     </TextBox>
-                    <Button Content="查询" Command="{Binding SearchCommand}" Margin="8,0,0,0" Padding="14,5"
-                            FontSize="{DynamicResource FontSize.Caption}" Cursor="Hand" />
+                    <Button Content="查询" Command="{Binding SearchCommand}" Style="{StaticResource PrimaryBtn}" Margin="8,0,0,0" Padding="14,5" />
                 </StackPanel>
                 <!-- 类型筛选（仅样品台账表显示） -->
                 <StackPanel Orientation="Horizontal" Visibility="{Binding IsSampleTable, Converter={StaticResource BoolToVisibility}}">
@@ -341,19 +309,10 @@
                             <DataGridTemplateColumn Header="操作" Width="88" MinWidth="88">
                                 <DataGridTemplateColumn.CellTemplate>
                                     <DataTemplate>
-                                        <Button Content="删除" Cursor="Hand" Padding="10,3" FontSize="{DynamicResource FontSize.Caption}"
-                                                HorizontalAlignment="Left" VerticalAlignment="Center"
-                                                Background="Transparent" Foreground="{DynamicResource Brush.Danger}"
-                                                BorderBrush="{DynamicResource Brush.Danger}" BorderThickness="1"
+                                        <Button Content="删除" HorizontalAlignment="Left" VerticalAlignment="Center"
+                                                Style="{StaticResource DangerBtn}"
                                                 Command="{Binding DataContext.DeleteCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                                CommandParameter="{Binding}">
-                                            <Button.Style>
-                                                <Style TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
-                                                    <Setter Property="MinWidth" Value="0" />
-                                                    <Setter Property="MinHeight" Value="0" />
-                                                </Style>
-                                            </Button.Style>
-                                        </Button>
+                                                CommandParameter="{Binding}" />
                                     </DataTemplate>
                                 </DataGridTemplateColumn.CellTemplate>
                             </DataGridTemplateColumn>
@@ -390,19 +349,10 @@
                             <DataGridTemplateColumn Header="操作" Width="88" MinWidth="88">
                                 <DataGridTemplateColumn.CellTemplate>
                                     <DataTemplate>
-                                        <Button Content="删除" Cursor="Hand" Padding="10,3" FontSize="{DynamicResource FontSize.Caption}"
-                                                HorizontalAlignment="Left" VerticalAlignment="Center"
-                                                Background="Transparent" Foreground="{DynamicResource Brush.Danger}"
-                                                BorderBrush="{DynamicResource Brush.Danger}" BorderThickness="1"
+                                        <Button Content="删除" HorizontalAlignment="Left" VerticalAlignment="Center"
+                                                Style="{StaticResource DangerBtn}"
                                                 Command="{Binding DataContext.DeleteCertifiedValueCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                                CommandParameter="{Binding}">
-                                            <Button.Style>
-                                                <Style TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
-                                                    <Setter Property="MinWidth" Value="0" />
-                                                    <Setter Property="MinHeight" Value="0" />
-                                                </Style>
-                                            </Button.Style>
-                                        </Button>
+                                                CommandParameter="{Binding}" />
                                     </DataTemplate>
                                 </DataGridTemplateColumn.CellTemplate>
                             </DataGridTemplateColumn>
@@ -439,19 +389,10 @@
                             <DataGridTemplateColumn Header="操作" Width="88" MinWidth="88">
                                 <DataGridTemplateColumn.CellTemplate>
                                     <DataTemplate>
-                                        <Button Content="删除" Cursor="Hand" Padding="10,3" FontSize="{DynamicResource FontSize.Caption}"
-                                                HorizontalAlignment="Left" VerticalAlignment="Center"
-                                                Background="Transparent" Foreground="{DynamicResource Brush.Danger}"
-                                                BorderBrush="{DynamicResource Brush.Danger}" BorderThickness="1"
+                                        <Button Content="删除" HorizontalAlignment="Left" VerticalAlignment="Center"
+                                                Style="{StaticResource DangerBtn}"
                                                 Command="{Binding DataContext.DeleteControlLimitCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                                CommandParameter="{Binding}">
-                                            <Button.Style>
-                                                <Style TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
-                                                    <Setter Property="MinWidth" Value="0" />
-                                                    <Setter Property="MinHeight" Value="0" />
-                                                </Style>
-                                            </Button.Style>
-                                        </Button>
+                                                CommandParameter="{Binding}" />
                                     </DataTemplate>
                                 </DataGridTemplateColumn.CellTemplate>
                             </DataGridTemplateColumn>
@@ -492,19 +433,10 @@
                             <DataGridTemplateColumn Header="操作" Width="88" MinWidth="88">
                                 <DataGridTemplateColumn.CellTemplate>
                                     <DataTemplate>
-                                        <Button Content="删除" Cursor="Hand" Padding="10,3" FontSize="{DynamicResource FontSize.Caption}"
-                                                HorizontalAlignment="Left" VerticalAlignment="Center"
-                                                Background="Transparent" Foreground="{DynamicResource Brush.Danger}"
-                                                BorderBrush="{DynamicResource Brush.Danger}" BorderThickness="1"
+                                        <Button Content="删除" HorizontalAlignment="Left" VerticalAlignment="Center"
+                                                Style="{StaticResource DangerBtn}"
                                                 Command="{Binding DataContext.DeleteCoefficientCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                                CommandParameter="{Binding}">
-                                            <Button.Style>
-                                                <Style TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
-                                                    <Setter Property="MinWidth" Value="0" />
-                                                    <Setter Property="MinHeight" Value="0" />
-                                                </Style>
-                                            </Button.Style>
-                                        </Button>
+                                                CommandParameter="{Binding}" />
                                     </DataTemplate>
                                 </DataGridTemplateColumn.CellTemplate>
                             </DataGridTemplateColumn>
@@ -542,19 +474,10 @@
                             <DataGridTemplateColumn Header="操作" Width="88" MinWidth="88">
                                 <DataGridTemplateColumn.CellTemplate>
                                     <DataTemplate>
-                                        <Button Content="删除" Cursor="Hand" Padding="10,3" FontSize="{DynamicResource FontSize.Caption}"
-                                                HorizontalAlignment="Left" VerticalAlignment="Center"
-                                                Background="Transparent" Foreground="{DynamicResource Brush.Danger}"
-                                                BorderBrush="{DynamicResource Brush.Danger}" BorderThickness="1"
+                                        <Button Content="删除" HorizontalAlignment="Left" VerticalAlignment="Center"
+                                                Style="{StaticResource DangerBtn}"
                                                 Command="{Binding DataContext.DeleteOperationLogCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                                CommandParameter="{Binding}">
-                                            <Button.Style>
-                                                <Style TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
-                                                    <Setter Property="MinWidth" Value="0" />
-                                                    <Setter Property="MinHeight" Value="0" />
-                                                </Style>
-                                            </Button.Style>
-                                        </Button>
+                                                CommandParameter="{Binding}" />
                                     </DataTemplate>
                                 </DataGridTemplateColumn.CellTemplate>
                             </DataGridTemplateColumn>
@@ -563,11 +486,11 @@
 
                     <!-- 分页栏（每页 20 条，对当前激活数据表生效；整组靠右） -->
                     <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,8,0,0">
-                        <Button Content="首页" Command="{Binding FirstPageCommand}" Style="{StaticResource PagerBtn}" />
-                        <Button Content="上一页" Command="{Binding PrevPageCommand}" Style="{StaticResource PagerBtn}" Margin="4,0,0,0" />
+                        <Button Content="首页" Command="{Binding FirstPageCommand}" Style="{StaticResource PrimaryBtn}" />
+                        <Button Content="上一页" Command="{Binding PrevPageCommand}" Style="{StaticResource PrimaryBtn}" Margin="4,0,0,0" />
                         <TextBlock Text="{Binding PageDisplay}" VerticalAlignment="Center" Margin="8,0"
                                    Style="{StaticResource Text.Caption}" />
-                        <Button Content="下一页" Command="{Binding NextPageCommand}" Style="{StaticResource PagerBtn}" />
+                        <Button Content="下一页" Command="{Binding NextPageCommand}" Style="{StaticResource PrimaryBtn}" />
                         <TextBlock VerticalAlignment="Center" Margin="8,0,0,0" Style="{StaticResource Text.Caption}">
                             <Run Text="共 " /><Run Text="{Binding TotalCount, Mode=OneWay}" /><Run Text=" 条" />
                         </TextBlock>

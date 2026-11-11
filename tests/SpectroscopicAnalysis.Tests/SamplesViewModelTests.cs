@@ -325,9 +325,10 @@ public sealed class SamplesViewModelTests
 
         Assert.Empty(vm.SctSamples);
         Assert.Equal(0, vm.TotalCount);
+        Assert.Equal(1, vm.TotalPages);                     // 至少 1 页
     }
 
-    // ==================== 全量展示（无分页，表格内部滚动） ====================
+    // ==================== 分页（每页 20 条） ====================
 
     private static List<SctSample> MakeMany(int count) =>
         Enumerable.Range(1, count)
@@ -335,27 +336,75 @@ public sealed class SamplesViewModelTests
             .ToList();
 
     [Fact]
-    public async Task Load_超过15行时全部展示不截断()
+    public async Task Paging_总数与页数正确且只显示当前页()
     {
         var vm = CreateWith(MakeMany(45).ToArray());
         await vm.LoadCommand.ExecuteAsync(null);
 
         Assert.Equal(45, vm.TotalCount);
-        Assert.Equal(45, vm.SctSamples.Count);              // 不再按页截断，全部行进入表格
+        Assert.Equal(3, vm.TotalPages);
+        Assert.Equal(SamplesViewModel.PageSize, vm.SctSamples.Count);   // 第 1 页满 20 条
         Assert.Equal("S-001", vm.SctSamples[0].SampleId);
-        Assert.Equal("S-045", vm.SctSamples[^1].SampleId);
+        Assert.False(vm.HasPrevPage);
+        Assert.True(vm.HasNextPage);
     }
 
     [Fact]
-    public async Task Delete_删除后列表与总数刷新()
+    public async Task Paging_翻页与边界禁用()
     {
-        var dialogs = new FakeDialogService();
-        var vm = CreateWith(dialogs, MakeMany(16).ToArray());
+        var vm = CreateWith(MakeMany(45).ToArray());
         await vm.LoadCommand.ExecuteAsync(null);
 
+        vm.NextPageCommand.Execute(null);
+        Assert.Equal(2, vm.CurrentPage);
+        Assert.Equal("S-016", vm.SctSamples[0].SampleId);
+        Assert.True(vm.HasPrevPage && vm.HasNextPage);
+
+        vm.NextPageCommand.Execute(null);
+        Assert.Equal(3, vm.CurrentPage);
+        Assert.Equal(15, vm.SctSamples.Count);              // 末页 45 - 30 = 15 条
+        Assert.False(vm.HasNextPage);
+        Assert.False(vm.NextPageCommand.CanExecute(null));  // 末页"下一页"禁用
+
+        vm.PrevPageCommand.Execute(null);
+        Assert.Equal(2, vm.CurrentPage);
+
+        vm.PrevPageCommand.Execute(null);
+        vm.PrevPageCommand.Execute(null);                   // 已在第 1 页，再点不再前翻（CanExecute=false）
+        Assert.Equal(1, vm.CurrentPage);
+    }
+
+    [Fact]
+    public async Task Paging_搜索后回到第1页且页数收敛()
+    {
+        var vm = CreateWith(MakeMany(45).ToArray());
+        await vm.LoadCommand.ExecuteAsync(null);
+        vm.NextPageCommand.Execute(null);
+        vm.NextPageCommand.Execute(null);
+        Assert.Equal(3, vm.CurrentPage);
+
+        // 搜索命中 7 条（S-004、S-040~045）→ 回到第 1 页，总页数变 1
+        vm.SearchText = "04";
+        vm.SearchCommand.Execute(null);
+        Assert.Equal(1, vm.CurrentPage);
+        Assert.Equal(7, vm.TotalCount);
+        Assert.Equal(1, vm.TotalPages);
+    }
+
+    [Fact]
+    public async Task Paging_删除末页最后一条后页码回退()
+    {
+        var dialogs = new FakeDialogService();
+        var many = MakeMany(16);
+        var vm = CreateWith(dialogs, many.ToArray());
+        await vm.LoadCommand.ExecuteAsync(null);
+
+        vm.NextPageCommand.Execute(null);                   // 第 2 页只剩 1 条
+        Assert.Single(vm.SctSamples);
         await vm.DeleteCommand.ExecuteAsync(vm.SctSamples[0]);
 
-        Assert.Equal(15, vm.SctSamples.Count);              // 删除后列表即时刷新
+        Assert.Equal(1, vm.CurrentPage);                    // 末页空 → 回退第 1 页
+        Assert.Equal(SamplesViewModel.PageSize, vm.SctSamples.Count);
         Assert.Equal(15, vm.TotalCount);
     }
 }

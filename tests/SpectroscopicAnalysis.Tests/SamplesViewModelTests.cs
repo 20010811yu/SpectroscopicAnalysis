@@ -142,7 +142,7 @@ public sealed class SamplesViewModelTests
     }
 
     [Fact]
-    public async Task Load_台账仅含非生产样品()
+    public async Task Load_台账含生产样品且可按类型筛选()
     {
         var vm = CreateWith(
             Make("SUS-001", SampleType.SettingUp),
@@ -152,8 +152,12 @@ public sealed class SamplesViewModelTests
 
         await vm.LoadCommand.ExecuteAsync(null);
 
-        Assert.Equal(3, vm.SctSamples.Count);                    // 非生产样品 3 条
-        Assert.DoesNotContain(vm.SctSamples, r => r.SampleId == "P-20261110-07"); // 生产样品已移交主控台
+        Assert.Equal(4, vm.SctSamples.Count);                    // 全部类型均在台账
+        vm.SetFilterCommand.Execute(SampleType.Production);
+        var filtered = vm.SctSamples.ToList();
+        Assert.Single(filtered);
+        Assert.Equal("P-20261110-07", filtered[0].SampleId);     // 生产样筛选生效
+        Assert.Equal("生产样", filtered[0].TypeDisplay);
     }
 
     [Fact]
@@ -227,7 +231,7 @@ public sealed class SamplesViewModelTests
 
         Assert.Single(dialogs.Messages);                    // 弹窗确认已弹出且携带样品上下文
         Assert.Contains("SUS-001", dialogs.Messages[0]);
-        Assert.Empty(vm.SctSamples);                        // 台账唯一的 SCT 行已移除
+        Assert.Single(vm.SctSamples);                       // 被删行已移除（仅剩生产样行）
         Assert.DoesNotContain(vm.SctSamples, r => r.SampleId == "SUS-001");
         Assert.Null(vm.DeleteError);
     }
@@ -246,12 +250,16 @@ public sealed class SamplesViewModelTests
     }
 
     [Fact]
-    public async Task Delete_生产样品不在台账展示()
+    public async Task Delete_生产样品可从台账删除()
     {
-        var vm = CreateWith(Make("P-20261110-07", SampleType.Production));
+        var dialogs = new FakeDialogService();
+        var vm = CreateWith(dialogs, Make("P-20261110-07", SampleType.Production));
         await vm.LoadCommand.ExecuteAsync(null);
 
-        Assert.Empty(vm.SctSamples);                        // 生产样品不出现在样品台账
+        await vm.DeleteCommand.ExecuteAsync(vm.SctSamples[0]);
+
+        Assert.Empty(vm.SctSamples);                        // 生产样品删除后从台账移除
+        Assert.Null(vm.DeleteError);
     }
 
     [Fact]

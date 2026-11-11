@@ -3,7 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="SpectroscopicAnalysis 上位机" Height="720" Width="1280"
         MinWidth="1024" MinHeight="640"
-        WindowStartupLocation="CenterScreen"
+        WindowStartupLocation="CenterScreen" WindowState="Maximized"
         Background="{DynamicResource Brush.Bg.Page}">
     <!-- 三区外壳（界面规范第 5 节弹性布局）：顶栏 56px（白名单固定）+ 侧栏/内容区按比例；全部 Grid 布局 -->
     <Grid>

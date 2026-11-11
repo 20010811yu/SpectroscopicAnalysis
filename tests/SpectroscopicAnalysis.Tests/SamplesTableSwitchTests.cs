@@ -167,6 +167,5 @@ public sealed class SamplesTableSwitchTests
 
         await vm.SetTableCommand.ExecuteAsync(SamplesViewModel.TableSample); // 重复键：忽略
         Assert.Equal(SamplesViewModel.TableSample, vm.ActiveTable);
-        await Task.CompletedTask;
     }
 }

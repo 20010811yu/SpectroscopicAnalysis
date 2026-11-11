@@ -73,11 +73,40 @@ public sealed partial class SamplesViewModel : ObservableObject, IPageLifecycle
     [ObservableProperty]
     private ObservableCollection<SampleRowItem> _sctSamples = new();
 
-    /// <summary>当前展示的数据表（默认样品台账；仅样品表显示录入/筛选控件）。</summary>
+    /// <summary>当前展示的数据表（默认样品台账；仅样品表显示录入/筛选控件）。
+    /// 变化即触发该表数据加载（ComboBox 双向绑定直接改此属性，也走同一入口）。</summary>
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsSampleTable))]
     [NotifyPropertyChangedFor(nameof(ActiveTableDisplay))]
     private string _activeTable = TableSample;
+
+    /// <summary>当前激活表的进行中加载任务（切表后可 await 确定性等待；初始为已完成）。</summary>
+    private Task _activeTableLoad = Task.CompletedTask;
+
+    partial void OnActiveTableChanged(string value) => _activeTableLoad = LoadActiveTableAsync();
+
+    /// <summary>按当前激活表加载对应数据（无 IsLoading 防抖，供切表路径直接调用）。</summary>
+    private async Task LoadActiveTableAsync()
+    {
+        switch (ActiveTable)
+        {
+            case TableCertifiedValue:
+                await LoadCertifiedValuesAsync();
+                break;
+            case TableControlLimit:
+                await LoadControlLimitsAsync();
+                break;
+            case TableCoefficient:
+                await LoadCoefficientsAsync();
+                break;
+            case TableOperationLog:
+                await LoadOperationLogsAsync();
+                break;
+            default:
+                await LoadSamplesAsync();
+                break;
+        }
+    }
 
     /// <summary>是否处于样品台账表（控制录入按钮/类型筛选/状态筛选/注册表单的显隐）。</summary>
     public bool IsSampleTable => ActiveTable == TableSample;
@@ -400,24 +429,7 @@ public sealed partial class SamplesViewModel : ObservableObject, IPageLifecycle
         IsLoading = true;
         try
         {
-            switch (ActiveTable)
-            {
-                case TableCertifiedValue:
-                    await LoadCertifiedValuesAsync();
-                    break;
-                case TableControlLimit:
-                    await LoadControlLimitsAsync();
-                    break;
-                case TableCoefficient:
-                    await LoadCoefficientsAsync();
-                    break;
-                case TableOperationLog:
-                    await LoadOperationLogsAsync();
-                    break;
-                default:
-                    await LoadSamplesAsync();
-                    break;
-            }
+            await LoadActiveTableAsync();
         }
         finally
         {
@@ -518,7 +530,7 @@ public sealed partial class SamplesViewModel : ObservableObject, IPageLifecycle
         _ui.Invoke(() => OperationLogRows = new ObservableCollection<OperationLogRowItem>(rows));
     }
 
-    /// <summary>切换数据表：仅接受 TableOptions 中登记的键；切换后加载该表数据。</summary>
+    /// <summary>切换数据表：仅接受 TableOptions 中登记的键；设置属性触发加载并等待其完成（确定性）。</summary>
     [RelayCommand]
     private async Task SetTableAsync(string? key)
     {
@@ -533,7 +545,7 @@ public sealed partial class SamplesViewModel : ObservableObject, IPageLifecycle
         }
 
         ActiveTable = key;
-        await LoadCommand.ExecuteAsync(null);
+        await _activeTableLoad;
     }
 
     /// <summary>删除标准值（弹窗二次确认；失败经统一错误链上报）。</summary>

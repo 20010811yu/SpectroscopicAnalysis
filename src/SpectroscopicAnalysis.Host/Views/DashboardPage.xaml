@@ -151,6 +151,7 @@
                                Visibility="{Binding HasProduction, Converter={StaticResource BoolToVisibility.Inverse}}" Margin="0,0,0,8" />
                     <DataGrid ItemsSource="{Binding ProductionSamples}" AutoGenerateColumns="False"
                               IsReadOnly="True" CanUserAddRows="False" CanUserSortColumns="False"
+                              PreviewMouseWheel="ProductionGrid_PreviewMouseWheel"
                               HeadersVisibility="Column" GridLinesVisibility="Horizontal"
                               BorderThickness="0" Background="Transparent"
                               RowBackground="Transparent" AlternatingRowBackground="Transparent"

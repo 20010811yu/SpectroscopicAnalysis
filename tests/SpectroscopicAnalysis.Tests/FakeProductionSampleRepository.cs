@@ -57,7 +57,10 @@ internal sealed class FakeProductionSampleRepository : IProductionSampleReposito
     public IReadOnlyList<AnalysisResult> GetResults(string sampleId) =>
         Results.Where(r => r.SampleId == sampleId).OrderByDescending(r => r.OperationTime).ToList();
 
-    public IReadOnlyList<ProductionSample> GetAll() => Store.OrderBy(s => s.SampleId, StringComparer.Ordinal).ToList();
+    public IReadOnlyList<ProductionSample> GetAll() =>
+        Store.OrderByDescending(s => s.CreatedTime)
+             .ThenBy(s => s.SampleId, StringComparer.Ordinal)
+             .ToList();
 
     public IReadOnlyList<AnalysisResult> GetAllResults() =>
         Results.OrderByDescending(r => r.OperationTime).ThenByDescending(r => r.ResultId).ToList();

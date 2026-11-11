@@ -17,7 +17,11 @@ internal sealed class FakeSampleRepository : ISctSampleRepository
 
     public SctSample? GetById(string sampleId) => Store.FirstOrDefault(s => s.SampleId == sampleId);
 
-    public IReadOnlyList<SctSample> GetAll() => Store.ToList();
+    public IReadOnlyList<SctSample> GetAll() =>
+        Store.OrderByDescending(s => s.LastUseTime)
+             .ThenByDescending(s => s.LastHeightCheckTime)
+             .ThenBy(s => s.SampleId, StringComparer.Ordinal)
+             .ToList();
 
     public void Insert(SctSample sample) => Store.Add(sample);
 
@@ -92,7 +96,12 @@ internal sealed class FakeCoefficientRepository : ICorrectionCoefficientReposito
     public List<CorrectionCoefficient> Store { get; } = new();
     public List<long> Deleted { get; } = new();
 
-    public IReadOnlyList<CorrectionCoefficient> GetAll() => Store.ToList();
+    public IReadOnlyList<CorrectionCoefficient> GetAll() =>
+        Store.OrderByDescending(c => c.EffectiveTime, StringComparer.Ordinal)
+             .ThenBy(c => c.MethodId, StringComparer.Ordinal)
+             .ThenBy(c => c.Element, StringComparer.Ordinal)
+             .ThenByDescending(c => c.Version)
+             .ToList();
     public void Delete(long coeffId) { Deleted.Add(coeffId); Store.RemoveAll(c => c.CoeffId == coeffId); }
 }
 
@@ -102,7 +111,8 @@ internal sealed class FakeOperationLogRepository : ISctOperationLogRepository
     public List<SctOperationLog> Store { get; } = new();
     public List<long> Deleted { get; } = new();
 
-    public IReadOnlyList<SctOperationLog> GetAll() => Store.ToList();
+    public IReadOnlyList<SctOperationLog> GetAll() =>
+        Store.OrderByDescending(l => l.OperationTime, StringComparer.Ordinal).ToList();
     public void Delete(long logId) { Deleted.Add(logId); Store.RemoveAll(l => l.LogId == logId); }
 }
 

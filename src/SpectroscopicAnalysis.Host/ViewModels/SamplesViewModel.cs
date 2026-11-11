@@ -49,9 +49,6 @@ public sealed partial class SamplesViewModel : ObservableObject, IPageLifecycle
     [ObservableProperty]
     private ObservableCollection<SampleRowItem> _sctSamples = new();
 
-    [ObservableProperty]
-    private ObservableCollection<SampleRowItem> _productionSamples = new();
-
     /// <summary>当前筛选键（All/SettingUp/Control/TypeStd/Production）。</summary>
     [ObservableProperty]
     private string _filterKey = FilterAll;
@@ -112,10 +109,6 @@ public sealed partial class SamplesViewModel : ObservableObject, IPageLifecycle
     public bool HasPrevPage => CurrentPage > 1;
 
     public bool HasNextPage => CurrentPage < TotalPages;
-
-    /// <summary>生产样品是否存在记录（控制空态文案显隐）。</summary>
-    [ObservableProperty]
-    private bool _hasProduction;
 
     /// <summary>正在加载标记（防重复加载）。</summary>
     [ObservableProperty]
@@ -240,8 +233,8 @@ public sealed partial class SamplesViewModel : ObservableObject, IPageLifecycle
                 ClearRegisterForm();
                 IsRegisterOpen = false;
             });
-            // 入库后刷新列表（LoadAsync 内部有 IsLoading 防抖，此处直接复用）
-            LoadCommand.Execute(null);
+            // 入库后刷新列表（await 确保刷新完成，调用方 RegisterAsync 本身异步）
+            await LoadCommand.ExecuteAsync(null);
         }
         finally
         {
@@ -350,11 +343,9 @@ public sealed partial class SamplesViewModel : ObservableObject, IPageLifecycle
             var rows = await Task.Run(() => _samples.GetAll().Select(MapRow).ToList());
             _ui.Invoke(() =>
             {
+                // 生产样品展示已移交主控台（DashboardViewModel），台账仅保留非生产样品
                 _allSctRows = rows.Where(r => r.SampleTypeKey != SampleType.Production).ToList();
-                var production = rows.Where(r => r.SampleTypeKey == SampleType.Production).ToList();
-                HasProduction = production.Count > 0;
                 ApplyFilter(FilterKey);
-                ProductionSamples = new ObservableCollection<SampleRowItem>(production);
             });
         }
         finally
@@ -464,10 +455,7 @@ public sealed partial class SamplesViewModel : ObservableObject, IPageLifecycle
             _ui.Invoke(() =>
             {
                 _allSctRows = _allSctRows.Where(r => !ReferenceEquals(r, snapshot)).ToList();
-                ProductionSamples = new ObservableCollection<SampleRowItem>(
-                    ProductionSamples.Where(r => !ReferenceEquals(r, snapshot)));
                 ApplyFilter(FilterKey);
-                HasProduction = ProductionSamples.Count > 0;
             });
         }
         catch (Microsoft.Data.Sqlite.SqliteException ex)

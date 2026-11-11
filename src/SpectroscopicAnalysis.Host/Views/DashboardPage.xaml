@@ -137,6 +137,31 @@
                 </StackPanel>
             </Border>
 
+            <!-- 生产样品（今日）：真实数据（SCT_Sample 生产样品），列宽 Star 弹性，无记录时隐藏表格只留占位说明 -->
+            <Border Style="{StaticResource Card}" Margin="{DynamicResource Spacing.CardGap}">
+                <StackPanel>
+                    <TextBlock Text="生产样品（今日）" Style="{StaticResource Text.CardTitle}" Margin="0,0,0,8" />
+                    <TextBlock Text="暂无生产样品记录（生产样品随分析流程入库）" Style="{StaticResource Text.Caption}"
+                               Visibility="{Binding HasProduction, Converter={StaticResource BoolToVisibility.Inverse}}" Margin="0,0,0,8" />
+                    <DataGrid ItemsSource="{Binding ProductionSamples}" AutoGenerateColumns="False"
+                              IsReadOnly="True" CanUserAddRows="False" CanUserSortColumns="False"
+                              HeadersVisibility="Column" GridLinesVisibility="Horizontal"
+                              BorderThickness="0" Background="Transparent"
+                              RowBackground="Transparent" AlternatingRowBackground="Transparent"
+                              Visibility="{Binding HasProduction, Converter={StaticResource BoolToVisibility}}"
+                              RowStyle="{StaticResource GridRow}" CellStyle="{StaticResource GridCell}"
+                              ColumnHeaderStyle="{StaticResource GridColumnHeader}"
+                              FontSize="{DynamicResource FontSize.Body}">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="SampleID" Binding="{Binding SampleId}" FontFamily="Consolas" Width="1.2*" MinWidth="80" ElementStyle="{StaticResource GridCellText}" />
+                            <DataGridTextColumn Header="合金" Binding="{Binding AlloyType}" Width="1*" MinWidth="60" ElementStyle="{StaticResource GridCellText}" />
+                            <DataGridTextColumn Header="状态" Binding="{Binding StatusText}" Width="1*" MinWidth="60" ElementStyle="{StaticResource GridCellText}" />
+                        </DataGrid.Columns>
+                    </DataGrid>
+                    <TextBlock Text="原始强度与校正后结果双列展示为数据规范硬性要求（随分析流程接入）" Style="{StaticResource Text.Caption}" Margin="0,8,0,0" />
+                </StackPanel>
+            </Border>
+
             <!-- 报警面板卡（四级静态示例） -->
             <Border Style="{StaticResource Card}">
                 <StackPanel>

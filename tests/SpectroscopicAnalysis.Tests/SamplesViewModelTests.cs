@@ -100,7 +100,7 @@ public sealed class SamplesViewModelTests
     }
 
     [Fact]
-    public async Task Load_台账含非生产样品_生产样品独立()
+    public async Task Load_台账仅含非生产样品()
     {
         var vm = CreateWith(
             Make("SUS-001", SampleType.SettingUp),
@@ -111,8 +111,7 @@ public sealed class SamplesViewModelTests
         await vm.LoadCommand.ExecuteAsync(null);
 
         Assert.Equal(3, vm.SctSamples.Count);                    // 非生产样品 3 条
-        Assert.Single(vm.ProductionSamples);                     // 生产样品 1 条
-        Assert.True(vm.HasProduction);
+        Assert.DoesNotContain(vm.SctSamples, r => r.SampleId == "P-20261110-07"); // 生产样品已移交主控台
     }
 
     [Fact]
@@ -156,13 +155,11 @@ public sealed class SamplesViewModelTests
     }
 
     [Fact]
-    public async Task Load_空库时两张表为空且无生产样品()
+    public async Task Load_空库时台账为空()
     {
         var vm = CreateWith();
         await vm.LoadCommand.ExecuteAsync(null);
         Assert.Empty(vm.SctSamples);
-        Assert.Empty(vm.ProductionSamples);
-        Assert.False(vm.HasProduction);
     }
 
     [Fact]
@@ -190,7 +187,6 @@ public sealed class SamplesViewModelTests
         Assert.Contains("SUS-001", dialogs.Messages[0]);
         Assert.Empty(vm.SctSamples);                        // 台账唯一的 SCT 行已移除
         Assert.DoesNotContain(vm.SctSamples, r => r.SampleId == "SUS-001");
-        Assert.Single(vm.ProductionSamples);                // 生产样品不受影响
         Assert.Null(vm.DeleteError);
     }
 
@@ -208,15 +204,12 @@ public sealed class SamplesViewModelTests
     }
 
     [Fact]
-    public async Task Delete_生产样品行删除后HasProduction重算()
+    public async Task Delete_生产样品不在台账展示()
     {
         var vm = CreateWith(Make("P-20261110-07", SampleType.Production));
         await vm.LoadCommand.ExecuteAsync(null);
-        Assert.True(vm.HasProduction);
 
-        await vm.DeleteCommand.ExecuteAsync(vm.ProductionSamples[0]);
-
-        Assert.False(vm.HasProduction);                     // 删除后空态恢复
+        Assert.Empty(vm.SctSamples);                        // 生产样品不出现在样品台账
     }
 
     [Fact]

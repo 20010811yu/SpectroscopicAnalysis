@@ -138,6 +138,89 @@
         <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Secondary}" />
     </Style>
 
+    <!-- ============ DataGrid 共享样式（样品台账 / 生产样品等表格共用） ============ -->
+    <!-- 表格行：只读展示，选中不加任何高亮，外观与普通行一致；行高取自然高度并保证舒适的最小行高 -->
+    <Style x:Key="GridRow" TargetType="DataGridRow" BasedOn="{StaticResource {x:Type DataGridRow}}">
+        <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Primary}" />
+        <Setter Property="MinHeight" Value="32" />
+        <Style.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+                <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Primary}" />
+            </Trigger>
+            <Trigger Property="IsSelected" Value="True">
+                <Setter Property="Background" Value="Transparent" />
+                <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Primary}" />
+            </Trigger>
+        </Style.Triggers>
+    </Style>
+    <!-- 表格单元格：选中保持正文前景与透明底；内容垂直居中、水平靠左（界面规范 5.2） -->
+    <Style x:Key="GridCell" TargetType="DataGridCell" BasedOn="{StaticResource {x:Type DataGridCell}}">
+        <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Primary}" />
+        <Setter Property="VerticalContentAlignment" Value="Center" />
+        <Setter Property="HorizontalContentAlignment" Value="Left" />
+        <Setter Property="Padding" Value="8,2" />
+        <Style.Triggers>
+            <Trigger Property="IsSelected" Value="True">
+                <Setter Property="Background" Value="Transparent" />
+                <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Primary}" />
+            </Trigger>
+            <Trigger Property="IsFocused" Value="True">
+                <Setter Property="Background" Value="Transparent" />
+                <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Primary}" />
+            </Trigger>
+        </Style.Triggers>
+    </Style>
+    <!-- 文本单元格内容：垂直居中、水平靠左（界面规范 5.2） -->
+    <Style x:Key="GridCellText" TargetType="TextBlock">
+        <Setter Property="VerticalAlignment" Value="Center" />
+        <Setter Property="HorizontalAlignment" Value="Left" />
+        <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+    </Style>
+    <!-- 列标题：靠左与数据列对齐；无边框无阴影（界面规范 5.2）。
+         重写 Template：标题文字随列宽自动省略号截断，防止列变窄时溢出压到相邻标题；
+         右侧保留 PART_RightHeaderGripper 抓取区，鼠标拖拽改列宽功能不变。 -->
+    <Style x:Key="GridColumnHeader" TargetType="DataGridColumnHeader" BasedOn="{StaticResource {x:Type DataGridColumnHeader}}">
+        <Setter Property="HorizontalContentAlignment" Value="Left" />
+        <Setter Property="Padding" Value="0,0,12,0" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="BorderBrush" Value="Transparent" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Secondary}" />
+        <Setter Property="FontWeight" Value="Normal" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="DataGridColumnHeader">
+                    <Border Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}"
+                            Padding="{TemplateBinding Padding}">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <!-- 标题文字：超出列宽时省略号截断，不溢出 -->
+                            <TextBlock Grid.Column="0" Text="{TemplateBinding Content}"
+                                       TextTrimming="CharacterEllipsis" VerticalAlignment="Center"
+                                       Foreground="{TemplateBinding Foreground}"
+                                       FontWeight="{TemplateBinding FontWeight}"
+                                       FontSize="{TemplateBinding FontSize}" />
+                            <!-- 右缘拖拽调列宽抓取区（命名约定 PART_ 使默认拖拽逻辑生效） -->
+                            <Thumb x:Name="PART_RightHeaderGripper" Grid.Column="1" Width="8"
+                                   HorizontalAlignment="Right" VerticalAlignment="Stretch" Cursor="SizeWE">
+                                <Thumb.Template>
+                                    <ControlTemplate TargetType="Thumb">
+                                        <Border Background="Transparent" />
+                                    </ControlTemplate>
+                                </Thumb.Template>
+                            </Thumb>
+                        </Grid>
+                    </Border>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
     <!-- 区块间距（4/8 基数） -->
     <Thickness x:Key="Spacing.CardGap">0,0,0,12</Thickness>
     <Thickness x:Key="Spacing.CardPadding">16</Thickness>

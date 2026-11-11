@@ -3,87 +3,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
     <!-- 样品档案：数据绑定视图（真实 SQLite 数据；状态徽章经 Status DataTrigger 切换颜色） -->
     <UserControl.Resources>
-        <!-- 表格行：只读展示，选中不加任何高亮，外观与普通行一致；行高取自然高度并保证舒适的最小行高 -->
-        <Style x:Key="GridRow" TargetType="DataGridRow" BasedOn="{StaticResource {x:Type DataGridRow}}">
-            <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Primary}" />
-            <Setter Property="MinHeight" Value="32" />
-            <Style.Triggers>
-                <Trigger Property="IsMouseOver" Value="True">
-                    <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Primary}" />
-                </Trigger>
-                <Trigger Property="IsSelected" Value="True">
-                    <Setter Property="Background" Value="Transparent" />
-                    <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Primary}" />
-                </Trigger>
-            </Style.Triggers>
-        </Style>
-        <!-- 表格单元格：选中保持正文前景与透明底；内容垂直居中、水平靠左（界面规范 5.2） -->
-        <Style x:Key="GridCell" TargetType="DataGridCell" BasedOn="{StaticResource {x:Type DataGridCell}}">
-            <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Primary}" />
-            <Setter Property="VerticalContentAlignment" Value="Center" />
-            <Setter Property="HorizontalContentAlignment" Value="Left" />
-            <Setter Property="Padding" Value="8,2" />
-            <Style.Triggers>
-                <Trigger Property="IsSelected" Value="True">
-                    <Setter Property="Background" Value="Transparent" />
-                    <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Primary}" />
-                </Trigger>
-                <Trigger Property="IsFocused" Value="True">
-                    <Setter Property="Background" Value="Transparent" />
-                    <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Primary}" />
-                </Trigger>
-            </Style.Triggers>
-        </Style>
-        <!-- 文本单元格内容：垂直居中、水平靠左（界面规范 5.2） -->
-        <Style x:Key="GridCellText" TargetType="TextBlock">
-            <Setter Property="VerticalAlignment" Value="Center" />
-            <Setter Property="HorizontalAlignment" Value="Left" />
-            <Setter Property="TextTrimming" Value="CharacterEllipsis" />
-        </Style>
-        <!-- 列标题：靠左与数据列对齐；无边框无阴影（界面规范 5.2）。
-             重写 Template：标题文字随列宽自动省略号截断，防止列变窄时溢出压到相邻标题；
-             右侧保留 PART_RightHeaderGripper 抓取区，鼠标拖拽改列宽功能不变。 -->
-        <Style x:Key="GridColumnHeader" TargetType="DataGridColumnHeader" BasedOn="{StaticResource {x:Type DataGridColumnHeader}}">
-            <Setter Property="HorizontalContentAlignment" Value="Left" />
-            <Setter Property="Padding" Value="0,0,12,0" />
-            <Setter Property="BorderThickness" Value="0" />
-            <Setter Property="BorderBrush" Value="Transparent" />
-            <Setter Property="Background" Value="Transparent" />
-            <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Secondary}" />
-            <Setter Property="FontWeight" Value="Normal" />
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="DataGridColumnHeader">
-                        <Border Background="{TemplateBinding Background}"
-                                BorderBrush="{TemplateBinding BorderBrush}"
-                                BorderThickness="{TemplateBinding BorderThickness}"
-                                Padding="{TemplateBinding Padding}">
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="Auto" />
-                                </Grid.ColumnDefinitions>
-                                <!-- 标题文字：超出列宽时省略号截断，不溢出 -->
-                                <TextBlock Grid.Column="0" Text="{TemplateBinding Content}"
-                                           TextTrimming="CharacterEllipsis" VerticalAlignment="Center"
-                                           Foreground="{TemplateBinding Foreground}"
-                                           FontWeight="{TemplateBinding FontWeight}"
-                                           FontSize="{TemplateBinding FontSize}" />
-                                <!-- 右缘拖拽调列宽抓取区（命名约定 PART_ 使默认拖拽逻辑生效） -->
-                                <Thumb x:Name="PART_RightHeaderGripper" Grid.Column="1" Width="8"
-                                       HorizontalAlignment="Right" VerticalAlignment="Stretch" Cursor="SizeWE">
-                                    <Thumb.Template>
-                                        <ControlTemplate TargetType="Thumb">
-                                            <Border Background="Transparent" />
-                                        </ControlTemplate>
-                                    </Thumb.Template>
-                                </Thumb>
-                            </Grid>
-                        </Border>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
+        <!-- 表格行/单元格/列头样式已上移至 Themes/Styles.xaml（与主控台生产样品表格共用） -->
         <!-- 分页按钮：可用时蓝底白字；禁用时灰底灰字（首/末页状态，由命令 CanExecute 自动切换） -->
         <Style x:Key="PagerBtn" TargetType="Button">
             <Setter Property="Background" Value="{DynamicResource Brush.Primary}" />
@@ -417,31 +337,6 @@
                     </StackPanel>
                     <TextBlock Grid.Row="3" Text="使用次数达到上限自动标记「需测高」；厚度低于最小厚度自动「禁用」并报警更换；删除经弹窗二次确认（级联删除标准值与控制限，操作日志保留）" Style="{StaticResource Text.Caption}" Margin="0,8,0,0" />
                 </Grid>
-            </Border>
-
-            <!-- 生产样品（真实数据；固定在页面最下方；列宽 Star 弹性随卡片伸展，无记录时隐藏表格只留占位说明） -->
-            <Border Grid.Row="4" Style="{StaticResource Card}">
-                <StackPanel>
-                    <TextBlock Text="生产样品（今日）" Style="{StaticResource Text.CardTitle}" Margin="0,0,0,8" />
-                    <TextBlock Text="暂无生产样品记录（生产样品随分析流程入库）" Style="{StaticResource Text.Caption}"
-                               Visibility="{Binding HasProduction, Converter={StaticResource BoolToVisibility.Inverse}}" Margin="0,0,0,8" />
-                    <DataGrid ItemsSource="{Binding ProductionSamples}" AutoGenerateColumns="False"
-                              IsReadOnly="True" CanUserAddRows="False" CanUserSortColumns="False"
-                              HeadersVisibility="Column" GridLinesVisibility="Horizontal"
-                              BorderThickness="0" Background="Transparent"
-                              RowBackground="Transparent" AlternatingRowBackground="Transparent"
-                              Visibility="{Binding HasProduction, Converter={StaticResource BoolToVisibility}}"
-                              RowStyle="{StaticResource GridRow}" CellStyle="{StaticResource GridCell}"
-                              ColumnHeaderStyle="{StaticResource GridColumnHeader}"
-                              FontSize="{DynamicResource FontSize.Body}">
-                        <DataGrid.Columns>
-                            <DataGridTextColumn Header="SampleID" Binding="{Binding SampleId}" FontFamily="Consolas" Width="1.2*" MinWidth="80" ElementStyle="{StaticResource GridCellText}" />
-                            <DataGridTextColumn Header="合金" Binding="{Binding AlloyType}" Width="1*" MinWidth="60" ElementStyle="{StaticResource GridCellText}" />
-                            <DataGridTextColumn Header="状态" Binding="{Binding StatusText}" Width="1*" MinWidth="60" ElementStyle="{StaticResource GridCellText}" />
-                        </DataGrid.Columns>
-                    </DataGrid>
-                    <TextBlock Text="原始强度与校正后结果双列展示为数据规范硬性要求（随分析流程接入）" Style="{StaticResource Text.Caption}" Margin="0,8,0,0" />
-                </StackPanel>
             </Border>
 
     </Grid>

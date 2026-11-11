@@ -777,6 +777,14 @@ public sealed partial class SamplesViewModel : ObservableObject, IPageLifecycle
             && text.Contains(keyword, StringComparison.OrdinalIgnoreCase);
     }
 
+    /// <summary>回首页（已在第 1 页时禁用）。</summary>
+    [RelayCommand(CanExecute = nameof(HasPrevPage))]
+    private void FirstPage()
+    {
+        CurrentPage = 1;
+        RefreshView();
+    }
+
     /// <summary>上一页（第 1 页时禁用）。</summary>
     [RelayCommand(CanExecute = nameof(HasPrevPage))]
     private void PrevPage() => GoToPage(CurrentPage - 1);

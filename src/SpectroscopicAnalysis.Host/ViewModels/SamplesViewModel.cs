@@ -175,6 +175,7 @@ public sealed partial class SamplesViewModel : ObservableObject, IPageLifecycle
     [NotifyPropertyChangedFor(nameof(PageDisplay))]
     [NotifyPropertyChangedFor(nameof(HasPrevPage))]
     [NotifyPropertyChangedFor(nameof(HasNextPage))]
+    [NotifyCanExecuteChangedFor(nameof(FirstPageCommand))]
     [NotifyCanExecuteChangedFor(nameof(PrevPageCommand))]
     [NotifyCanExecuteChangedFor(nameof(NextPageCommand))]
     private int _currentPage = 1;
@@ -182,6 +183,7 @@ public sealed partial class SamplesViewModel : ObservableObject, IPageLifecycle
     /// <summary>筛选后总页数（至少 1 页）。变化时刷新翻页命令的 CanExecute。</summary>
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(PageDisplay))]
+    [NotifyCanExecuteChangedFor(nameof(FirstPageCommand))]
     [NotifyCanExecuteChangedFor(nameof(PrevPageCommand))]
     [NotifyCanExecuteChangedFor(nameof(NextPageCommand))]
     private int _totalPages = 1;

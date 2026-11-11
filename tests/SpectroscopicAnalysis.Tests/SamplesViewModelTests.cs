@@ -32,6 +32,47 @@ internal sealed class FakeSampleRepository : ISctSampleRepository
     }
 
     public void UpdateAfterSpark(string sampleId, double currentThickness, string status, DateTime usedAt) { }
+
+    public IReadOnlyList<SctSample> GetProductionPage(DateTime? createdOn, string? afterSampleId, string? beforeSampleId, int pageSize)
+    {
+        var query = Store.Where(s => s.SampleType == SampleType.Production);
+        if (createdOn is not null)
+        {
+            var day = createdOn.Value.Date;
+            query = query.Where(s => s.CreatedTime >= day && s.CreatedTime < day.AddDays(1));
+        }
+
+        if (afterSampleId is not null)
+        {
+            query = query.Where(s => string.CompareOrdinal(s.SampleId, afterSampleId) > 0);
+        }
+
+        if (beforeSampleId is not null)
+        {
+            query = query.Where(s => string.CompareOrdinal(s.SampleId, beforeSampleId) < 0);
+        }
+
+        var ordered = query.OrderBy(s => s.SampleId, StringComparer.Ordinal).ToList();
+        if (beforeSampleId is not null)
+        {
+            // 与真实 SQL（DESC LIMIT 后反转）等价：游标前的最后 pageSize 条，保持升序返回
+            return ordered.TakeLast(pageSize).ToList();
+        }
+
+        return ordered.Take(pageSize).ToList();
+    }
+
+    public int CountProduction(DateTime? createdOn)
+    {
+        var query = Store.Where(s => s.SampleType == SampleType.Production);
+        if (createdOn is not null)
+        {
+            var day = createdOn.Value.Date;
+            query = query.Where(s => s.CreatedTime >= day && s.CreatedTime < day.AddDays(1));
+        }
+
+        return query.Count();
+    }
 }
 
 /// <summary>Fake 调度器：同步执行（保证测试确定性）。</summary>

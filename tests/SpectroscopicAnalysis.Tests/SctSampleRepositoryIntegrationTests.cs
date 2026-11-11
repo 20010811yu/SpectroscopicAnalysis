@@ -86,6 +86,8 @@ public sealed class SctSampleRepositoryIntegrationTests : IDisposable
         }
         finally
         {
+            // 连接池（Pooling=true）会持有文件句柄，先清池再删临时文件（否则 IOException）
+            Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools();
             var dir = Path.GetDirectoryName(dbPath)!;
             if (File.Exists(dbPath))
             {
@@ -117,6 +119,53 @@ public sealed class SctSampleRepositoryIntegrationTests : IDisposable
         Assert.Equal(1L, (long)check.ExecuteScalar()!); // 操作日志保留（审计）
         conn.Dispose();
         // 标准值级联删除见仓储实现，此处经 GetById 返回 null 已覆盖主链路
+    }
+
+    [Fact]
+    public void GetProductionPage_游标分页与日期过滤()
+    {
+        var today = DateTime.Today;
+        for (var i = 1; i <= 45; i++)
+        {
+            _repo.Insert(new SctSample
+            {
+                SampleId = $"P-{i:000}",
+                SampleName = $"生产样 {i}",
+                SampleType = SampleType.Production,
+                InitialThickness = 20,
+                CurrentThickness = 20,
+                MinThickness = 5,
+                MaxUsageCount = 100,
+                CreatedTime = i <= 5 ? today.AddDays(-1) : today, // 前 5 条昨日入库
+            });
+        }
+
+        _repo.Insert(new SctSample { SampleId = "S-001", SampleName = "设置样", SampleType = SampleType.SettingUp, InitialThickness = 10, CurrentThickness = 10, MinThickness = 5, MaxUsageCount = 10, CreatedTime = today });
+
+        // 第一页（今日）：20 条（昨日 5 条被日期过滤排除，今日共 40 条）
+        var page1 = _repo.GetProductionPage(today, null, null, 20);
+        Assert.Equal(20, page1.Count);
+        Assert.Equal("P-006", page1[0].SampleId);
+        Assert.Equal("P-025", page1[^1].SampleId);
+
+        // 下一页：after 游标
+        var page2 = _repo.GetProductionPage(today, page1[^1].SampleId, null, 20);
+        Assert.Equal(20, page2.Count);
+        Assert.Equal("P-026", page2[0].SampleId);
+        Assert.Equal("P-045", page2[^1].SampleId);
+        Assert.Equal(40, _repo.CountProduction(today));
+
+        // 上一页：before 游标，升序返回
+        var back = _repo.GetProductionPage(today, null, page2[0].SampleId, 20);
+        Assert.Equal(20, back.Count);
+        Assert.Equal("P-006", back[0].SampleId);
+        Assert.Equal("P-025", back[^1].SampleId);
+
+        // 昨日日期
+        var yesterday = _repo.GetProductionPage(today.AddDays(-1), null, null, 20);
+        Assert.Equal(5, yesterday.Count);
+        Assert.Equal("P-001", yesterday[0].SampleId);
+        Assert.Equal(5, _repo.CountProduction(today.AddDays(-1)));
     }
 
     public void Dispose()

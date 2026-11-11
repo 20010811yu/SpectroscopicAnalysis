@@ -412,7 +412,7 @@
                 </Grid>
             </Border>
 
-            <!-- 生产样品（真实数据；固定在页面最下方） -->
+            <!-- 生产样品（真实数据；固定在页面最下方；列宽 Star 弹性随卡片伸展，无记录时隐藏表格只留占位说明） -->
             <Border Grid.Row="4" Style="{StaticResource Card}">
                 <StackPanel>
                     <TextBlock Text="生产样品（今日）" Style="{StaticResource Text.CardTitle}" Margin="0,0,0,8" />
@@ -423,14 +423,14 @@
                               HeadersVisibility="Column" GridLinesVisibility="Horizontal"
                               BorderThickness="0" Background="Transparent"
                               RowBackground="Transparent" AlternatingRowBackground="Transparent"
-                              Visibility="{Binding HasProduction, Converter={StaticResource BoolToVisibility.Inverse}}"
+                              Visibility="{Binding HasProduction, Converter={StaticResource BoolToVisibility}}"
                               RowStyle="{StaticResource GridRow}" CellStyle="{StaticResource GridCell}"
                               ColumnHeaderStyle="{StaticResource GridColumnHeader}"
                               FontSize="{DynamicResource FontSize.Body}">
                         <DataGrid.Columns>
-                            <DataGridTextColumn Header="SampleID" Binding="{Binding SampleId}" FontFamily="Consolas" ElementStyle="{StaticResource GridCellText}" />
-                            <DataGridTextColumn Header="合金" Binding="{Binding AlloyType}" ElementStyle="{StaticResource GridCellText}" />
-                            <DataGridTextColumn Header="状态" Binding="{Binding StatusText}" ElementStyle="{StaticResource GridCellText}" />
+                            <DataGridTextColumn Header="SampleID" Binding="{Binding SampleId}" FontFamily="Consolas" Width="1.2*" MinWidth="80" ElementStyle="{StaticResource GridCellText}" />
+                            <DataGridTextColumn Header="合金" Binding="{Binding AlloyType}" Width="1*" MinWidth="60" ElementStyle="{StaticResource GridCellText}" />
+                            <DataGridTextColumn Header="状态" Binding="{Binding StatusText}" Width="1*" MinWidth="60" ElementStyle="{StaticResource GridCellText}" />
                         </DataGrid.Columns>
                     </DataGrid>
                     <TextBlock Text="原始强度与校正后结果双列展示为数据规范硬性要求（随分析流程接入）" Style="{StaticResource Text.Caption}" Margin="0,8,0,0" />

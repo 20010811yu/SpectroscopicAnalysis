@@ -61,6 +61,42 @@ public sealed class ProductionSampleRepository : IProductionSampleRepository
         return Convert.ToInt32(cmd.ExecuteScalar());
     }
 
+    /// <summary>全量生产样（样品档案页台账缓存用；按 SampleID 升序）。</summary>
+    public IReadOnlyList<ProductionSample> GetAll()
+    {
+        var list = new List<ProductionSample>();
+        using var conn = _db.Open();
+        using var cmd = conn.CreateCommand();
+        cmd.CommandText = $"SELECT {SelectColumns} FROM Production_Sample ORDER BY SampleID";
+        using var reader = cmd.ExecuteReader();
+        while (reader.Read())
+        {
+            list.Add(Map(reader));
+        }
+
+        return list;
+    }
+
+    /// <summary>全量分析结果（按 OperationTime 倒序）。</summary>
+    public IReadOnlyList<AnalysisResult> GetAllResults()
+    {
+        var list = new List<AnalysisResult>();
+        using var conn = _db.Open();
+        using var cmd = conn.CreateCommand();
+        cmd.CommandText = """
+            SELECT ResultID, SampleID, RawIntensity, MeasuredConc, CorrectedConc,
+                   CoeffVersion, IsPass, ResultStatus, ArchivePosition, OperationTime
+            FROM Analysis_Result ORDER BY OperationTime DESC, ResultID DESC
+            """;
+        using var reader = cmd.ExecuteReader();
+        while (reader.Read())
+        {
+            list.Add(MapResult(reader));
+        }
+
+        return list;
+    }
+
     public void Insert(ProductionSample sample)
     {
         using var conn = _db.Open();
@@ -111,23 +147,25 @@ public sealed class ProductionSampleRepository : IProductionSampleRepository
         using var reader = cmd.ExecuteReader();
         while (reader.Read())
         {
-            list.Add(new AnalysisResult
-            {
-                ResultId = reader.GetInt64(0),
-                SampleId = reader.GetString(1),
-                RawIntensity = reader.IsDBNull(2) ? null : reader.GetString(2),
-                MeasuredConc = reader.IsDBNull(3) ? null : reader.GetDouble(3),
-                CorrectedConc = reader.IsDBNull(4) ? null : reader.GetDouble(4),
-                CoeffVersion = reader.IsDBNull(5) ? null : reader.GetInt32(5),
-                IsPass = reader.GetInt64(6) != 0,
-                ResultStatus = reader.GetString(7),
-                ArchivePosition = reader.IsDBNull(8) ? null : reader.GetString(8),
-                OperationTime = ParseTime(reader, 9),
-            });
+            list.Add(MapResult(reader));
         }
 
         return list;
     }
+
+    private static AnalysisResult MapResult(SqliteDataReader r) => new()
+    {
+        ResultId = r.GetInt64(0),
+        SampleId = r.GetString(1),
+        RawIntensity = r.IsDBNull(2) ? null : r.GetString(2),
+        MeasuredConc = r.IsDBNull(3) ? null : r.GetDouble(3),
+        CorrectedConc = r.IsDBNull(4) ? null : r.GetDouble(4),
+        CoeffVersion = r.IsDBNull(5) ? null : r.GetInt32(5),
+        IsPass = r.GetInt64(6) != 0,
+        ResultStatus = r.GetString(7),
+        ArchivePosition = r.IsDBNull(8) ? null : r.GetString(8),
+        OperationTime = ParseTime(r, 9),
+    };
 
     private static void BindDate(SqliteCommand cmd, DateTime? createdOn)
     {

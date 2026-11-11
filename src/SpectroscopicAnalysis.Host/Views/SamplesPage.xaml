@@ -96,7 +96,95 @@
 
             <!-- 关键词查询（对当前激活数据表生效）+ 类型筛选/状态筛选（仅样品台账表显示） -->
             <DockPanel Grid.Row="2" Margin="{DynamicResource Spacing.CardGap}">
+                <!-- 生产样档案表专属搜索框（仅该表显示） -->
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" DockPanel.Dock="Right" Margin="12,0,0,0">
+                    <StackPanel.Style>
+                        <Style TargetType="StackPanel">
+                            <Setter Property="Visibility" Value="Collapsed" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding ActiveTable}" Value="ProductionSample">
+                                    <Setter Property="Visibility" Value="Visible" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </StackPanel.Style>
+                    <TextBox Width="200" VerticalAlignment="Center"
+                             Text="{Binding ProductionSearchText, UpdateSourceTrigger=PropertyChanged}">
+                        <TextBox.Style>
+                            <Style TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
+                                <Style.Resources>
+                                    <VisualBrush x:Key="SearchHint" AlignmentX="Left" Stretch="None">
+                                        <VisualBrush.Visual>
+                                            <TextBlock Text="搜索生产样（编号 / 名称 / 合金 / 状态）" Foreground="{DynamicResource Brush.Text.Disabled}"
+                                                       FontSize="{DynamicResource FontSize.Body}" />
+                                        </VisualBrush.Visual>
+                                    </VisualBrush>
+                                </Style.Resources>
+                                <Style.Triggers>
+                                    <Trigger Property="Text" Value="">
+                                        <Setter Property="Background" Value="{StaticResource SearchHint}" />
+                                    </Trigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBox.Style>
+                        <TextBox.InputBindings>
+                            <KeyBinding Key="Enter" Command="{Binding SearchCommand}" />
+                        </TextBox.InputBindings>
+                    </TextBox>
+                    <Button Content="查询" Command="{Binding SearchCommand}" Style="{StaticResource PrimaryBtn}" Margin="8,0,0,0" Padding="14,5" />
+                </StackPanel>
+                <!-- 分析结果表专属搜索框（仅该表显示） -->
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" DockPanel.Dock="Right" Margin="12,0,0,0">
+                    <StackPanel.Style>
+                        <Style TargetType="StackPanel">
+                            <Setter Property="Visibility" Value="Collapsed" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding ActiveTable}" Value="AnalysisResult">
+                                    <Setter Property="Visibility" Value="Visible" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </StackPanel.Style>
+                    <TextBox Width="200" VerticalAlignment="Center"
+                             Text="{Binding AnalysisSearchText, UpdateSourceTrigger=PropertyChanged}">
+                        <TextBox.Style>
+                            <Style TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
+                                <Style.Resources>
+                                    <VisualBrush x:Key="SearchHint" AlignmentX="Left" Stretch="None">
+                                        <VisualBrush.Visual>
+                                            <TextBlock Text="搜索分析结果（编号 / 归档位置 / 状态）" Foreground="{DynamicResource Brush.Text.Disabled}"
+                                                       FontSize="{DynamicResource FontSize.Body}" />
+                                        </VisualBrush.Visual>
+                                    </VisualBrush>
+                                </Style.Resources>
+                                <Style.Triggers>
+                                    <Trigger Property="Text" Value="">
+                                        <Setter Property="Background" Value="{StaticResource SearchHint}" />
+                                    </Trigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBox.Style>
+                        <TextBox.InputBindings>
+                            <KeyBinding Key="Enter" Command="{Binding SearchCommand}" />
+                        </TextBox.InputBindings>
+                    </TextBox>
+                    <Button Content="查询" Command="{Binding SearchCommand}" Style="{StaticResource PrimaryBtn}" Margin="8,0,0,0" Padding="14,5" />
+                </StackPanel>
+                <!-- 通用搜索框（其余表显示；两张新表使用各自专属搜索框） -->
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" DockPanel.Dock="Right" Margin="12,0,0,0">
+                    <StackPanel.Style>
+                        <Style TargetType="StackPanel">
+                            <Setter Property="Visibility" Value="Visible" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding ActiveTable}" Value="ProductionSample">
+                                    <Setter Property="Visibility" Value="Collapsed" />
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding ActiveTable}" Value="AnalysisResult">
+                                    <Setter Property="Visibility" Value="Collapsed" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </StackPanel.Style>
                     <TextBox Width="200" VerticalAlignment="Center"
                              Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}">
                         <TextBox.Style>
@@ -169,19 +257,6 @@
                         <Style TargetType="Button" BasedOn="{StaticResource ModeBtn}">
                             <Style.Triggers>
                                 <DataTrigger Binding="{Binding FilterKey}" Value="TypeStd">
-                                    <Setter Property="Background" Value="{DynamicResource Brush.Primary}" />
-                                    <Setter Property="Foreground" Value="White" />
-                                    <Setter Property="FontWeight" Value="SemiBold" />
-                                </DataTrigger>
-                            </Style.Triggers>
-                        </Style>
-                    </Button.Style>
-                </Button>
-                <Button Content="生产样" Command="{Binding SetFilterCommand}" CommandParameter="Production" Margin="0,0,8,0">
-                    <Button.Style>
-                        <Style TargetType="Button" BasedOn="{StaticResource ModeBtn}">
-                            <Style.Triggers>
-                                <DataTrigger Binding="{Binding FilterKey}" Value="Production">
                                     <Setter Property="Background" Value="{DynamicResource Brush.Primary}" />
                                     <Setter Property="Foreground" Value="White" />
                                     <Setter Property="FontWeight" Value="SemiBold" />
@@ -494,6 +569,93 @@
                                     </DataTemplate>
                                 </DataGridTemplateColumn.CellTemplate>
                             </DataGridTemplateColumn>
+                        </DataGrid.Columns>
+                    </DataGrid>
+
+                    <!-- 生产样档案表（Production_Sample）：独立建表的生产样台账 -->
+                    <DataGrid Grid.Row="1" ItemsSource="{Binding ProductionRows}" AutoGenerateColumns="False"
+                              IsReadOnly="True" CanUserAddRows="False" CanUserSortColumns="False"
+                              ScrollViewer.CanContentScroll="True"
+                              HeadersVisibility="Column" GridLinesVisibility="Horizontal"
+                              BorderThickness="0" Background="Transparent"
+                              RowBackground="Transparent" AlternatingRowBackground="Transparent"
+                              RowStyle="{StaticResource GridRow}" CellStyle="{StaticResource GridCell}"
+                              ColumnHeaderStyle="{StaticResource GridColumnHeader}"
+                              FontSize="{DynamicResource FontSize.Body}">
+                        <DataGrid.Style>
+                            <Style TargetType="DataGrid">
+                                <Setter Property="Visibility" Value="Collapsed" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding ActiveTable}" Value="ProductionSample">
+                                        <Setter Property="Visibility" Value="Visible" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </DataGrid.Style>
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="SampleID" Binding="{Binding SampleId}" FontFamily="Consolas" Width="1.2*" MinWidth="70" ElementStyle="{StaticResource GridCellText}" />
+                            <DataGridTextColumn Header="样品名称" Binding="{Binding SampleName}" Width="1.5*" MinWidth="80" ElementStyle="{StaticResource GridCellText}" />
+                            <DataGridTextColumn Header="合金" Binding="{Binding AlloyType}" Width="0.8*" MinWidth="50" ElementStyle="{StaticResource GridCellText}" />
+                            <DataGridTextColumn Header="架位" Binding="{Binding RackPosition}" Width="0.8*" MinWidth="50" ElementStyle="{StaticResource GridCellText}" />
+                            <DataGridTextColumn Header="分析方法" Binding="{Binding MethodText}" Width="1.2*" MinWidth="70" ElementStyle="{StaticResource GridCellText}" />
+                            <DataGridTextColumn Header="入库时间" Binding="{Binding CreatedText}" FontFamily="Consolas" Width="1*" MinWidth="70" ElementStyle="{StaticResource GridCellText}" />
+                            <DataGridTextColumn Header="备注" Binding="{Binding Remark}" Width="1.2*" MinWidth="60" ElementStyle="{StaticResource GridCellText}" />
+                            <DataGridTemplateColumn Header="状态" Width="1*" MinWidth="70">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding StatusText}">
+                                            <TextBlock.Style>
+                                                <Style TargetType="TextBlock" BasedOn="{StaticResource GridCellText}">
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding Status}" Value="Analyzing">
+                                                            <Setter Property="Foreground" Value="{DynamicResource Brush.Status.Running}" />
+                                                        </DataTrigger>
+                                                        <DataTrigger Binding="{Binding Status}" Value="Completed">
+                                                            <Setter Property="Foreground" Value="{DynamicResource Brush.Status.Idle}" />
+                                                        </DataTrigger>
+                                                        <DataTrigger Binding="{Binding Status}" Value="Failed">
+                                                            <Setter Property="Foreground" Value="{DynamicResource Brush.Status.Failed}" />
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </TextBlock.Style>
+                                        </TextBlock>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                        </DataGrid.Columns>
+                    </DataGrid>
+
+                    <!-- 分析结果表（Analysis_Result）：原始/校正后浓度双存 + 系数版本可追溯 -->
+                    <DataGrid Grid.Row="1" ItemsSource="{Binding AnalysisResultRows}" AutoGenerateColumns="False"
+                              IsReadOnly="True" CanUserAddRows="False" CanUserSortColumns="False"
+                              ScrollViewer.CanContentScroll="True"
+                              HeadersVisibility="Column" GridLinesVisibility="Horizontal"
+                              BorderThickness="0" Background="Transparent"
+                              RowBackground="Transparent" AlternatingRowBackground="Transparent"
+                              RowStyle="{StaticResource GridRow}" CellStyle="{StaticResource GridCell}"
+                              ColumnHeaderStyle="{StaticResource GridColumnHeader}"
+                              FontSize="{DynamicResource FontSize.Body}">
+                        <DataGrid.Style>
+                            <Style TargetType="DataGrid">
+                                <Setter Property="Visibility" Value="Collapsed" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding ActiveTable}" Value="AnalysisResult">
+                                        <Setter Property="Visibility" Value="Visible" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </DataGrid.Style>
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="结果ID" Binding="{Binding ResultIdText}" FontFamily="Consolas" Width="0.8*" MinWidth="55" ElementStyle="{StaticResource GridCellText}" />
+                            <DataGridTextColumn Header="SampleID" Binding="{Binding SampleId}" FontFamily="Consolas" Width="1.2*" MinWidth="70" ElementStyle="{StaticResource GridCellText}" />
+                            <DataGridTextColumn Header="原始浓度" Binding="{Binding MeasuredText}" FontFamily="Consolas" Width="1*" MinWidth="60" ElementStyle="{StaticResource GridCellText}" />
+                            <DataGridTextColumn Header="校正后浓度" Binding="{Binding CorrectedText}" FontFamily="Consolas" Width="1*" MinWidth="65" ElementStyle="{StaticResource GridCellText}" />
+                            <DataGridTextColumn Header="系数版本" Binding="{Binding CoeffVersionText}" FontFamily="Consolas" Width="0.8*" MinWidth="55" ElementStyle="{StaticResource GridCellText}" />
+                            <DataGridTextColumn Header="合格判定" Binding="{Binding PassText}" Width="1*" MinWidth="60" ElementStyle="{StaticResource GridCellText}" />
+                            <DataGridTextColumn Header="结果状态" Binding="{Binding ResultStatusText}" Width="1*" MinWidth="60" ElementStyle="{StaticResource GridCellText}" />
+                            <DataGridTextColumn Header="归档位置" Binding="{Binding ArchiveText}" FontFamily="Consolas" Width="1*" MinWidth="70" ElementStyle="{StaticResource GridCellText}" />
+                            <DataGridTextColumn Header="操作时间" Binding="{Binding TimeText}" FontFamily="Consolas" Width="1.1*" MinWidth="70" ElementStyle="{StaticResource GridCellText}" />
                         </DataGrid.Columns>
                     </DataGrid>
 

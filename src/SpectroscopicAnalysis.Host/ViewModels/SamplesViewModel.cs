@@ -30,6 +30,35 @@ public sealed partial class SampleRowItem : ObservableObject
     public required string LastUseText { get; init; }
 }
 
+/// <summary>生产样档案行展示模型（表 Production_Sample）。</summary>
+public sealed class ProductionRowItem
+{
+    public required string SampleId { get; init; }
+    public required string SampleName { get; init; }
+    public string? AlloyType { get; init; }
+    public string? RackPosition { get; init; }
+    public required string MethodText { get; init; }
+    /// <summary>原始状态枚举串（视图 DataTrigger 切换徽章颜色）。</summary>
+    public required string Status { get; init; }
+    public required string StatusText { get; init; }
+    public required string CreatedText { get; init; }
+    public required string Remark { get; init; }
+}
+
+/// <summary>分析结果行展示模型（表 Analysis_Result）。</summary>
+public sealed class AnalysisResultRowItem
+{
+    public required string ResultIdText { get; init; }
+    public required string SampleId { get; init; }
+    public required string MeasuredText { get; init; }
+    public required string CorrectedText { get; init; }
+    public required string CoeffVersionText { get; init; }
+    public required string PassText { get; init; }
+    public required string ResultStatusText { get; init; }
+    public required string ArchiveText { get; init; }
+    public required string TimeText { get; init; }
+}
+
 /// <summary>
 /// 样品档案 ViewModel：从 SQLite（SCT_Sample）加载样品并按类型筛选展示。
 /// 数据库 I/O 经 Task.Run + IUiDispatcher 回 UI 线程（I/O 不阻塞 UI，开发规范第 4 节）。
@@ -38,12 +67,14 @@ public sealed partial class SamplesViewModel : ObservableObject, IPageLifecycle
 {
     public const string FilterAll = "All";
 
-    // ==================== 数据表切换键（样品档案页可查看的 5 张表） ====================
+    // ==================== 数据表切换键（样品档案页可查看的 7 张表） ====================
     public const string TableSample = "Sample";
     public const string TableCertifiedValue = "CertifiedValue";
     public const string TableControlLimit = "ControlLimit";
     public const string TableCoefficient = "Coefficient";
     public const string TableOperationLog = "OperationLog";
+    public const string TableProductionSample = "ProductionSample";
+    public const string TableAnalysisResult = "AnalysisResult";
 
     /// <summary>数据表下拉选项（Key = Table* 常量）。</summary>
     public sealed record TableOption(string Key, string DisplayName);
@@ -56,9 +87,12 @@ public sealed partial class SamplesViewModel : ObservableObject, IPageLifecycle
         new(TableControlLimit, "控制限（ControlLimit）"),
         new(TableCoefficient, "校正系数（CorrectionCoefficient）"),
         new(TableOperationLog, "操作日志（SCT_OperationLog）"),
+        new(TableProductionSample, "生产样档案（Production_Sample）"),
+        new(TableAnalysisResult, "分析结果（Analysis_Result）"),
     };
 
     private readonly ISctSampleRepository _samples;
+    private readonly IProductionSampleRepository _production;
     private readonly ISctCertifiedValueRepository _certRepo;
     private readonly IControlLimitRepository _limitRepo;
     private readonly ICorrectionCoefficientRepository _coeffRepo;
@@ -75,9 +109,25 @@ public sealed partial class SamplesViewModel : ObservableObject, IPageLifecycle
     private List<ControlLimitRowItem> _allLimits = new();
     private List<CoefficientRowItem> _allCoeffs = new();
     private List<OperationLogRowItem> _allLogs = new();
+    private List<ProductionRowItem> _allProduction = new();
+    private List<AnalysisResultRowItem> _allAnalysisResults = new();
 
     [ObservableProperty]
     private ObservableCollection<SampleRowItem> _sctSamples = new();
+
+    [ObservableProperty]
+    private ObservableCollection<ProductionRowItem> _productionRows = new();
+
+    [ObservableProperty]
+    private ObservableCollection<AnalysisResultRowItem> _analysisResultRows = new();
+
+    /// <summary>生产样档案表专属搜索关键词（与其他表搜索框互相独立）。</summary>
+    [ObservableProperty]
+    private string _productionSearchText = string.Empty;
+
+    /// <summary>分析结果表专属搜索关键词。</summary>
+    [ObservableProperty]
+    private string _analysisSearchText = string.Empty;
 
     /// <summary>当前展示的数据表（默认样品台账；仅样品表显示录入/筛选控件）。
     /// 变化即触发该表数据加载（ComboBox 双向绑定直接改此属性，也走同一入口）。</summary>
@@ -111,6 +161,12 @@ public sealed partial class SamplesViewModel : ObservableObject, IPageLifecycle
                 break;
             case TableOperationLog:
                 await LoadOperationLogsAsync();
+                break;
+            case TableProductionSample:
+                await LoadProductionSamplesAsync();
+                break;
+            case TableAnalysisResult:
+                await LoadAnalysisResultsAsync();
                 break;
             default:
                 await LoadSamplesAsync();
@@ -408,6 +464,7 @@ public sealed partial class SamplesViewModel : ObservableObject, IPageLifecycle
 
     public SamplesViewModel(
         ISctSampleRepository samples,
+        IProductionSampleRepository production,
         ISctCertifiedValueRepository certifiedValues,
         IControlLimitRepository controlLimits,
         ICorrectionCoefficientRepository coefficients,
@@ -417,6 +474,7 @@ public sealed partial class SamplesViewModel : ObservableObject, IPageLifecycle
         IErrorCollector errors)
     {
         _samples = samples;
+        _production = production;
         _certRepo = certifiedValues;
         _limitRepo = controlLimits;
         _coeffRepo = coefficients;
@@ -557,6 +615,67 @@ public sealed partial class SamplesViewModel : ObservableObject, IPageLifecycle
             RefreshView();
         });
     }
+
+    /// <summary>加载生产样档案表（Production_Sample；全量入缓存后统一分页/专属搜索）。</summary>
+    private async Task LoadProductionSamplesAsync()
+    {
+        var rows = await Task.Run(() => _production.GetAll().Select(MapProductionRow).ToList());
+        _ui.Invoke(() =>
+        {
+            _allProduction = rows;
+            RefreshView();
+        });
+    }
+
+    /// <summary>加载分析结果表（Analysis_Result；全量入缓存后统一分页/专属搜索）。</summary>
+    private async Task LoadAnalysisResultsAsync()
+    {
+        var rows = await Task.Run(() => _production.GetAllResults().Select(MapAnalysisRow).ToList());
+        _ui.Invoke(() =>
+        {
+            _allAnalysisResults = rows;
+            RefreshView();
+        });
+    }
+
+    private static ProductionRowItem MapProductionRow(ProductionSample p) => new()
+    {
+        SampleId = p.SampleId,
+        SampleName = p.SampleName,
+        AlloyType = p.AlloyType,
+        RackPosition = p.RackPosition,
+        MethodText = p.AssociatedMethod ?? "—",
+        Status = p.Status,
+        StatusText = p.Status switch
+        {
+            ProductionStatus.Normal => "● 正常",
+            ProductionStatus.Analyzing => "● 分析中",
+            ProductionStatus.Completed => "✓ 已完成",
+            ProductionStatus.Failed => "✖ 失败",
+            _ => p.Status,
+        },
+        CreatedText = p.CreatedTime?.ToString("MM-dd HH:mm") ?? "—",
+        Remark = p.Remark ?? "—",
+    };
+
+    private static AnalysisResultRowItem MapAnalysisRow(AnalysisResult r) => new()
+    {
+        ResultIdText = $"#{r.ResultId}",
+        SampleId = r.SampleId,
+        MeasuredText = r.MeasuredConc?.ToString("0.####") ?? "—",
+        CorrectedText = r.CorrectedConc?.ToString("0.####") ?? "—",
+        CoeffVersionText = r.CoeffVersion is { } v ? $"v{v}" : "—",
+        PassText = r.IsPass ? "✓ 合格" : "✖ 不合格",
+        ResultStatusText = r.ResultStatus switch
+        {
+            AnalysisResultStatus.Success => "● 成功",
+            AnalysisResultStatus.Warning => "▲ 预警",
+            AnalysisResultStatus.Fail => "✖ 失败",
+            _ => r.ResultStatus,
+        },
+        ArchiveText = r.ArchivePosition ?? "—（未归档）",
+        TimeText = r.OperationTime?.ToString("MM-dd HH:mm") ?? "—",
+    };
 
     /// <summary>切换数据表：仅接受 TableOptions 中登记的键；设置属性触发加载并等待其完成（确定性）。</summary>
     [RelayCommand]
@@ -729,6 +848,20 @@ public sealed partial class SamplesViewModel : ObservableObject, IPageLifecycle
             case TableOperationLog:
                 ApplyPagedView(_allLogs, r => Matches(r.SampleIdText, keyword) || Matches(r.OperationTypeText, keyword) || Matches(r.TriggerReasonText, keyword), resetPage,
                     page => OperationLogRows = new ObservableCollection<OperationLogRowItem>(page));
+                break;
+            case TableProductionSample:
+                // 生产样档案表：使用专属搜索关键词（与其他表互不影响）
+                var productionKeyword = ProductionSearchText?.Trim();
+                ApplyPagedView(_allProduction, r => Matches(r.SampleId, productionKeyword) || Matches(r.SampleName, productionKeyword)
+                    || Matches(r.AlloyType, productionKeyword) || Matches(r.Status, productionKeyword), resetPage,
+                    page => ProductionRows = new ObservableCollection<ProductionRowItem>(page));
+                break;
+            case TableAnalysisResult:
+                // 分析结果表：使用专属搜索关键词
+                var analysisKeyword = AnalysisSearchText?.Trim();
+                ApplyPagedView(_allAnalysisResults, r => Matches(r.SampleId, analysisKeyword) || Matches(r.ArchiveText, analysisKeyword)
+                    || Matches(r.ResultStatusText, analysisKeyword), resetPage,
+                    page => AnalysisResultRows = new ObservableCollection<AnalysisResultRowItem>(page));
                 break;
             default:
                 // 样品台账：类型筛选 + 状态筛选 + 关键词

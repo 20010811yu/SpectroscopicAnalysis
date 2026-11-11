@@ -12,6 +12,12 @@ public interface IProductionSampleRepository
     /// <summary>符合条件的生产样总数（分页页数计算）。</summary>
     int Count(DateTime? createdOn);
 
+    /// <summary>全量生产样（样品档案页台账缓存用；按 SampleID 升序）。</summary>
+    IReadOnlyList<ProductionSample> GetAll();
+
+    /// <summary>全量分析结果（按 OperationTime 倒序）。</summary>
+    IReadOnlyList<AnalysisResult> GetAllResults();
+
     /// <summary>插入生产样（种子/流程入库）。</summary>
     void Insert(ProductionSample sample);
 

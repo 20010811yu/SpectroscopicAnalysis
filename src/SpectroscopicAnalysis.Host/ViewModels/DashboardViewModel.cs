@@ -28,7 +28,7 @@ public sealed partial class DashboardViewModel : ObservableObject, IPageLifecycl
     /// <summary>分页大小（生产样品表每页行数）。</summary>
     public const int PageSize = 10;
 
-    private readonly ISctSampleRepository _samples;
+    private readonly IProductionSampleRepository _production;
     private readonly IUiDispatcher _ui;
     private readonly IErrorCollector _errors;
 
@@ -82,9 +82,9 @@ public sealed partial class DashboardViewModel : ObservableObject, IPageLifecycl
     [ObservableProperty]
     private bool _isLoading;
 
-    public DashboardViewModel(ISctSampleRepository samples, IUiDispatcher ui, IErrorCollector errors)
+    public DashboardViewModel(IProductionSampleRepository production, IUiDispatcher ui, IErrorCollector errors)
     {
-        _samples = samples;
+        _production = production;
         _ui = ui;
         _errors = errors;
     }
@@ -108,8 +108,8 @@ public sealed partial class DashboardViewModel : ObservableObject, IPageLifecycl
         try
         {
             var date = SelectedDate;
-            var totalCount = await Task.Run(() => _samples.CountProduction(date));
-            var rows = await Task.Run(() => _samples.GetProductionPage(
+            var totalCount = await Task.Run(() => _production.Count(date));
+            var rows = await Task.Run(() => _production.GetPage(
                 date,
                 afterSampleId: _pageCursors.Count > 0 ? _pageCursors[^1] : null,
                 beforeSampleId: null,
@@ -121,7 +121,7 @@ public sealed partial class DashboardViewModel : ObservableObject, IPageLifecycl
             {
                 _pageCursors.Clear();
                 CurrentPage = totalPages;
-                rows = await Task.Run(() => _samples.GetProductionPage(date, null, null, PageSize));
+                rows = await Task.Run(() => _production.GetPage(date, null, null, PageSize));
             }
 
             var items = rows.Select(MapItem).ToList();
@@ -198,7 +198,7 @@ public sealed partial class DashboardViewModel : ObservableObject, IPageLifecycl
         var date = SelectedDate;
         try
         {
-            var rows = await Task.Run(() => _samples.GetProductionPage(
+            var rows = await Task.Run(() => _production.GetPage(
                 date,
                 afterSampleId: isForward ? cursor : null,
                 beforeSampleId: isForward ? null : cursor,
@@ -228,17 +228,17 @@ public sealed partial class DashboardViewModel : ObservableObject, IPageLifecycl
         await LoadCommand.ExecuteAsync(null);
     }
 
-    private static ProductionSampleItem MapItem(SctSample r) => new()
+    private static ProductionSampleItem MapItem(ProductionSample r) => new()
     {
         SampleId = r.SampleId,
         SampleName = r.SampleName,
         AlloyType = r.AlloyType,
         StatusText = r.Status switch
         {
-            SampleStatus.Normal => "● 正常",
-            SampleStatus.NeedMeasure => "▲ 需测高",
-            SampleStatus.Warning => "▲ 超差预警",
-            SampleStatus.Disabled => "✖ 禁用（过薄）",
+            ProductionStatus.Normal => "● 正常",
+            ProductionStatus.Analyzing => "● 分析中",
+            ProductionStatus.Completed => "✓ 已完成",
+            ProductionStatus.Failed => "✖ 失败",
             _ => r.Status,
         },
     };

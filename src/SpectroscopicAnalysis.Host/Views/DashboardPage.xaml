@@ -179,6 +179,7 @@
                         <TextBlock Text="{Binding PageDisplay}" VerticalAlignment="Center" Margin="8,0"
                                    Style="{StaticResource Text.Caption}" />
                         <Button Content="下一页" Command="{Binding NextPageCommand}" Style="{StaticResource PrimaryBtn}" Margin="0,0,0,0" />
+                        <TextBlock Text="{Binding TotalCount, StringFormat='共 {0} 条'}" Style="{StaticResource Text.Caption}" VerticalAlignment="Center" Margin="8,0,0,0" />
                     </StackPanel>
                 </StackPanel>
             </Border>

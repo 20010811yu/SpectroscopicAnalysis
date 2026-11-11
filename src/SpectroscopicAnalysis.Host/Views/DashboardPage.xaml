@@ -115,6 +115,7 @@
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="Auto" MinWidth="60" />
                             <ColumnDefinition Width="*" MinWidth="100" />
+                            <ColumnDefinition Width="*" MinWidth="90" />
                             <ColumnDefinition Width="*" MinWidth="80" />
                             <ColumnDefinition Width="*" MinWidth="100" />
                         </Grid.ColumnDefinitions>
@@ -123,16 +124,19 @@
                         </Grid.RowDefinitions>
                         <TextBlock Grid.Row="0" Grid.Column="0" Text="#" Style="{StaticResource Table.Header}" />
                         <TextBlock Grid.Row="0" Grid.Column="1" Text="SampleID" Style="{StaticResource Table.Header}" />
-                        <TextBlock Grid.Row="0" Grid.Column="2" Text="类型" Style="{StaticResource Table.Header}" />
-                        <TextBlock Grid.Row="0" Grid.Column="3" Text="状态" Style="{StaticResource Table.Header}" />
+                        <TextBlock Grid.Row="0" Grid.Column="2" Text="样品名称" Style="{StaticResource Table.Header}" />
+                        <TextBlock Grid.Row="0" Grid.Column="3" Text="类型" Style="{StaticResource Table.Header}" />
+                        <TextBlock Grid.Row="0" Grid.Column="4" Text="状态" Style="{StaticResource Table.Header}" />
                         <TextBlock Grid.Row="1" Grid.Column="0" Text="10086" Style="{StaticResource Text.Mono}" Margin="0,6" />
                         <TextBlock Grid.Row="1" Grid.Column="1" Text="P-20261110-07" Style="{StaticResource Text.Mono}" Margin="0,6" />
-                        <TextBlock Grid.Row="1" Grid.Column="2" Text="生产样品" Style="{StaticResource Text.Body}" Margin="0,6" />
-                        <TextBlock Grid.Row="1" Grid.Column="3" Text="● 激发中" Style="{StaticResource Text.Caption}" Foreground="{DynamicResource Brush.Status.Running}" Margin="0,6" />
+                        <TextBlock Grid.Row="1" Grid.Column="2" Text="6061 生产样" Style="{StaticResource Text.Body}" Margin="0,6" />
+                        <TextBlock Grid.Row="1" Grid.Column="3" Text="生产样品" Style="{StaticResource Text.Body}" Margin="0,6" />
+                        <TextBlock Grid.Row="1" Grid.Column="4" Text="● 激发中" Style="{StaticResource Text.Caption}" Foreground="{DynamicResource Brush.Status.Running}" Margin="0,6" />
                         <TextBlock Grid.Row="2" Grid.Column="0" Text="10089" Style="{StaticResource Text.Mono}" Margin="0,6" />
                         <TextBlock Grid.Row="2" Grid.Column="1" Text="CTL-002" Style="{StaticResource Text.Mono}" Margin="0,6" />
-                        <TextBlock Grid.Row="2" Grid.Column="2" Text="控制样" Style="{StaticResource Text.Body}" Margin="0,6" />
-                        <TextBlock Grid.Row="2" Grid.Column="3" Text="◆ 定时插入" Style="{StaticResource Text.Caption}" Foreground="{DynamicResource Brush.Primary}" Margin="0,6" />
+                        <TextBlock Grid.Row="2" Grid.Column="2" Text="控制样（中）" Style="{StaticResource Text.Body}" Margin="0,6" />
+                        <TextBlock Grid.Row="2" Grid.Column="3" Text="控制样" Style="{StaticResource Text.Body}" Margin="0,6" />
+                        <TextBlock Grid.Row="2" Grid.Column="4" Text="◆ 定时插入" Style="{StaticResource Text.Caption}" Foreground="{DynamicResource Brush.Primary}" Margin="0,6" />
                     </Grid>
                 </StackPanel>
             </Border>
@@ -161,6 +165,7 @@
                               FontSize="{DynamicResource FontSize.Body}">
                         <DataGrid.Columns>
                             <DataGridTextColumn Header="SampleID" Binding="{Binding SampleId}" FontFamily="Consolas" Width="1.2*" MinWidth="80" ElementStyle="{StaticResource GridCellText}" />
+                            <DataGridTextColumn Header="样品名称" Binding="{Binding SampleName}" Width="1.5*" MinWidth="70" ElementStyle="{StaticResource GridCellText}" />
                             <DataGridTextColumn Header="合金" Binding="{Binding AlloyType}" Width="1*" MinWidth="60" ElementStyle="{StaticResource GridCellText}" />
                             <DataGridTextColumn Header="状态" Binding="{Binding StatusText}" Width="1*" MinWidth="60" ElementStyle="{StaticResource GridCellText}" />
                         </DataGrid.Columns>

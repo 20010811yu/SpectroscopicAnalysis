@@ -12,6 +12,7 @@ namespace SpectroscopicAnalysis.Host.ViewModels;
 public sealed class ProductionSampleItem
 {
     public required string SampleId { get; init; }
+    public required string SampleName { get; init; }
     public string? AlloyType { get; init; }
     public required string StatusText { get; init; }
 }
@@ -230,6 +231,7 @@ public sealed partial class DashboardViewModel : ObservableObject, IPageLifecycl
     private static ProductionSampleItem MapItem(SctSample r) => new()
     {
         SampleId = r.SampleId,
+        SampleName = r.SampleName,
         AlloyType = r.AlloyType,
         StatusText = r.Status switch
         {

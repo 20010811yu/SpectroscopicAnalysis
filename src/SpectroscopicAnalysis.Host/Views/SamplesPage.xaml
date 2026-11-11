@@ -563,7 +563,8 @@
 
                     <!-- 分页栏（每页 20 条，对当前激活数据表生效；整组靠右） -->
                     <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,8,0,0">
-                        <Button Content="上一页" Command="{Binding PrevPageCommand}" Style="{StaticResource PagerBtn}" />
+                        <Button Content="首页" Command="{Binding GoToPageCommand}" CommandParameter="1" Style="{StaticResource PagerBtn}" />
+                        <Button Content="上一页" Command="{Binding PrevPageCommand}" Style="{StaticResource PagerBtn}" Margin="4,0,0,0" />
                         <TextBlock Text="{Binding PageDisplay}" VerticalAlignment="Center" Margin="8,0"
                                    Style="{StaticResource Text.Caption}" />
                         <Button Content="下一页" Command="{Binding NextPageCommand}" Style="{StaticResource PagerBtn}" />

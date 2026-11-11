@@ -144,8 +144,8 @@
                 </Grid>
             </Border>
 
-            <!-- 内容区：当前页面（DataTemplate 渲染） -->
-            <ContentControl Grid.Column="1" Content="{Binding CurrentViewModel}" />
+            <!-- 内容区：当前页面（code-behind 按 VM 缓存视图实例，避免每次切换整页重建） -->
+            <ContentControl x:Name="PageHost" Grid.Column="1" />
         </Grid>
     </Grid>
 </Window>

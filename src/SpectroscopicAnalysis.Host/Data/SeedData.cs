@@ -17,15 +17,20 @@ public sealed class SeedData
         _samples = samples;
     }
 
-    /// <summary>样品表为空时注入演示数据（开发阶段便捷；生产环境由人工录入替代）。</summary>
+    /// <summary>任一表数据量不足目标时自动补齐演示数据（INSERT OR IGNORE 幂等；开发阶段便捷，生产环境由人工录入替代）。</summary>
     public void SeedIfEmpty()
     {
-        if (_samples.GetAll().Count > 0)
+        using var conn = _db.Open();
+        foreach (var (table, target) in new[] { ("SCT_Sample", SeedTargetCount), ("SCT_CertifiedValue", 5000), ("ControlLimit", 5000), ("CorrectionCoefficient", 5000), ("SCT_OperationLog", 5000) })
         {
-            return;
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = $"SELECT COUNT(*) FROM {table}";
+            if ((long)cmd.ExecuteScalar()! < target)
+            {
+                SeedDemo();
+                return;
+            }
         }
-
-        SeedDemo();
     }
 
     /// <summary>种子数据目标总量（演示用途：手工演示样 + 生成样凑满 3000 条）。</summary>

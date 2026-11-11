@@ -32,6 +32,7 @@ public partial class App
                 services.AddSingleton(new Db(dbPath));
                 services.AddSingleton<DbInitializer>();
                 services.AddSingleton<ISctSampleRepository, SctSampleRepository>();
+                services.AddSingleton<IProductionSampleRepository, ProductionSampleRepository>();
                 // 子表仓储（样品档案页「切换数据表」；前两者可删除，后两者只读）
                 services.AddSingleton<ISctCertifiedValueRepository, SctCertifiedValueRepository>();
                 services.AddSingleton<IControlLimitRepository, ControlLimitRepository>();

@@ -10,7 +10,9 @@ public sealed class MainViewModelTests
 {
     private static MainViewModel CreateMain() => new(
         new DashboardViewModel(new FakeSampleRepository(), new FakeUiDispatcher(), new FakeErrorCollector()),
-        new SamplesViewModel(new FakeSampleRepository(), new FakeUiDispatcher(), new FakeDialogService(), new FakeErrorCollector()),
+        new SamplesViewModel(new FakeSampleRepository(), new FakeCertifiedValueRepository(), new FakeControlLimitRepository(),
+            new FakeCoefficientRepository(), new FakeOperationLogRepository(),
+            new FakeUiDispatcher(), new FakeDialogService(), new FakeErrorCollector()),
         new SctViewModel(),
         new CoefficientsViewModel(),
         new AlarmsViewModel(),

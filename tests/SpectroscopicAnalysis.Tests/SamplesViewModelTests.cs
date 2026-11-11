@@ -66,6 +66,40 @@ internal sealed class FakeErrorCollector : IErrorCollector
         Collected.Add((errorCode, message, sampleId));
 }
 
+/// <summary>Fake 标准值仓储：预设列表 + Delete 调用记录。</summary>
+internal sealed class FakeCertifiedValueRepository : ISctCertifiedValueRepository
+{
+    public List<SctCertifiedValue> Store { get; } = new();
+    public List<long> Deleted { get; } = new();
+
+    public IReadOnlyList<SctCertifiedValue> GetAll() => Store.ToList();
+    public void Delete(long id) { Deleted.Add(id); Store.RemoveAll(v => v.Id == id); }
+}
+
+/// <summary>Fake 控制限仓储：预设列表 + Delete 调用记录。</summary>
+internal sealed class FakeControlLimitRepository : IControlLimitRepository
+{
+    public List<ControlLimit> Store { get; } = new();
+    public List<long> Deleted { get; } = new();
+
+    public IReadOnlyList<ControlLimit> GetAll() => Store.ToList();
+    public void Delete(long id) { Deleted.Add(id); Store.RemoveAll(l => l.LimitId == id); }
+}
+
+/// <summary>Fake 校正系数仓储（只读）。</summary>
+internal sealed class FakeCoefficientRepository : ICorrectionCoefficientRepository
+{
+    public List<CorrectionCoefficient> Store { get; } = new();
+    public IReadOnlyList<CorrectionCoefficient> GetAll() => Store.ToList();
+}
+
+/// <summary>Fake 操作日志仓储（只读）。</summary>
+internal sealed class FakeOperationLogRepository : ISctOperationLogRepository
+{
+    public List<SctOperationLog> Store { get; } = new();
+    public IReadOnlyList<SctOperationLog> GetAll() => Store.ToList();
+}
+
 /// <summary>样品档案 ViewModel 测试：数据加载 / 展示映射 / 类型筛选（开发计划 D4 先行项验收）。</summary>
 public sealed class SamplesViewModelTests
 {
@@ -96,7 +130,9 @@ public sealed class SamplesViewModelTests
         {
             repo.Store.Add(s);
         }
-        return new SamplesViewModel(repo, new FakeUiDispatcher(), dialogs, new FakeErrorCollector());
+        return new SamplesViewModel(repo, new FakeCertifiedValueRepository(), new FakeControlLimitRepository(),
+            new FakeCoefficientRepository(), new FakeOperationLogRepository(),
+            new FakeUiDispatcher(), dialogs, new FakeErrorCollector());
     }
 
     [Fact]

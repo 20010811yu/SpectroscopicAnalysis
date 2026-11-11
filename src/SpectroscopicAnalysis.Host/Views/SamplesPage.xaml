@@ -21,6 +21,7 @@
             <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Primary}" />
             <Setter Property="VerticalContentAlignment" Value="Center" />
             <Setter Property="HorizontalContentAlignment" Value="Left" />
+            <Setter Property="Padding" Value="8,2" />
             <Style.Triggers>
                 <Trigger Property="IsSelected" Value="True">
                     <Setter Property="Background" Value="Transparent" />
@@ -281,15 +282,16 @@
                               ColumnHeaderStyle="{StaticResource GridColumnHeader}"
                               FontSize="{DynamicResource FontSize.Body}">
                         <DataGrid.Columns>
-                            <DataGridTextColumn Header="SampleID" Binding="{Binding SampleId}" FontFamily="Consolas" ElementStyle="{StaticResource GridCellText}" />
-                            <DataGridTextColumn Header="样品名称" Binding="{Binding SampleName}" ElementStyle="{StaticResource GridCellText}" />
-                            <DataGridTextColumn Header="类型" Binding="{Binding TypeDisplay}" ElementStyle="{StaticResource GridCellText}" />
-                            <DataGridTextColumn Header="合金" Binding="{Binding AlloyType}" ElementStyle="{StaticResource GridCellText}" />
-                            <DataGridTextColumn Header="架位" Binding="{Binding RackPosition}" ElementStyle="{StaticResource GridCellText}" />
-                            <DataGridTextColumn Header="关联方法" Binding="{Binding AssociatedMethodText}" ElementStyle="{StaticResource GridCellText}" />
-                            <DataGridTextColumn Header="当前/初始厚度 (mm)" Binding="{Binding ThicknessText}" ElementStyle="{StaticResource GridCellText}" />
-                            <DataGridTextColumn Header="最小厚度" Binding="{Binding MinThicknessText}" ElementStyle="{StaticResource GridCellText}" />
-                            <DataGridTextColumn Header="使用次数" Binding="{Binding UsageText}" ElementStyle="{StaticResource GridCellText}" />
+                            <!-- 列宽按比例（Star）随窗口自动伸缩；≤125% 时操作列固定最右，>125% 由 code-behind 切 Auto -->
+                            <DataGridTextColumn Header="SampleID" Binding="{Binding SampleId}" FontFamily="Consolas" Width="1.1*" MinWidth="60" ElementStyle="{StaticResource GridCellText}" />
+                            <DataGridTextColumn Header="样品名称" Binding="{Binding SampleName}" Width="1.5*" MinWidth="70" ElementStyle="{StaticResource GridCellText}" />
+                            <DataGridTextColumn Header="类型" Binding="{Binding TypeDisplay}" Width="0.9*" MinWidth="50" ElementStyle="{StaticResource GridCellText}" />
+                            <DataGridTextColumn Header="合金" Binding="{Binding AlloyType}" Width="0.7*" MinWidth="40" ElementStyle="{StaticResource GridCellText}" />
+                            <DataGridTextColumn Header="架位" Binding="{Binding RackPosition}" Width="0.7*" MinWidth="40" ElementStyle="{StaticResource GridCellText}" />
+                            <DataGridTextColumn Header="关联方法" Binding="{Binding AssociatedMethodText}" Width="1*" MinWidth="50" ElementStyle="{StaticResource GridCellText}" />
+                            <DataGridTextColumn Header="当前/初始厚度 (mm)" Binding="{Binding ThicknessText}" Width="1.5*" MinWidth="80" ElementStyle="{StaticResource GridCellText}" />
+                            <DataGridTextColumn Header="最小厚度" Binding="{Binding MinThicknessText}" Width="0.8*" MinWidth="50" ElementStyle="{StaticResource GridCellText}" />
+                            <DataGridTextColumn Header="使用次数" Binding="{Binding UsageText}" Width="0.9*" MinWidth="50" ElementStyle="{StaticResource GridCellText}" />
                             <DataGridTemplateColumn Header="状态">
                                 <DataGridTemplateColumn.CellTemplate>
                                     <DataTemplate>
@@ -337,10 +339,11 @@
                                     </DataTemplate>
                                 </DataGridTemplateColumn.CellTemplate>
                             </DataGridTemplateColumn>
-                            <DataGridTextColumn Header="上次使用" Binding="{Binding LastUseText}" ElementStyle="{StaticResource GridCellText}" />
-                            <DataGridTextColumn Header="上次测高" Binding="{Binding LastHeightText}" ElementStyle="{StaticResource GridCellText}" />
+                            <DataGridTextColumn Header="上次使用" Binding="{Binding LastUseText}" Width="1.1*" MinWidth="70" ElementStyle="{StaticResource GridCellText}" />
+                            <DataGridTextColumn Header="上次测高" Binding="{Binding LastHeightText}" Width="1.1*" MinWidth="70" ElementStyle="{StaticResource GridCellText}" />
                             <!-- 删除（弹窗二次确认，行数据保持原样展示） -->
-                            <DataGridTemplateColumn Header="操作">
+                            <!-- 操作列固定宽度：Star 列占满剩余空间时始终靠在最右侧 -->
+                            <DataGridTemplateColumn Header="操作" Width="88" MinWidth="88">
                                 <DataGridTemplateColumn.CellTemplate>
                                     <DataTemplate>
                                         <Button Content="删除" Cursor="Hand" Padding="10,3" FontSize="{DynamicResource FontSize.Caption}"

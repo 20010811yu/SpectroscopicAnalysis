@@ -62,7 +62,7 @@ public partial class App
             .Build();
     }
 
-    protected override void OnStartup(StartupEventArgs e)
+    protected override async void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
 
@@ -80,18 +80,30 @@ public partial class App
 
         _host.Start();
 
-        // 建库 + 种子（幂等）；失败走统一错误链前先记录并让异常上抛终止启动（启动期硬失败）
+        // 建库（幂等，轻量）——失败记录并终止启动（启动期硬失败）
         var dbInitializer = _host.Services.GetRequiredService<DbInitializer>();
         dbInitializer.EnsureCreated();
-        var seeded = _host.Services.GetRequiredService<SeedData>();
-        seeded.SeedIfEmpty();
-        Log.Information("数据库就绪（建表/种子幂等完成）");
 
         // 主窗口由 DI 提供；DataContext = MainViewModel（组合根装配，View 零业务）
         var mainWindow = _host.Services.GetRequiredService<MainWindow>();
         mainWindow.DataContext = _host.Services.GetRequiredService<ViewModels.MainViewModel>();
+        // 先显示窗口再补种子：种子写入（数万行）在后台线程执行，避免 UI 线程阻塞导致启动无响应
         mainWindow.Show();
         Log.Information("上位机启动完成");
+
+        try
+        {
+            var seeded = _host.Services.GetRequiredService<SeedData>();
+            await Task.Run(seeded.SeedIfEmpty);
+            Log.Information("数据库就绪（建表/种子幂等完成）");
+        }
+        catch (Exception ex)
+        {
+            Log.Fatal(ex, "种子数据写入失败，终止启动");
+            Log.CloseAndFlush();
+            Shutdown(-1);
+            return;
+        }
     }
 
     protected override void OnExit(ExitEventArgs e)

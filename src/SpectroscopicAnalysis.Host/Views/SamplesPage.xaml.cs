@@ -9,8 +9,8 @@ namespace SpectroscopicAnalysis.Host.Views;
 /// <summary>样品档案页（InitializeComponent + 纯视觉行为：按视口高度反算台账行高）。</summary>
 public partial class SamplesPage : UserControl
 {
-    /// <summary>台账行高下限（窗口过矮时兜底，此时表格内部滚动条自动接手）。</summary>
-    private const double MinRowHeight = 22.0;
+    /// <summary>台账行高下限（极小窗口兜底；正常缩放范围内行高随窗口等比收缩，15 行始终完整显示）。</summary>
+    private const double MinRowHeight = 8.0;
 
     /// <summary>缩放分档阈值：≤125% 时操作列固定最右（列宽 Star 模式），>125% 切 Auto 模式。</summary>
     private const double CompactScaleThreshold = 1.25;
@@ -41,7 +41,9 @@ public partial class SamplesPage : UserControl
             return;
         }
 
-        var rowHeight = Math.Floor((dg.ActualHeight - headerHeight) / SamplesViewModel.PageSize);
+        // 预留每行 1px 水平网格线（15 行 + 表头 1px），避免总额高超出视口 1~3px 导致滚动条残留
+        var gridLineSlack = SamplesViewModel.PageSize + 1;
+        var rowHeight = Math.Floor((dg.ActualHeight - headerHeight - gridLineSlack) / SamplesViewModel.PageSize);
         var clamped = Math.Max(MinRowHeight, rowHeight);
         if (!double.IsNaN(clamped) && !AreClose(dg.RowHeight, clamped))
         {

@@ -53,10 +53,23 @@
                         FontSize="{DynamicResource FontSize.Caption}" Padding="10,5" Cursor="Hand" />
             </DockPanel>
 
-            <!-- 样品注册表单（入库初始化：当前厚度=初始厚度、使用次数=0、状态=Normal；仅样品台账表显示） -->
-            <Border Grid.Row="1" Style="{StaticResource Card}" Margin="{DynamicResource Spacing.CardGap}"
-                    Visibility="{Binding IsSampleTable, Converter={StaticResource BoolToVisibility}}">
-                <StackPanel Visibility="{Binding IsRegisterOpen, Converter={StaticResource BoolToVisibility}}">
+            <!-- 样品注册表单（入库初始化：当前厚度=初始厚度、使用次数=0、状态=Normal；仅样品台账表且面板展开时显示） -->
+            <Border Grid.Row="1" Margin="{DynamicResource Spacing.CardGap}">
+                <Border.Style>
+                    <Style TargetType="Border" BasedOn="{StaticResource Card}">
+                        <Setter Property="Visibility" Value="Collapsed" />
+                        <Style.Triggers>
+                            <MultiDataTrigger>
+                                <MultiDataTrigger.Conditions>
+                                    <Condition Binding="{Binding IsRegisterOpen}" Value="True" />
+                                    <Condition Binding="{Binding IsSampleTable}" Value="True" />
+                                </MultiDataTrigger.Conditions>
+                                <Setter Property="Visibility" Value="Visible" />
+                            </MultiDataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Border.Style>
+                <StackPanel>
                     <TextBlock Text="录入新标样" Style="{StaticResource Text.CardTitle}" Margin="0,0,0,12" />
                     <Grid>
                         <Grid.ColumnDefinitions>

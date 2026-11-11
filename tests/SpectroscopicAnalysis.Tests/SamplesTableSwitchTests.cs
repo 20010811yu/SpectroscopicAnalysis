@@ -8,6 +8,7 @@ public sealed class SamplesTableSwitchTests
 {
     private static SamplesViewModel Create(
         FakeSampleRepository? repo = null,
+        FakeProductionSampleRepository? production = null,
         FakeCertifiedValueRepository? certs = null,
         FakeControlLimitRepository? limits = null,
         FakeCoefficientRepository? coeffs = null,
@@ -16,6 +17,7 @@ public sealed class SamplesTableSwitchTests
     {
         return new SamplesViewModel(
             repo ?? new FakeSampleRepository(),
+            production ?? new FakeProductionSampleRepository(),
             certs ?? new FakeCertifiedValueRepository(),
             limits ?? new FakeControlLimitRepository(),
             coeffs ?? new FakeCoefficientRepository(),
@@ -155,6 +157,44 @@ public sealed class SamplesTableSwitchTests
 
         Assert.True(vm.IsSampleTable);                            // 录入/筛选控件重新可见
         Assert.Single(vm.SctSamples);                             // 台账重新加载
+    }
+
+    [Fact]
+    public async Task SetTable_生产样与分析结果表_加载映射且专属搜索生效()
+    {
+        var production = new FakeProductionSampleRepository();
+        production.Store.Add(new ProductionSample { SampleId = "PRD-G001", SampleName = "生产样 G-001", AlloyType = "1xxx", RackPosition = "D11", AssociatedMethod = "GB/T 7999-A", Status = ProductionStatus.Completed, CreatedTime = DateTime.Today, Remark = "常规生产分析" });
+        production.Store.Add(new ProductionSample { SampleId = "PRD-G002", SampleName = "生产样 G-002", AlloyType = "6xxx", Status = ProductionStatus.Analyzing, CreatedTime = DateTime.Today });
+        production.InsertResult(new AnalysisResult { SampleId = "PRD-G001", MeasuredConc = 0.12, CorrectedConc = 0.119, CoeffVersion = 7, IsPass = true, ResultStatus = AnalysisResultStatus.Success, ArchivePosition = "A-01-1", OperationTime = DateTime.Today });
+
+        var vm = Create(production: production);
+
+        // 生产样档案表
+        await vm.SetTableCommand.ExecuteAsync(SamplesViewModel.TableProductionSample);
+        await vm.LoadCommand.ExecuteAsync(null);
+        Assert.Equal("生产样档案（Production_Sample）", vm.ActiveTableDisplay);
+        Assert.Equal(2, vm.ProductionRows.Count);
+        Assert.Equal("✓ 已完成", vm.ProductionRows[0].StatusText);
+
+        vm.ProductionSearchText = "G002";
+        vm.SearchCommand.Execute(null);
+        Assert.Single(vm.ProductionRows);                        // 专属搜索命中
+        Assert.Equal("PRD-G002", vm.ProductionRows[0].SampleId);
+        vm.ProductionSearchText = string.Empty;
+        vm.SearchCommand.Execute(null);
+
+        // 分析结果表
+        await vm.SetTableCommand.ExecuteAsync(SamplesViewModel.TableAnalysisResult);
+        await vm.LoadCommand.ExecuteAsync(null);
+        Assert.Equal("分析结果（Analysis_Result）", vm.ActiveTableDisplay);
+        Assert.Single(vm.AnalysisResultRows);
+        Assert.Equal("v7", vm.AnalysisResultRows[0].CoeffVersionText);
+        Assert.Equal("✓ 合格", vm.AnalysisResultRows[0].PassText);
+        Assert.Equal("A-01-1", vm.AnalysisResultRows[0].ArchiveText);
+
+        vm.AnalysisSearchText = "不存在的关键字";
+        vm.SearchCommand.Execute(null);
+        Assert.Empty(vm.AnalysisResultRows);                     // 专属搜索不命中
     }
 
     [Fact]

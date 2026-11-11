@@ -15,6 +15,7 @@ public sealed class SamplesSubTablePagingTests
     {
         return new SamplesViewModel(
             new FakeSampleRepository(),
+            new FakeProductionSampleRepository(),
             certs ?? new FakeCertifiedValueRepository(),
             limits ?? new FakeControlLimitRepository(),
             coeffs ?? new FakeCoefficientRepository(),

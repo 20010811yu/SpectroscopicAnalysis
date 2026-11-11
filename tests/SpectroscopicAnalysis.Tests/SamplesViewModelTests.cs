@@ -136,7 +136,7 @@ public sealed class SamplesViewModelTests
         {
             repo.Store.Add(s);
         }
-        return new SamplesViewModel(repo, new FakeCertifiedValueRepository(), new FakeControlLimitRepository(),
+        return new SamplesViewModel(repo, new FakeProductionSampleRepository(), new FakeCertifiedValueRepository(), new FakeControlLimitRepository(),
             new FakeCoefficientRepository(), new FakeOperationLogRepository(),
             new FakeUiDispatcher(), dialogs, new FakeErrorCollector());
     }

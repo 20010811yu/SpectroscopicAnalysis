@@ -11,7 +11,7 @@ public sealed class SamplesRegisterTests
     /// <summary>填入合法表单值。</summary>
     private static SamplesViewModel CreateValidForm(FakeSampleRepository repo)
     {
-        var vm = new SamplesViewModel(repo, new FakeCertifiedValueRepository(), new FakeControlLimitRepository(),
+        var vm = new SamplesViewModel(repo, new FakeProductionSampleRepository(), new FakeCertifiedValueRepository(), new FakeControlLimitRepository(),
             new FakeCoefficientRepository(), new FakeOperationLogRepository(),
             new FakeUiDispatcher(), new FakeDialogService(), new FakeErrorCollector());
         vm.RegSampleId = "REG-001";

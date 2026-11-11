@@ -24,8 +24,8 @@ public sealed class ProductionSampleItem
 /// </summary>
 public sealed partial class DashboardViewModel : ObservableObject, IPageLifecycle
 {
-    /// <summary>分页大小（生产样品表每页行数，与样品台账一致）。</summary>
-    public const int PageSize = 20;
+    /// <summary>分页大小（生产样品表每页行数）。</summary>
+    public const int PageSize = 10;
 
     private readonly ISctSampleRepository _samples;
     private readonly IUiDispatcher _ui;

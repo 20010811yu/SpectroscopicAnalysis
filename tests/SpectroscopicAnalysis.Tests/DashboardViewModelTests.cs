@@ -104,9 +104,9 @@ public sealed class DashboardViewModelTests
         var vm = new DashboardViewModel(repo, new FakeUiDispatcher(), new FakeErrorCollector());
         await vm.LoadCommand.ExecuteAsync(null);
 
-        Assert.Equal(20, vm.ProductionSamples.Count);           // 第 1 页 20 条
+        Assert.Equal(10, vm.ProductionSamples.Count);           // 第 1 页 10 条
         Assert.Equal(45, vm.TotalCount);
-        Assert.Equal(3, vm.TotalPages);
+        Assert.Equal(5, vm.TotalPages);
         Assert.True(vm.HasNextPage);
         Assert.Equal("P-001", vm.ProductionSamples[0].SampleId);
     }
@@ -125,19 +125,25 @@ public sealed class DashboardViewModelTests
 
         await InvokePagingAsync(vm.NextPageCommand);
         Assert.Equal(2, vm.CurrentPage);
-        Assert.Equal(20, vm.ProductionSamples.Count);
-        Assert.Equal("P-021", vm.ProductionSamples[0].SampleId); // 第二页首行
+        Assert.Equal(10, vm.ProductionSamples.Count);
+        Assert.Equal("P-011", vm.ProductionSamples[0].SampleId); // 第二页首行
         Assert.True(vm.HasPrevPage);
         Assert.True(vm.HasNextPage);
 
         await InvokePagingAsync(vm.NextPageCommand);
         Assert.Equal(3, vm.CurrentPage);
+        Assert.Equal(10, vm.ProductionSamples.Count);
+        Assert.Equal("P-021", vm.ProductionSamples[0].SampleId);
+
+        await InvokePagingAsync(vm.NextPageCommand);
+        await InvokePagingAsync(vm.NextPageCommand);
+        Assert.Equal(5, vm.CurrentPage);
         Assert.Equal(5, vm.ProductionSamples.Count);            // 末页剩余 5 条
         Assert.False(vm.HasNextPage);
 
         await InvokePagingAsync(vm.PrevPageCommand);
-        Assert.Equal(2, vm.CurrentPage);
-        Assert.Equal("P-021", vm.ProductionSamples[0].SampleId); // 反向游标回到第二页
+        Assert.Equal(4, vm.CurrentPage);
+        Assert.Equal("P-031", vm.ProductionSamples[0].SampleId); // 反向游标回到第四页
 
         await InvokePagingAsync(vm.FirstPageCommand);
         Assert.Equal(1, vm.CurrentPage);

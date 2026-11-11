@@ -129,7 +129,7 @@ public sealed partial class SamplesViewModel : ObservableObject, IPageLifecycle
     private string _searchText = string.Empty;
 
     /// <summary>分页大小（台账每页行数）。</summary>
-    public const int PageSize = 15;
+    public const int PageSize = 20;
 
     /// <summary>当前页码（从 1 起）。</summary>
     [ObservableProperty]

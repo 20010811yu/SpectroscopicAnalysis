@@ -57,23 +57,27 @@ public sealed partial class SamplesViewModel : ObservableObject, IPageLifecycle
     private string _filterKey = FilterAll;
 
     /// <summary>状态筛选项（Key=null 表示全部；Key 为 SampleStatus 常量）。</summary>
-    public sealed record StatusOption(string? Key, string DisplayName);
+    public sealed record StatusOption(string? Key, string DisplayName)
+    {
+        /// <summary>「全部状态」选项（下拉默认选中项）。</summary>
+        public static StatusOption All { get; } = new(null, "全部状态");
+    }
 
     /// <summary>状态下拉可选项（与任务清单状态机枚举一致，不自创状态名）。</summary>
     public IReadOnlyList<StatusOption> StatusOptions { get; } = new StatusOption[]
     {
-        new(null, "全部状态"),
+        StatusOption.All,
         new(SampleStatus.Normal, "正常"),
         new(SampleStatus.NeedMeasure, "需测高"),
         new(SampleStatus.Warning, "超差预警"),
         new(SampleStatus.Disabled, "禁用（过薄）"),
     };
 
-    /// <summary>当前状态筛选（null = 全部；变化后回到第 1 页刷新）。</summary>
+    /// <summary>当前状态筛选（默认「全部状态」；变化后回到第 1 页刷新）。</summary>
     [ObservableProperty]
-    private StatusOption? _statusFilter;
+    private StatusOption _statusFilter = StatusOption.All;
 
-    partial void OnStatusFilterChanged(StatusOption? value) => RefreshView(resetPage: true);
+    partial void OnStatusFilterChanged(StatusOption value) => RefreshView(resetPage: true);
 
     /// <summary>查询关键词（模糊匹配样品编号/名称；空即不过滤）。</summary>
     [ObservableProperty]

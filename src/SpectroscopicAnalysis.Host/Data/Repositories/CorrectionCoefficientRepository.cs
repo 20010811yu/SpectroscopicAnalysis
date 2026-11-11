@@ -18,7 +18,8 @@ public sealed class CorrectionCoefficientRepository : ICorrectionCoefficientRepo
         var list = new List<CorrectionCoefficient>();
         using var conn = _db.Open();
         using var cmd = conn.CreateCommand();
-        cmd.CommandText = $"SELECT {SelectColumns} FROM CorrectionCoefficient ORDER BY MethodID, Element, Version";
+        // 系数表排序：按生效时间倒序（同时间按方法/元素/版本稳定排列）
+        cmd.CommandText = $"SELECT {SelectColumns} FROM CorrectionCoefficient ORDER BY EffectiveTime DESC, MethodID, Element, Version DESC";
         using var reader = cmd.ExecuteReader();
         while (reader.Read())
         {

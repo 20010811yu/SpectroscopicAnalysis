@@ -30,7 +30,8 @@ public sealed class SctSampleRepository : ISctSampleRepository
         var list = new List<SctSample>();
         using var conn = _db.Open();
         using var cmd = conn.CreateCommand();
-        cmd.CommandText = $"SELECT {SelectColumns} FROM SCT_Sample ORDER BY SampleID";
+        // 台账排序：上次使用时间倒序（NULL 排最后），时间相同按上次测高时间倒序
+        cmd.CommandText = $"SELECT {SelectColumns} FROM SCT_Sample ORDER BY LastUseTime DESC, LastHeightCheckTime DESC, SampleID";
         using var reader = cmd.ExecuteReader();
         while (reader.Read())
         {

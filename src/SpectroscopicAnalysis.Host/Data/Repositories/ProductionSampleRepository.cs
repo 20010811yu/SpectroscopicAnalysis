@@ -67,7 +67,8 @@ public sealed class ProductionSampleRepository : IProductionSampleRepository
         var list = new List<ProductionSample>();
         using var conn = _db.Open();
         using var cmd = conn.CreateCommand();
-        cmd.CommandText = $"SELECT {SelectColumns} FROM Production_Sample ORDER BY SampleID";
+        // 生产样档案排序：按入库时间倒序（同时间按 SampleID 稳定排列）
+        cmd.CommandText = $"SELECT {SelectColumns} FROM Production_Sample ORDER BY CreatedTime DESC, SampleID";
         using var reader = cmd.ExecuteReader();
         while (reader.Read())
         {

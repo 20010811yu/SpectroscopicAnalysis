@@ -38,7 +38,31 @@ public sealed partial class SamplesViewModel : ObservableObject, IPageLifecycle
 {
     public const string FilterAll = "All";
 
+    // ==================== 数据表切换键（样品档案页可查看的 5 张表） ====================
+    public const string TableSample = "Sample";
+    public const string TableCertifiedValue = "CertifiedValue";
+    public const string TableControlLimit = "ControlLimit";
+    public const string TableCoefficient = "Coefficient";
+    public const string TableOperationLog = "OperationLog";
+
+    /// <summary>数据表下拉选项（Key = Table* 常量）。</summary>
+    public sealed record TableOption(string Key, string DisplayName);
+
+    /// <summary>可切换的数据表（标准值/控制限可删除；校正系数版本化与操作日志审计留痕，只读）。</summary>
+    public IReadOnlyList<TableOption> TableOptions { get; } = new TableOption[]
+    {
+        new(TableSample, "样品台账（SCT_Sample）"),
+        new(TableCertifiedValue, "标准值（SCT_CertifiedValue）"),
+        new(TableControlLimit, "控制限（ControlLimit）"),
+        new(TableCoefficient, "校正系数（CorrectionCoefficient）"),
+        new(TableOperationLog, "操作日志（SCT_OperationLog）"),
+    };
+
     private readonly ISctSampleRepository _samples;
+    private readonly ISctCertifiedValueRepository _certRepo;
+    private readonly IControlLimitRepository _limitRepo;
+    private readonly ICorrectionCoefficientRepository _coeffRepo;
+    private readonly ISctOperationLogRepository _logRepo;
     private readonly IUiDispatcher _ui;
     private readonly IDialogService _dialogs;
     private readonly IErrorCollector _errors;
@@ -48,6 +72,30 @@ public sealed partial class SamplesViewModel : ObservableObject, IPageLifecycle
 
     [ObservableProperty]
     private ObservableCollection<SampleRowItem> _sctSamples = new();
+
+    /// <summary>当前展示的数据表（默认样品台账；仅样品表显示录入/筛选控件）。</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsSampleTable))]
+    [NotifyPropertyChangedFor(nameof(ActiveTableDisplay))]
+    private string _activeTable = TableSample;
+
+    /// <summary>是否处于样品台账表（控制录入按钮/类型筛选/状态筛选/注册表单的显隐）。</summary>
+    public bool IsSampleTable => ActiveTable == TableSample;
+
+    /// <summary>当前数据表显示名（卡片标题随切表更新）。</summary>
+    public string ActiveTableDisplay => TableOptions.First(o => o.Key == ActiveTable).DisplayName;
+
+    [ObservableProperty]
+    private ObservableCollection<CertifiedValueRowItem> _certifiedValues = new();
+
+    [ObservableProperty]
+    private ObservableCollection<ControlLimitRowItem> _controlLimitRows = new();
+
+    [ObservableProperty]
+    private ObservableCollection<CoefficientRowItem> _coefficientRows = new();
+
+    [ObservableProperty]
+    private ObservableCollection<OperationLogRowItem> _operationLogRows = new();
 
     /// <summary>当前筛选键（All/SettingUp/Control/TypeStd/Production）。</summary>
     [ObservableProperty]
@@ -317,9 +365,21 @@ public sealed partial class SamplesViewModel : ObservableObject, IPageLifecycle
         _ => display,
     };
 
-    public SamplesViewModel(ISctSampleRepository samples, IUiDispatcher ui, IDialogService dialogs, IErrorCollector errors)
+    public SamplesViewModel(
+        ISctSampleRepository samples,
+        ISctCertifiedValueRepository certifiedValues,
+        IControlLimitRepository controlLimits,
+        ICorrectionCoefficientRepository coefficients,
+        ISctOperationLogRepository operationLogs,
+        IUiDispatcher ui,
+        IDialogService dialogs,
+        IErrorCollector errors)
     {
         _samples = samples;
+        _certRepo = certifiedValues;
+        _limitRepo = controlLimits;
+        _coeffRepo = coefficients;
+        _logRepo = operationLogs;
         _ui = ui;
         _dialogs = dialogs;
         _errors = errors;
@@ -328,7 +388,7 @@ public sealed partial class SamplesViewModel : ObservableObject, IPageLifecycle
     /// <summary>导航进入时加载（导航路径为 fire-and-forget；测试可 await LoadCommand.ExecuteAsync 保证确定性）。</summary>
     public void OnNavigatedTo() => LoadCommand.Execute(null);
 
-    /// <summary>从数据库加载样品并刷新两个表格（I/O 在后台线程，结果经 IUiDispatcher 回 UI）。</summary>
+    /// <summary>从数据库加载当前激活数据表（I/O 在后台线程，结果经 IUiDispatcher 回 UI）。</summary>
     [RelayCommand]
     private async Task LoadAsync()
     {
@@ -340,17 +400,193 @@ public sealed partial class SamplesViewModel : ObservableObject, IPageLifecycle
         IsLoading = true;
         try
         {
-            var rows = await Task.Run(() => _samples.GetAll().Select(MapRow).ToList());
-            _ui.Invoke(() =>
+            switch (ActiveTable)
             {
-                // 生产样品展示已移交主控台（DashboardViewModel），台账仅保留非生产样品
-                _allSctRows = rows.Where(r => r.SampleTypeKey != SampleType.Production).ToList();
-                ApplyFilter(FilterKey);
-            });
+                case TableCertifiedValue:
+                    await LoadCertifiedValuesAsync();
+                    break;
+                case TableControlLimit:
+                    await LoadControlLimitsAsync();
+                    break;
+                case TableCoefficient:
+                    await LoadCoefficientsAsync();
+                    break;
+                case TableOperationLog:
+                    await LoadOperationLogsAsync();
+                    break;
+                default:
+                    await LoadSamplesAsync();
+                    break;
+            }
         }
         finally
         {
             _ui.Invoke(() => IsLoading = false);
+        }
+    }
+
+    /// <summary>加载样品台账（生产样品展示已移交主控台 DashboardViewModel，台账仅保留非生产样品）。</summary>
+    private async Task LoadSamplesAsync()
+    {
+        var rows = await Task.Run(() => _samples.GetAll().Select(MapRow).ToList());
+        _ui.Invoke(() =>
+        {
+            _allSctRows = rows.Where(r => r.SampleTypeKey != SampleType.Production).ToList();
+            ApplyFilter(FilterKey);
+        });
+    }
+
+    /// <summary>加载标准值表。</summary>
+    private async Task LoadCertifiedValuesAsync()
+    {
+        var rows = await Task.Run(() => _certRepo.GetAll().Select(s => new CertifiedValueRowItem
+        {
+            Id = s.Id,
+            SampleId = s.SampleId,
+            Element = s.Element,
+            ValueText = s.CertifiedValue.ToString("0.####"),
+            Unit = s.Unit,
+            UncertaintyText = s.Uncertainty?.ToString("0.####") ?? "—",
+        }).ToList());
+        _ui.Invoke(() => CertifiedValues = new ObservableCollection<CertifiedValueRowItem>(rows));
+    }
+
+    /// <summary>加载控制限表。</summary>
+    private async Task LoadControlLimitsAsync()
+    {
+        var rows = await Task.Run(() => _limitRepo.GetAll().Select(l => new ControlLimitRowItem
+        {
+            LimitId = l.LimitId,
+            SampleId = l.SampleId,
+            Element = l.Element,
+            UpperText = l.UpperLimit.ToString("0.####"),
+            LowerText = l.LowerLimit.ToString("0.####"),
+            LimitTypeText = l.LimitType switch
+            {
+                "Absolute" => "绝对限值",
+                "Percent" => "百分比",
+                "Sigma" => "σ 偏差",
+                _ => l.LimitType,
+            },
+        }).ToList());
+        _ui.Invoke(() => ControlLimitRows = new ObservableCollection<ControlLimitRowItem>(rows));
+    }
+
+    /// <summary>加载校正系数表（只读）。</summary>
+    private async Task LoadCoefficientsAsync()
+    {
+        var rows = await Task.Run(() => _coeffRepo.GetAll().Select(c => new CoefficientRowItem
+        {
+            CoeffId = c.CoeffId,
+            MethodId = c.MethodId,
+            Element = c.Element,
+            SlopeText = c.Slope.ToString("0.######"),
+            InterceptText = c.Intercept.ToString("0.######"),
+            EffectiveTimeText = c.EffectiveTime,
+            SourceSampleText = c.SourceSampleId ?? "—",
+            CurrentText = c.IsCurrent ? "✓ 当前有效" : "历史版本",
+            ReferenceElementText = c.ReferenceElement ?? "—",
+            VersionText = $"v{c.Version}",
+        }).ToList());
+        _ui.Invoke(() => CoefficientRows = new ObservableCollection<CoefficientRowItem>(rows));
+    }
+
+    /// <summary>加载操作日志表（只读，按时间倒序）。</summary>
+    private async Task LoadOperationLogsAsync()
+    {
+        var rows = await Task.Run(() => _logRepo.GetAll().Select(l => new OperationLogRowItem
+        {
+            LogId = l.LogId,
+            SampleIdText = l.SampleId ?? "—",
+            OperationTypeText = l.OperationType switch
+            {
+                "Standardization" => "标准化",
+                "ControlCheck" => "控制检查",
+                "HeightMeasure" => "测高",
+                _ => l.OperationType,
+            },
+            TriggerReasonText = l.TriggerReason ?? "—",
+            OperationTimeText = l.OperationTime,
+            ResultStatusText = l.ResultStatus switch
+            {
+                "Success" => "● 成功",
+                "Warning" => "▲ 预警",
+                "Fail" => "✖ 失败",
+                _ => l.ResultStatus,
+            },
+        }).ToList());
+        _ui.Invoke(() => OperationLogRows = new ObservableCollection<OperationLogRowItem>(rows));
+    }
+
+    /// <summary>切换数据表：仅接受 TableOptions 中登记的键；切换后加载该表数据。</summary>
+    [RelayCommand]
+    private async Task SetTableAsync(string? key)
+    {
+        if (string.IsNullOrWhiteSpace(key) || TableOptions.All(o => o.Key != key))
+        {
+            return;
+        }
+
+        if (ActiveTable == key)
+        {
+            return;
+        }
+
+        ActiveTable = key;
+        await LoadCommand.ExecuteAsync(null);
+    }
+
+    /// <summary>删除标准值（弹窗二次确认；失败经统一错误链上报）。</summary>
+    [RelayCommand]
+    private async Task DeleteCertifiedValueAsync(CertifiedValueRowItem? row)
+    {
+        if (row is null || IsLoading)
+        {
+            return;
+        }
+
+        DeleteError = null;
+        if (!_dialogs.Confirm("删除标准值", $"确认删除样品「{row.SampleId}」元素「{row.Element}」的标准值？"))
+        {
+            return;
+        }
+
+        try
+        {
+            await Task.Run(() => _certRepo.Delete(row.Id));
+            await LoadCertifiedValuesAsync();
+        }
+        catch (Microsoft.Data.Sqlite.SqliteException ex)
+        {
+            DeleteError = $"删除失败：{ex.Message}";
+            _errors.Collect(ErrorCodes.SampleDeleteFailed, "标准值删除失败", row.SampleId, ex);
+        }
+    }
+
+    /// <summary>删除控制限（弹窗二次确认；失败经统一错误链上报）。</summary>
+    [RelayCommand]
+    private async Task DeleteControlLimitAsync(ControlLimitRowItem? row)
+    {
+        if (row is null || IsLoading)
+        {
+            return;
+        }
+
+        DeleteError = null;
+        if (!_dialogs.Confirm("删除控制限", $"确认删除样品「{row.SampleId}」元素「{row.Element}」的控制限？"))
+        {
+            return;
+        }
+
+        try
+        {
+            await Task.Run(() => _limitRepo.Delete(row.LimitId));
+            await LoadControlLimitsAsync();
+        }
+        catch (Microsoft.Data.Sqlite.SqliteException ex)
+        {
+            DeleteError = $"删除失败：{ex.Message}";
+            _errors.Collect(ErrorCodes.SampleDeleteFailed, "控制限删除失败", row.SampleId, ex);
         }
     }
 

@@ -137,11 +137,17 @@
                 </StackPanel>
             </Border>
 
-            <!-- 生产样品（今日）：真实数据（SCT_Sample 生产样品），列宽 Star 弹性，无记录时隐藏表格只留占位说明 -->
+            <!-- 生产样品（按日期筛选）：真实数据（SCT_Sample 生产样品），列宽 Star 弹性，无记录时隐藏表格只留占位说明 -->
             <Border Style="{StaticResource Card}" Margin="{DynamicResource Spacing.CardGap}">
                 <StackPanel>
-                    <TextBlock Text="生产样品（今日）" Style="{StaticResource Text.CardTitle}" Margin="0,0,0,8" />
-                    <TextBlock Text="暂无生产样品记录（生产样品随分析流程入库）" Style="{StaticResource Text.Caption}"
+                    <DockPanel Margin="0,0,0,8">
+                        <TextBlock Text="生产样品（按日期）" Style="{StaticResource Text.CardTitle}" VerticalAlignment="Center" />
+                        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+                            <TextBlock Text="入库日期" Style="{StaticResource Text.Caption}" VerticalAlignment="Center" Margin="0,0,8,0" />
+                            <DatePicker SelectedDate="{Binding SelectedDate}" MinWidth="140" />
+                        </StackPanel>
+                    </DockPanel>
+                    <TextBlock Text="所选日期暂无生产样品记录（生产样品随分析流程入库）" Style="{StaticResource Text.Caption}"
                                Visibility="{Binding HasProduction, Converter={StaticResource BoolToVisibility.Inverse}}" Margin="0,0,0,8" />
                     <DataGrid ItemsSource="{Binding ProductionSamples}" AutoGenerateColumns="False"
                               IsReadOnly="True" CanUserAddRows="False" CanUserSortColumns="False"
@@ -159,6 +165,15 @@
                         </DataGrid.Columns>
                     </DataGrid>
                     <TextBlock Text="原始强度与校正后结果双列展示为数据规范硬性要求（随分析流程接入）" Style="{StaticResource Text.Caption}" Margin="0,8,0,0" />
+                    <!-- 分页栏（游标分页，每页 20 条；整组靠右，与样品台账分页一致） -->
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,8,0,0"
+                                Visibility="{Binding HasProduction, Converter={StaticResource BoolToVisibility}}">
+                        <Button Content="首页" Command="{Binding FirstPageCommand}" Style="{StaticResource PrimaryBtn}" />
+                        <Button Content="上一页" Command="{Binding PrevPageCommand}" Style="{StaticResource PrimaryBtn}" Margin="4,0,0,0" />
+                        <TextBlock Text="{Binding PageDisplay}" VerticalAlignment="Center" Margin="8,0"
+                                   Style="{StaticResource Text.Caption}" />
+                        <Button Content="下一页" Command="{Binding NextPageCommand}" Style="{StaticResource PrimaryBtn}" Margin="0,0,0,0" />
+                    </StackPanel>
                 </StackPanel>
             </Border>
 

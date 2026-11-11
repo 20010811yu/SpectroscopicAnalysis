@@ -28,6 +28,9 @@ public sealed class SeedData
         SeedDemo();
     }
 
+    /// <summary>种子数据目标总量（演示用途：手工演示样 + 生成样凑满 400 条）。</summary>
+    private const int SeedTargetCount = 400;
+
     /// <summary>注入演示样品 / 标准值 / 控制限（INSERT OR IGNORE 幂等）。</summary>
     public void SeedDemo()
     {
@@ -43,6 +46,8 @@ public sealed class SeedData
             new() { SampleId = "TS-6061-01", SampleName = "类型标准化样 6061", SampleType = SampleType.TypeStd, AlloyType = "6061", RackPosition = "C01", InitialThickness = 16.0, CurrentThickness = 15.2, MinThickness = 7.0, UsageCount = 12, MaxUsageCount = 40, Status = SampleStatus.Normal, LastHeightCheckTime = DateTime.Parse("2026-11-01 09:30") },
             new() { SampleId = "TS-1050-01", SampleName = "类型标准化样 1050", SampleType = SampleType.TypeStd, AlloyType = "1050", RackPosition = "C02", InitialThickness = 15.0, CurrentThickness = 14.7, MinThickness = 7.0, UsageCount = 28, MaxUsageCount = 40, Status = SampleStatus.Normal, LastHeightCheckTime = DateTime.Parse("2026-10-30 16:00") },
         };
+
+        samples.AddRange(GenerateSamples(samples.Count));
 
         using var conn = _db.Open();
         using var tx = conn.BeginTransaction();
@@ -85,6 +90,51 @@ public sealed class SeedData
         InsertControlLimit(conn, tx, "CTL-002", "Mg", 1.05, 0.85, "Sigma");
 
         tx.Commit();
+    }
+
+    /// <summary>
+    /// 生成补充演示样品（确定性：按索引取模生成，保证每次种子一致）。
+    /// 三类轮转覆盖 正常/需测高/禁用 各状态，编号带 G 前缀与手工演示样区分。
+    /// </summary>
+    private static IEnumerable<SctSample> GenerateSamples(int existingCount)
+    {
+        var alloys = new[] { "1xxx", "3xxx", "5xxx", "6xxx" };
+        var tsAlloys = new[] { "6061", "1050", "3003", "5052" };
+        var baseTime = DateTime.Parse("2026-11-09 08:00");
+
+        for (var i = existingCount; i < SeedTargetCount; i++)
+        {
+            // 三类轮转：0=设置样，1=控制样，2=类型标准化样
+            var kind = i % 3;
+            var seq = i / 3 + 1;
+            // 状态轮转：5 个一组 [正常, 正常, 需测高, 正常, 禁用]
+            var status = (seq % 5) switch
+            {
+                2 => SampleStatus.NeedMeasure,
+                4 => SampleStatus.Disabled,
+                _ => SampleStatus.Normal,
+            };
+            var maxUsage = kind == 1 ? 60 : kind == 2 ? 40 : 50;
+            var usage = status == SampleStatus.Disabled ? maxUsage : seq * 7 % (maxUsage + 1);
+            var initThk = 10.0 + seq % 10 + 0.5; // 10.5 ~ 19.5
+            var minThk = kind == 0 ? 8.0 : kind == 1 ? 6.0 : 7.0;
+            // 当前厚度：禁用（过薄）压到最小值以下，需测高接近最小值，正常小幅磨损
+            var curThk = status == SampleStatus.Disabled
+                ? minThk - 0.5
+                : status == SampleStatus.NeedMeasure
+                    ? minThk + 0.5
+                    : initThk - (seq % 4) * 0.3;
+            var lastHeight = seq % 3 == 0 ? (DateTime?)baseTime.AddDays(-seq % 15) : null;
+            var lastUse = status == SampleStatus.Disabled ? null : seq % 2 == 0 ? (DateTime?)baseTime.AddHours(-seq) : null;
+
+            SctSample s = kind switch
+            {
+                1 => new() { SampleId = $"CTL-G{seq:000}", SampleName = $"控制样 G-{seq:000}", SampleType = SampleType.Control, AlloyType = alloys[seq % alloys.Length], RackPosition = $"B{seq % 60 + 10:00}", InitialThickness = initThk, CurrentThickness = curThk, MinThickness = minThk, UsageCount = usage, MaxUsageCount = maxUsage, Status = status, LastUseTime = lastUse, LastHeightCheckTime = lastHeight },
+                2 => new() { SampleId = $"TS-{tsAlloys[seq % tsAlloys.Length]}-G{seq:00}", SampleName = $"类型标准化样 G-{seq:000}", SampleType = SampleType.TypeStd, AlloyType = tsAlloys[seq % tsAlloys.Length], RackPosition = $"C{seq % 60 + 10:00}", InitialThickness = initThk, CurrentThickness = curThk, MinThickness = minThk, UsageCount = usage, MaxUsageCount = maxUsage, Status = status, LastUseTime = lastUse, LastHeightCheckTime = lastHeight },
+                _ => new() { SampleId = $"SUS-G{seq:000}", SampleName = $"设置样 G-{seq:000}", SampleType = SampleType.SettingUp, RackPosition = $"A{seq % 60 + 10:00}", InitialThickness = initThk, CurrentThickness = curThk, MinThickness = minThk, UsageCount = usage, MaxUsageCount = maxUsage, Status = status, LastUseTime = lastUse, LastHeightCheckTime = lastHeight },
+            };
+            yield return s;
+        }
     }
 
     private static void InsertCertifiedValue(SqliteConnection conn, SqliteTransaction tx, string sampleId, string element, double value, double uncertainty)

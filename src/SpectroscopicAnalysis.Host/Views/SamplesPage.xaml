@@ -321,20 +321,18 @@
                             </DataGridTemplateColumn>
                         </DataGrid.Columns>
                     </DataGrid>
-                    <!-- 分页栏（每页 15 条；翻页组靠右） -->
-                    <DockPanel Margin="0,8,0,0" LastChildFill="False">
-                        <TextBlock DockPanel.Dock="Left" VerticalAlignment="Center" Style="{StaticResource Text.Caption}">
+                    <!-- 分页栏（每页 15 条；整组靠右，总数在“下一页”右侧） -->
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,8,0,0">
+                        <Button Content="上一页" Command="{Binding PrevPageCommand}" Padding="10,3"
+                                FontSize="{DynamicResource FontSize.Caption}" Cursor="Hand" />
+                        <TextBlock Text="{Binding PageDisplay}" VerticalAlignment="Center" Margin="8,0"
+                                   Style="{StaticResource Text.Caption}" />
+                        <Button Content="下一页" Command="{Binding NextPageCommand}" Padding="10,3"
+                                FontSize="{DynamicResource FontSize.Caption}" Cursor="Hand" />
+                        <TextBlock VerticalAlignment="Center" Margin="8,0,0,0" Style="{StaticResource Text.Caption}">
                             <Run Text="共 " /><Run Text="{Binding TotalCount, Mode=OneWay}" /><Run Text=" 条" />
                         </TextBlock>
-                        <StackPanel Orientation="Horizontal" DockPanel.Dock="Right">
-                            <Button Content="上一页" Command="{Binding PrevPageCommand}" Padding="10,3"
-                                    FontSize="{DynamicResource FontSize.Caption}" Cursor="Hand" />
-                            <TextBlock Text="{Binding PageDisplay}" VerticalAlignment="Center" Margin="8,0"
-                                       Style="{StaticResource Text.Caption}" />
-                            <Button Content="下一页" Command="{Binding NextPageCommand}" Padding="10,3"
-                                    FontSize="{DynamicResource FontSize.Caption}" Cursor="Hand" />
-                        </StackPanel>
-                    </DockPanel>
+                    </StackPanel>
                     <TextBlock Text="使用次数达到上限自动标记「需测高」；厚度低于最小厚度自动「禁用」并报警更换；删除经弹窗二次确认（级联删除标准值与控制限，操作日志保留）" Style="{StaticResource Text.Caption}" Margin="0,8,0,0" />
                 </StackPanel>
             </Border>

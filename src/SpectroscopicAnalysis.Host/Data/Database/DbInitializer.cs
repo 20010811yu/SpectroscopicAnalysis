@@ -48,6 +48,8 @@ public sealed class DbInitializer
         );
         """,
         // 校正系数表（版本化：IsCurrent + Version，旧版本归档不删除；不含操作者字段——身份内容已移除）
+        // SourceSampleID（来源设置样）外键引用 SCT_Sample.SampleID，可空（NULL 不参与约束）；
+        // ON DELETE SET NULL：删除被引用设置样时不阻塞级联删除流程，系数版本保留（来源置空）
         """
         CREATE TABLE IF NOT EXISTS CorrectionCoefficient (
             CoeffID          INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -56,7 +58,7 @@ public sealed class DbInitializer
             Slope            REAL NOT NULL,
             Intercept        REAL NOT NULL,
             EffectiveTime    TEXT NOT NULL,
-            SourceSampleID   TEXT,
+            SourceSampleID   TEXT REFERENCES SCT_Sample(SampleID) ON DELETE SET NULL,
             IsCurrent        INTEGER NOT NULL DEFAULT 0,
             ReferenceElement TEXT,
             Version          INTEGER NOT NULL DEFAULT 1

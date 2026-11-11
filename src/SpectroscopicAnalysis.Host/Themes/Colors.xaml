@@ -9,6 +9,7 @@
     <Color x:Key="Color.Primary">#2563EB</Color>
     <Color x:Key="Color.Primary.Hover">#1D4ED8</Color>
     <Color x:Key="Color.Danger">#DC2626</Color>
+    <Color x:Key="Color.Bg.Disabled">#D8DBE0</Color>
 
     <!-- 3.2 文字层级 -->
     <Color x:Key="Color.Text.Primary">#1F2937</Color>

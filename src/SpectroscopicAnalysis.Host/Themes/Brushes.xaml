@@ -13,6 +13,7 @@
     <SolidColorBrush x:Key="Brush.Primary" Color="{StaticResource Color.Primary}" />
     <SolidColorBrush x:Key="Brush.Primary.Hover" Color="{StaticResource Color.Primary.Hover}" />
     <SolidColorBrush x:Key="Brush.Danger" Color="{StaticResource Color.Danger}" />
+    <SolidColorBrush x:Key="Brush.Bg.Disabled" Color="{StaticResource Color.Bg.Disabled}" />
 
     <!-- 文字 -->
     <SolidColorBrush x:Key="Brush.Text.Primary" Color="{StaticResource Color.Text.Primary}" />

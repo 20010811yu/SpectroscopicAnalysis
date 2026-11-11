@@ -49,6 +49,35 @@
             <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Secondary}" />
             <Setter Property="FontWeight" Value="Normal" />
         </Style>
+        <!-- 分页按钮：可用时蓝底白字；禁用时灰底灰字（首/末页状态，由命令 CanExecute 自动切换） -->
+        <Style x:Key="PagerBtn" TargetType="Button">
+            <Setter Property="Background" Value="{DynamicResource Brush.Primary}" />
+            <Setter Property="Foreground" Value="White" />
+            <Setter Property="FontSize" Value="{DynamicResource FontSize.Caption}" />
+            <Setter Property="Padding" Value="12,4" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Bg" CornerRadius="4" Background="{TemplateBinding Background}"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bg" Property="Background" Value="{DynamicResource Brush.Primary.Hover}" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Background" Value="{DynamicResource Brush.Bg.Disabled}" />
+                                <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Secondary}" />
+                                <Setter Property="Cursor" Value="Arrow" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
     </UserControl.Resources>
     <!-- 页面分区布局：台账表格占满剩余高度（Star），生产样品卡片固定在最下方 -->
     <Grid Margin="16">
@@ -240,6 +269,8 @@
                     </DockPanel>
                     <!-- 表格撑满卡片剩余高度（行 3 为 Star），内部滚动，滚轮滚动表格行 -->
                     <DataGrid Grid.Row="1" ItemsSource="{Binding SctSamples}" AutoGenerateColumns="False"
+                              x:Name="LedgerGrid"
+                              LayoutUpdated="LedGrid_LayoutUpdated"
                               IsReadOnly="True" CanUserAddRows="False" CanUserSortColumns="False"
                               CanUserResizeColumns="True" CanUserResizeRows="False"
                               ScrollViewer.CanContentScroll="True"
@@ -332,12 +363,10 @@
                     </DataGrid>
                     <!-- 分页栏（每页 15 条；整组靠右，总数在“下一页”右侧） -->
                     <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,8,0,0">
-                        <Button Content="上一页" Command="{Binding PrevPageCommand}" Padding="10,3"
-                                FontSize="{DynamicResource FontSize.Caption}" Cursor="Hand" />
+                        <Button Content="上一页" Command="{Binding PrevPageCommand}" Style="{StaticResource PagerBtn}" />
                         <TextBlock Text="{Binding PageDisplay}" VerticalAlignment="Center" Margin="8,0"
                                    Style="{StaticResource Text.Caption}" />
-                        <Button Content="下一页" Command="{Binding NextPageCommand}" Padding="10,3"
-                                FontSize="{DynamicResource FontSize.Caption}" Cursor="Hand" />
+                        <Button Content="下一页" Command="{Binding NextPageCommand}" Style="{StaticResource PagerBtn}" />
                         <TextBlock VerticalAlignment="Center" Margin="8,0,0,0" Style="{StaticResource Text.Caption}">
                             <Run Text="共 " /><Run Text="{Binding TotalCount, Mode=OneWay}" /><Run Text=" 条" />
                         </TextBlock>

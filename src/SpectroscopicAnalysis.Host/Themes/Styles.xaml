@@ -317,6 +317,62 @@
         </Setter>
     </Style>
 
+    <!-- 日期选择器（蓝色主题）：边框与日历小图标统一引用 Brush.Primary，弹层日历边框同为蓝色 -->
+    <Style x:Key="DatePickerStyle" TargetType="DatePicker">
+        <Setter Property="Background" Value="White" />
+        <Setter Property="BorderBrush" Value="{DynamicResource Brush.Primary}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="Padding" Value="6,3" />
+        <Setter Property="VerticalContentAlignment" Value="Center" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="DatePicker">
+                    <Grid x:Name="PART_Root" Background="{TemplateBinding Background}">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <!-- 边框（蓝色） -->
+                        <Border Grid.ColumnSpan="2"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="4" />
+                        <!-- 文本区（命名约定 PART_TextBox 使日期输入生效） -->
+                        <DatePickerTextBox x:Name="PART_TextBox" Grid.Column="0"
+                                           Background="Transparent" BorderThickness="0"
+                                           Padding="{TemplateBinding Padding}"
+                                           VerticalContentAlignment="Center"
+                                           Foreground="{DynamicResource Brush.Text.Primary}" />
+                        <!-- 日历小图标（蓝色，命名约定 PART_Button 使弹层开关生效） -->
+                        <Button x:Name="PART_Button" Grid.Column="1" Margin="0,0,5,0"
+                                Background="Transparent" BorderThickness="0" Cursor="Hand"
+                                VerticalAlignment="Center">
+                            <Button.Template>
+                                <ControlTemplate TargetType="Button">
+                                    <Grid Background="Transparent">
+                                        <!-- 日历本体（尾部横线挖空形成页眉分界） -->
+                                        <Path Fill="{DynamicResource Brush.Primary}"
+                                              Data="M5,4 L19,4 C19.6,4 20,4.4 20,5 L20,20 C20,20.6 19.6,21 19,21 L5,21 C4.4,21 4,20.6 4,20 L4,5 C4,4.4 4.4,4 5,4 Z M4,8.5 L20,8.5 L20,10 L4,10 Z" />
+                                        <!-- 顶部两个日历别针 -->
+                                        <Path Fill="{DynamicResource Brush.Primary}"
+                                              Data="M7.5,2 L9,2 L9,4.5 L7.5,4.5 Z M15,2 L16.5,2 L16.5,4.5 L15,4.5 Z" />
+                                    </Grid>
+                                </ControlTemplate>
+                            </Button.Template>
+                        </Button>
+                        <!-- 日历弹层（蓝色边框；命名约定 PART_Popup / PART_Calendar） -->
+                        <Popup x:Name="PART_Popup" Grid.ColumnSpan="2" Placement="Bottom"
+                               AllowsTransparency="True" StaysOpen="False" PopupAnimation="Slide">
+                            <Calendar x:Name="PART_Calendar"
+                                      BorderBrush="{DynamicResource Brush.Primary}"
+                                      BorderThickness="1" Background="White" />
+                        </Popup>
+                    </Grid>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
     <!-- 区块间距（4/8 基数） -->
     <Thickness x:Key="Spacing.CardGap">0,0,0,12</Thickness>
     <Thickness x:Key="Spacing.CardPadding">16</Thickness>

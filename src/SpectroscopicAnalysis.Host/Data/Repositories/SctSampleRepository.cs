@@ -134,6 +134,57 @@ public sealed class SctSampleRepository : ISctSampleRepository
         tx.Commit();
     }
 
+    /// <summary>生产样游标分页（keyset）：日期区间 + SampleID 游标，每次仅取 pageSize 条。</summary>
+    public IReadOnlyList<SctSample> GetProductionPage(DateTime? createdOn, string? afterSampleId, string? beforeSampleId, int pageSize)
+    {
+        var list = new List<SctSample>();
+        using var conn = _db.Open();
+        using var cmd = conn.CreateCommand();
+        // 向后翻：SampleID > 游标升序；向前翻：SampleID < 游标降序取后再反转为升序返回
+        var backward = beforeSampleId is not null;
+        cmd.CommandText = $"""
+            SELECT {SelectColumns} FROM SCT_Sample
+            WHERE SampleType = 'Production'
+              AND ($day IS NULL OR (CreatedTime >= $day AND CreatedTime < $dayNext))
+              AND ($after IS NULL OR SampleID > $after)
+              AND ($before IS NULL OR SampleID < $before)
+            ORDER BY SampleID {(backward ? "DESC" : "ASC")}
+            LIMIT $limit
+            """;
+        cmd.Parameters.AddWithValue("$day", (object?)createdOn?.Date.ToString("yyyy-MM-dd HH:mm:ss") ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("$dayNext", (object?)createdOn?.Date.AddDays(1).ToString("yyyy-MM-dd HH:mm:ss") ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("$after", (object?)afterSampleId ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("$before", (object?)beforeSampleId ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("$limit", pageSize);
+        using var reader = cmd.ExecuteReader();
+        while (reader.Read())
+        {
+            list.Add(Map(reader));
+        }
+
+        if (backward)
+        {
+            list.Reverse();
+        }
+
+        return list;
+    }
+
+    /// <summary>符合条件的生产样总数（分页页数计算）。</summary>
+    public int CountProduction(DateTime? createdOn)
+    {
+        using var conn = _db.Open();
+        using var cmd = conn.CreateCommand();
+        cmd.CommandText = """
+            SELECT COUNT(*) FROM SCT_Sample
+            WHERE SampleType = 'Production'
+              AND ($day IS NULL OR (CreatedTime >= $day AND CreatedTime < $dayNext))
+            """;
+        cmd.Parameters.AddWithValue("$day", (object?)createdOn?.Date.ToString("yyyy-MM-dd HH:mm:ss") ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("$dayNext", (object?)createdOn?.Date.AddDays(1).ToString("yyyy-MM-dd HH:mm:ss") ?? DBNull.Value);
+        return Convert.ToInt32(cmd.ExecuteScalar());
+    }
+
     private static void Fill(SqliteCommand cmd, SctSample sample)
     {
         cmd.Parameters.AddWithValue("$id", sample.SampleId);

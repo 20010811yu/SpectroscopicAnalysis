@@ -86,18 +86,24 @@ internal sealed class FakeControlLimitRepository : IControlLimitRepository
     public void Delete(long id) { Deleted.Add(id); Store.RemoveAll(l => l.LimitId == id); }
 }
 
-/// <summary>Fake 校正系数仓储（只读）。</summary>
+/// <summary>Fake 校正系数仓储：预设列表 + Delete 调用记录。</summary>
 internal sealed class FakeCoefficientRepository : ICorrectionCoefficientRepository
 {
     public List<CorrectionCoefficient> Store { get; } = new();
+    public List<long> Deleted { get; } = new();
+
     public IReadOnlyList<CorrectionCoefficient> GetAll() => Store.ToList();
+    public void Delete(long coeffId) { Deleted.Add(coeffId); Store.RemoveAll(c => c.CoeffId == coeffId); }
 }
 
-/// <summary>Fake 操作日志仓储（只读）。</summary>
+/// <summary>Fake 操作日志仓储：预设列表 + Delete 调用记录。</summary>
 internal sealed class FakeOperationLogRepository : ISctOperationLogRepository
 {
     public List<SctOperationLog> Store { get; } = new();
+    public List<long> Deleted { get; } = new();
+
     public IReadOnlyList<SctOperationLog> GetAll() => Store.ToList();
+    public void Delete(long logId) { Deleted.Add(logId); Store.RemoveAll(l => l.LogId == logId); }
 }
 
 /// <summary>样品档案 ViewModel 测试：数据加载 / 展示映射 / 类型筛选（开发计划 D4 先行项验收）。</summary>

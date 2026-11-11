@@ -125,9 +125,8 @@
                 </StackPanel>
             </Border>
 
-            <!-- 类型筛选 + 关键词查询（仅样品台账表显示） -->
-            <DockPanel Grid.Row="2" Margin="{DynamicResource Spacing.CardGap}"
-                       Visibility="{Binding IsSampleTable, Converter={StaticResource BoolToVisibility}}">
+            <!-- 关键词查询（对当前激活数据表生效）+ 类型筛选/状态筛选（仅样品台账表显示） -->
+            <DockPanel Grid.Row="2" Margin="{DynamicResource Spacing.CardGap}">
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" DockPanel.Dock="Right" Margin="12,0,0,0">
                     <TextBox Width="200" VerticalAlignment="Center"
                              Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}">
@@ -136,7 +135,7 @@
                                 <Style.Resources>
                                     <VisualBrush x:Key="SearchHint" AlignmentX="Left" Stretch="None">
                                         <VisualBrush.Visual>
-                                            <TextBlock Text="搜索编号 / 名称" Foreground="{DynamicResource Brush.Text.Disabled}"
+                                            <TextBlock Text="搜索关键字（编号 / 元素 / 方法等）" Foreground="{DynamicResource Brush.Text.Disabled}"
                                                        FontSize="{DynamicResource FontSize.Body}" />
                                         </VisualBrush.Visual>
                                     </VisualBrush>
@@ -156,7 +155,8 @@
                     <Button Content="查询" Command="{Binding SearchCommand}" Margin="8,0,0,0" Padding="14,5"
                             FontSize="{DynamicResource FontSize.Caption}" Cursor="Hand" />
                 </StackPanel>
-                <StackPanel Orientation="Horizontal">
+                <!-- 类型筛选（仅样品台账表显示） -->
+                <StackPanel Orientation="Horizontal" Visibility="{Binding IsSampleTable, Converter={StaticResource BoolToVisibility}}">
                     <Button Content="全部" Command="{Binding SetFilterCommand}" CommandParameter="All" Margin="0,0,8,0">
                     <Button.Style>
                         <Style TargetType="Button" BasedOn="{StaticResource ModeBtn}">
@@ -210,8 +210,9 @@
                     </Button.Style>
                 </Button>
                 </StackPanel>
-                <!-- 状态筛选（下拉选择；与类型筛选组合生效） -->
-                <StackPanel Orientation="Horizontal" Margin="16,0,0,0">
+                <!-- 状态筛选（下拉选择；与类型筛选组合生效；仅样品台账表显示） -->
+                <StackPanel Orientation="Horizontal" Margin="16,0,0,0"
+                            Visibility="{Binding IsSampleTable, Converter={StaticResource BoolToVisibility}}">
                     <TextBlock Text="状态" Style="{StaticResource Text.Caption}" VerticalAlignment="Center" Margin="0,0,8,0" />
                     <ComboBox Width="130" ItemsSource="{Binding StatusOptions}"
                               SelectedItem="{Binding StatusFilter}"
@@ -457,7 +458,7 @@
                         </DataGrid.Columns>
                     </DataGrid>
 
-                    <!-- 校正系数表（CorrectionCoefficient；版本化数据，只读） -->
+                    <!-- 校正系数表（CorrectionCoefficient；版本化数据，可删除） -->
                     <DataGrid Grid.Row="1" ItemsSource="{Binding CoefficientRows}" AutoGenerateColumns="False"
                               IsReadOnly="True" CanUserAddRows="False" CanUserSortColumns="False"
                               CanUserResizeColumns="True" CanUserResizeRows="False"
@@ -488,10 +489,29 @@
                             <DataGridTextColumn Header="来源设置样" Binding="{Binding SourceSampleText}" FontFamily="Consolas" Width="1.1*" MinWidth="70" ElementStyle="{StaticResource GridCellText}" />
                             <DataGridTextColumn Header="当前有效" Binding="{Binding CurrentText}" Width="1*" MinWidth="60" ElementStyle="{StaticResource GridCellText}" />
                             <DataGridTextColumn Header="版本" Binding="{Binding VersionText}" Width="0.6*" MinWidth="40" ElementStyle="{StaticResource GridCellText}" />
+                            <DataGridTemplateColumn Header="操作" Width="88" MinWidth="88">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <Button Content="删除" Cursor="Hand" Padding="10,3" FontSize="{DynamicResource FontSize.Caption}"
+                                                HorizontalAlignment="Left" VerticalAlignment="Center"
+                                                Background="Transparent" Foreground="{DynamicResource Brush.Danger}"
+                                                BorderBrush="{DynamicResource Brush.Danger}" BorderThickness="1"
+                                                Command="{Binding DataContext.DeleteCoefficientCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                CommandParameter="{Binding}">
+                                            <Button.Style>
+                                                <Style TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+                                                    <Setter Property="MinWidth" Value="0" />
+                                                    <Setter Property="MinHeight" Value="0" />
+                                                </Style>
+                                            </Button.Style>
+                                        </Button>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
                         </DataGrid.Columns>
                     </DataGrid>
 
-                    <!-- 操作日志表（SCT_OperationLog；审计留痕，只读） -->
+                    <!-- 操作日志表（SCT_OperationLog；审计留痕，可删除） -->
                     <DataGrid Grid.Row="1" ItemsSource="{Binding OperationLogRows}" AutoGenerateColumns="False"
                               IsReadOnly="True" CanUserAddRows="False" CanUserSortColumns="False"
                               CanUserResizeColumns="True" CanUserResizeRows="False"
@@ -519,12 +539,30 @@
                             <DataGridTextColumn Header="触发原因" Binding="{Binding TriggerReasonText}" Width="1.5*" MinWidth="80" ElementStyle="{StaticResource GridCellText}" />
                             <DataGridTextColumn Header="操作时间" Binding="{Binding OperationTimeText}" FontFamily="Consolas" Width="1.3*" MinWidth="80" ElementStyle="{StaticResource GridCellText}" />
                             <DataGridTextColumn Header="结果状态" Binding="{Binding ResultStatusText}" Width="1*" MinWidth="60" ElementStyle="{StaticResource GridCellText}" />
+                            <DataGridTemplateColumn Header="操作" Width="88" MinWidth="88">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <Button Content="删除" Cursor="Hand" Padding="10,3" FontSize="{DynamicResource FontSize.Caption}"
+                                                HorizontalAlignment="Left" VerticalAlignment="Center"
+                                                Background="Transparent" Foreground="{DynamicResource Brush.Danger}"
+                                                BorderBrush="{DynamicResource Brush.Danger}" BorderThickness="1"
+                                                Command="{Binding DataContext.DeleteOperationLogCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                CommandParameter="{Binding}">
+                                            <Button.Style>
+                                                <Style TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+                                                    <Setter Property="MinWidth" Value="0" />
+                                                    <Setter Property="MinHeight" Value="0" />
+                                                </Style>
+                                            </Button.Style>
+                                        </Button>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
                         </DataGrid.Columns>
                     </DataGrid>
 
-                    <!-- 分页栏（样品台账每页 15 条；整组靠右，总数在“下一页”右侧；仅样品表显示） -->
-                    <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,8,0,0"
-                                Visibility="{Binding IsSampleTable, Converter={StaticResource BoolToVisibility}}">
+                    <!-- 分页栏（每页 20 条，对当前激活数据表生效；整组靠右） -->
+                    <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,8,0,0">
                         <Button Content="上一页" Command="{Binding PrevPageCommand}" Style="{StaticResource PagerBtn}" />
                         <TextBlock Text="{Binding PageDisplay}" VerticalAlignment="Center" Margin="8,0"
                                    Style="{StaticResource Text.Caption}" />

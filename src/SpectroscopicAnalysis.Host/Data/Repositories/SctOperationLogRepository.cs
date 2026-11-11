@@ -43,4 +43,13 @@ public sealed class SctOperationLogRepository : ISctOperationLogRepository
         }
         return list;
     }
+
+    public void Delete(long logId)
+    {
+        using var conn = _db.Open();
+        using var cmd = conn.CreateCommand();
+        cmd.CommandText = "DELETE FROM SCT_OperationLog WHERE LogID = $id";
+        cmd.Parameters.AddWithValue("$id", logId);
+        cmd.ExecuteNonQuery();
+    }
 }

@@ -70,6 +70,12 @@ public sealed partial class SamplesViewModel : ObservableObject, IPageLifecycle
     /// <summary>全部台账行（非生产样品），未筛选。</summary>
     private List<SampleRowItem> _allSctRows = new();
 
+    /// <summary>子表全量行缓存（未筛选；分页/搜索在 RefreshView 统一切片）。</summary>
+    private List<CertifiedValueRowItem> _allCertified = new();
+    private List<ControlLimitRowItem> _allLimits = new();
+    private List<CoefficientRowItem> _allCoeffs = new();
+    private List<OperationLogRowItem> _allLogs = new();
+
     [ObservableProperty]
     private ObservableCollection<SampleRowItem> _sctSamples = new();
 
@@ -83,7 +89,11 @@ public sealed partial class SamplesViewModel : ObservableObject, IPageLifecycle
     /// <summary>当前激活表的进行中加载任务（切表后可 await 确定性等待；初始为已完成）。</summary>
     private Task _activeTableLoad = Task.CompletedTask;
 
-    partial void OnActiveTableChanged(string value) => _activeTableLoad = LoadActiveTableAsync();
+    partial void OnActiveTableChanged(string value)
+    {
+        CurrentPage = 1;                        // 切表回到第 1 页
+        _activeTableLoad = LoadActiveTableAsync();
+    }
 
     /// <summary>按当前激活表加载对应数据（无 IsLoading 防抖，供切表路径直接调用）。</summary>
     private async Task LoadActiveTableAsync()
@@ -448,7 +458,7 @@ public sealed partial class SamplesViewModel : ObservableObject, IPageLifecycle
         });
     }
 
-    /// <summary>加载标准值表。</summary>
+    /// <summary>加载标准值表（全量入缓存后统一分页/搜索视图）。</summary>
     private async Task LoadCertifiedValuesAsync()
     {
         var rows = await Task.Run(() => _certRepo.GetAll().Select(s => new CertifiedValueRowItem
@@ -460,10 +470,14 @@ public sealed partial class SamplesViewModel : ObservableObject, IPageLifecycle
             Unit = s.Unit,
             UncertaintyText = s.Uncertainty?.ToString("0.####") ?? "—",
         }).ToList());
-        _ui.Invoke(() => CertifiedValues = new ObservableCollection<CertifiedValueRowItem>(rows));
+        _ui.Invoke(() =>
+        {
+            _allCertified = rows;
+            RefreshView();
+        });
     }
 
-    /// <summary>加载控制限表。</summary>
+    /// <summary>加载控制限表（全量入缓存后统一分页/搜索视图）。</summary>
     private async Task LoadControlLimitsAsync()
     {
         var rows = await Task.Run(() => _limitRepo.GetAll().Select(l => new ControlLimitRowItem
@@ -481,10 +495,14 @@ public sealed partial class SamplesViewModel : ObservableObject, IPageLifecycle
                 _ => l.LimitType,
             },
         }).ToList());
-        _ui.Invoke(() => ControlLimitRows = new ObservableCollection<ControlLimitRowItem>(rows));
+        _ui.Invoke(() =>
+        {
+            _allLimits = rows;
+            RefreshView();
+        });
     }
 
-    /// <summary>加载校正系数表（只读）。</summary>
+    /// <summary>加载校正系数表（全量入缓存后统一分页/搜索视图）。</summary>
     private async Task LoadCoefficientsAsync()
     {
         var rows = await Task.Run(() => _coeffRepo.GetAll().Select(c => new CoefficientRowItem
@@ -500,10 +518,14 @@ public sealed partial class SamplesViewModel : ObservableObject, IPageLifecycle
             ReferenceElementText = c.ReferenceElement ?? "—",
             VersionText = $"v{c.Version}",
         }).ToList());
-        _ui.Invoke(() => CoefficientRows = new ObservableCollection<CoefficientRowItem>(rows));
+        _ui.Invoke(() =>
+        {
+            _allCoeffs = rows;
+            RefreshView();
+        });
     }
 
-    /// <summary>加载操作日志表（只读，按时间倒序）。</summary>
+    /// <summary>加载操作日志表（按时间倒序，全量入缓存后统一分页/搜索视图）。</summary>
     private async Task LoadOperationLogsAsync()
     {
         var rows = await Task.Run(() => _logRepo.GetAll().Select(l => new OperationLogRowItem
@@ -527,7 +549,11 @@ public sealed partial class SamplesViewModel : ObservableObject, IPageLifecycle
                 _ => l.ResultStatus,
             },
         }).ToList());
-        _ui.Invoke(() => OperationLogRows = new ObservableCollection<OperationLogRowItem>(rows));
+        _ui.Invoke(() =>
+        {
+            _allLogs = rows;
+            RefreshView();
+        });
     }
 
     /// <summary>切换数据表：仅接受 TableOptions 中登记的键；设置属性触发加载并等待其完成（确定性）。</summary>
@@ -585,7 +611,7 @@ public sealed partial class SamplesViewModel : ObservableObject, IPageLifecycle
         }
 
         DeleteError = null;
-        if (!_dialogs.Confirm("删除控制限", $"确认删除样品「{row.SampleId}」元素「{row.Element}」的控制限？"))
+        if (!_dialogs.Confirm("删除控制限", $"确认删除样品「{row.SampleId}」元素「{row.Element}」的控制限？\n删除后不可恢复。"))
         {
             return;
         }
@@ -599,6 +625,60 @@ public sealed partial class SamplesViewModel : ObservableObject, IPageLifecycle
         {
             DeleteError = $"删除失败：{ex.Message}";
             _errors.Collect(ErrorCodes.SampleDeleteFailed, "控制限删除失败", row.SampleId, ex);
+        }
+    }
+
+    /// <summary>删除校正系数版本（弹窗二次确认；删除破坏版本化历史，文案注明不可恢复）。</summary>
+    [RelayCommand]
+    private async Task DeleteCoefficientAsync(CoefficientRowItem? row)
+    {
+        if (row is null || IsLoading)
+        {
+            return;
+        }
+
+        DeleteError = null;
+        if (!_dialogs.Confirm("删除校正系数", $"确认删除「{row.MethodId}」元素「{row.Element}」的 {row.VersionText} 系数版本？\n删除后不可恢复，将破坏版本化历史。"))
+        {
+            return;
+        }
+
+        try
+        {
+            await Task.Run(() => _coeffRepo.Delete(row.CoeffId));
+            await LoadCoefficientsAsync();
+        }
+        catch (Microsoft.Data.Sqlite.SqliteException ex)
+        {
+            DeleteError = $"删除失败：{ex.Message}";
+            _errors.Collect(ErrorCodes.SampleDeleteFailed, "校正系数删除失败", null, ex);
+        }
+    }
+
+    /// <summary>删除操作日志（弹窗二次确认；删除破坏审计留痕，文案注明不可恢复）。</summary>
+    [RelayCommand]
+    private async Task DeleteOperationLogAsync(OperationLogRowItem? row)
+    {
+        if (row is null || IsLoading)
+        {
+            return;
+        }
+
+        DeleteError = null;
+        if (!_dialogs.Confirm("删除操作日志", $"确认删除「{row.SampleIdText}」的操作日志（{row.OperationTypeText} {row.OperationTimeText}）？\n删除后不可恢复，将破坏审计留痕。"))
+        {
+            return;
+        }
+
+        try
+        {
+            await Task.Run(() => _logRepo.Delete(row.LogId));
+            await LoadOperationLogsAsync();
+        }
+        catch (Microsoft.Data.Sqlite.SqliteException ex)
+        {
+            DeleteError = $"删除失败：{ex.Message}";
+            _errors.Collect(ErrorCodes.SampleDeleteFailed, "操作日志删除失败", null, ex);
         }
     }
 
@@ -622,30 +702,58 @@ public sealed partial class SamplesViewModel : ObservableObject, IPageLifecycle
         RefreshView();
     }
 
-    /// <summary>搜索命令：关键词变化后回到第 1 页刷新（回车/按钮触发）。</summary>
+    /// <summary>搜索命令：关键词变化后回到第 1 页刷新（回车/按钮触发，对当前激活表生效）。</summary>
     [RelayCommand]
     private void Search() => RefreshView(resetPage: true);
 
-    /// <summary>类型筛选 + 关键词过滤 + 分页切片统一入口。</summary>
+    /// <summary>筛选 + 关键词过滤 + 分页切片统一入口（按当前激活表分发到对应集合）。</summary>
     private void RefreshView(bool resetPage = false)
     {
         var keyword = SearchText?.Trim();
-        var filtered = FilterKey == FilterAll
-            ? _allSctRows
-            : _allSctRows.Where(r => r.SampleTypeKey == FilterKey);
-        // 状态筛选（null = 全部状态）
-        if (!string.IsNullOrEmpty(StatusFilter?.Key))
+        switch (ActiveTable)
         {
-            filtered = filtered.Where(r => r.Status == StatusFilter.Key);
+            case TableCertifiedValue:
+                ApplyPagedView(_allCertified, r => Matches(r.SampleId, keyword) || Matches(r.Element, keyword), resetPage,
+                    page => CertifiedValues = new ObservableCollection<CertifiedValueRowItem>(page));
+                break;
+            case TableControlLimit:
+                ApplyPagedView(_allLimits, r => Matches(r.SampleId, keyword) || Matches(r.Element, keyword), resetPage,
+                    page => ControlLimitRows = new ObservableCollection<ControlLimitRowItem>(page));
+                break;
+            case TableCoefficient:
+                ApplyPagedView(_allCoeffs, r => Matches(r.MethodId, keyword) || Matches(r.Element, keyword) || Matches(r.SourceSampleText, keyword), resetPage,
+                    page => CoefficientRows = new ObservableCollection<CoefficientRowItem>(page));
+                break;
+            case TableOperationLog:
+                ApplyPagedView(_allLogs, r => Matches(r.SampleIdText, keyword) || Matches(r.OperationTypeText, keyword) || Matches(r.TriggerReasonText, keyword), resetPage,
+                    page => OperationLogRows = new ObservableCollection<OperationLogRowItem>(page));
+                break;
+            default:
+                // 样品台账：类型筛选 + 状态筛选 + 关键词
+                var filtered = FilterKey == FilterAll
+                    ? _allSctRows
+                    : _allSctRows.Where(r => r.SampleTypeKey == FilterKey);
+                if (!string.IsNullOrEmpty(StatusFilter?.Key))
+                {
+                    filtered = filtered.Where(r => r.Status == StatusFilter.Key);
+                }
+
+                ApplyPagedView(filtered.ToList(), r => Matches(r.SampleId, keyword) || Matches(r.SampleName, keyword), resetPage,
+                    page => SctSamples = new ObservableCollection<SampleRowItem>(page));
+                break;
         }
-        if (!string.IsNullOrEmpty(keyword))
+    }
+
+    /// <summary>通用分页切片：统计总量/页数 → 收敛页码 → 输出当前页行。</summary>
+    private void ApplyPagedView<T>(IReadOnlyList<T> source, Func<T, bool>? predicate, bool resetPage, Action<List<T>> sink)
+    {
+        IEnumerable<T> query = source;
+        if (predicate is not null)
         {
-            filtered = filtered.Where(r =>
-                r.SampleId.Contains(keyword, StringComparison.OrdinalIgnoreCase) ||
-                r.SampleName.Contains(keyword, StringComparison.OrdinalIgnoreCase));
+            query = query.Where(predicate);
         }
 
-        var list = filtered.ToList();
+        var list = query.ToList();
         TotalCount = list.Count;
         TotalPages = Math.Max(1, (int)Math.Ceiling(list.Count / (double)PageSize));
         if (resetPage || CurrentPage > TotalPages)
@@ -653,8 +761,20 @@ public sealed partial class SamplesViewModel : ObservableObject, IPageLifecycle
             CurrentPage = resetPage ? 1 : TotalPages;
         }
 
-        var pageRows = list.Skip((CurrentPage - 1) * PageSize).Take(PageSize);
-        SctSamples = new ObservableCollection<SampleRowItem>(pageRows);
+        sink(list.Skip((CurrentPage - 1) * PageSize).Take(PageSize).ToList());
+    }
+
+    /// <summary>关键词模糊匹配（忽略大小写；空关键词恒命中；"—" 占位不参与命中）。</summary>
+    private static bool Matches(string? text, string? keyword)
+    {
+        if (string.IsNullOrEmpty(keyword))
+        {
+            return true;
+        }
+
+        return !string.IsNullOrEmpty(text)
+            && text != "—"
+            && text.Contains(keyword, StringComparison.OrdinalIgnoreCase);
     }
 
     /// <summary>上一页（第 1 页时禁用）。</summary>

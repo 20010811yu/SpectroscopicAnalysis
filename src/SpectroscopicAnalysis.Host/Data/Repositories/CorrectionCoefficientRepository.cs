@@ -3,7 +3,7 @@ using SpectroscopicAnalysis.Host.Data.Models;
 
 namespace SpectroscopicAnalysis.Host.Data.Repositories;
 
-/// <summary>校正系数仓储实现（只读）：参数化 SQL（开发规范第 5 节）。</summary>
+/// <summary>校正系数仓储实现：参数化 SQL（开发规范第 5 节）。</summary>
 public sealed class CorrectionCoefficientRepository : ICorrectionCoefficientRepository
 {
     private const string SelectColumns =
@@ -37,5 +37,14 @@ public sealed class CorrectionCoefficientRepository : ICorrectionCoefficientRepo
             });
         }
         return list;
+    }
+
+    public void Delete(long coeffId)
+    {
+        using var conn = _db.Open();
+        using var cmd = conn.CreateCommand();
+        cmd.CommandText = "DELETE FROM CorrectionCoefficient WHERE CoeffID = $id";
+        cmd.Parameters.AddWithValue("$id", coeffId);
+        cmd.ExecuteNonQuery();
     }
 }

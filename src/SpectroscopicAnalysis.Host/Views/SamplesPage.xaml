@@ -275,6 +275,13 @@
                     </Button.Style>
                 </Button>
                 </StackPanel>
+                <!-- 状态筛选（下拉选择；与类型筛选组合生效） -->
+                <StackPanel Orientation="Horizontal" Margin="16,0,0,0">
+                    <TextBlock Text="状态" Style="{StaticResource Text.Caption}" VerticalAlignment="Center" Margin="0,0,8,0" />
+                    <ComboBox Width="130" ItemsSource="{Binding StatusOptions}"
+                              SelectedItem="{Binding StatusFilter}"
+                              SelectedValuePath="Key" DisplayMemberPath="DisplayName" />
+                </StackPanel>
             </DockPanel>
 
             <!-- SCT 样品台账（真实数据；撑满剩余高度，行高自然，高度不足时表格内部纵向滚动） -->

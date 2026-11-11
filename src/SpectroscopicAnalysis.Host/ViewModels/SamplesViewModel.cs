@@ -56,6 +56,25 @@ public sealed partial class SamplesViewModel : ObservableObject, IPageLifecycle
     [ObservableProperty]
     private string _filterKey = FilterAll;
 
+    /// <summary>状态筛选项（Key=null 表示全部；Key 为 SampleStatus 常量）。</summary>
+    public sealed record StatusOption(string? Key, string DisplayName);
+
+    /// <summary>状态下拉可选项（与任务清单状态机枚举一致，不自创状态名）。</summary>
+    public IReadOnlyList<StatusOption> StatusOptions { get; } = new StatusOption[]
+    {
+        new(null, "全部状态"),
+        new(SampleStatus.Normal, "正常"),
+        new(SampleStatus.NeedMeasure, "需测高"),
+        new(SampleStatus.Warning, "超差预警"),
+        new(SampleStatus.Disabled, "禁用（过薄）"),
+    };
+
+    /// <summary>当前状态筛选（null = 全部；变化后回到第 1 页刷新）。</summary>
+    [ObservableProperty]
+    private StatusOption? _statusFilter;
+
+    partial void OnStatusFilterChanged(StatusOption? value) => RefreshView(resetPage: true);
+
     /// <summary>查询关键词（模糊匹配样品编号/名称；空即不过滤）。</summary>
     [ObservableProperty]
     private string _searchText = string.Empty;
@@ -371,6 +390,11 @@ public sealed partial class SamplesViewModel : ObservableObject, IPageLifecycle
         var filtered = FilterKey == FilterAll
             ? _allSctRows
             : _allSctRows.Where(r => r.SampleTypeKey == FilterKey);
+        // 状态筛选（null = 全部状态）
+        if (!string.IsNullOrEmpty(StatusFilter?.Key))
+        {
+            filtered = filtered.Where(r => r.Status == StatusFilter.Key);
+        }
         if (!string.IsNullOrEmpty(keyword))
         {
             filtered = filtered.Where(r =>

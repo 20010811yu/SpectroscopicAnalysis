@@ -127,9 +127,38 @@
                 </StackPanel>
             </Border>
 
-            <!-- 类型筛选 -->
-            <StackPanel Orientation="Horizontal" Margin="{DynamicResource Spacing.CardGap}">
-                <Button Content="全部" Command="{Binding SetFilterCommand}" CommandParameter="All" Margin="0,0,8,0">
+            <!-- 类型筛选 + 关键词查询 -->
+            <DockPanel Margin="{DynamicResource Spacing.CardGap}">
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" DockPanel.Dock="Right" Margin="12,0,0,0">
+                    <TextBox Width="200" VerticalAlignment="Center"
+                             Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}">
+                        <TextBox.Style>
+                            <Style TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
+                                <Style.Resources>
+                                    <VisualBrush x:Key="SearchHint" AlignmentX="Left" Stretch="None">
+                                        <VisualBrush.Visual>
+                                            <TextBlock Text="搜索编号 / 名称" Foreground="{DynamicResource Brush.Text.Disabled}"
+                                                       FontSize="{DynamicResource FontSize.Body}" />
+                                        </VisualBrush.Visual>
+                                    </VisualBrush>
+                                </Style.Resources>
+                                <Style.Triggers>
+                                    <Trigger Property="Text" Value="">
+                                        <Setter Property="Background" Value="{StaticResource SearchHint}" />
+                                    </Trigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBox.Style>
+                        <!-- 回车触发查询 -->
+                        <TextBox.InputBindings>
+                            <KeyBinding Key="Enter" Command="{Binding SearchCommand}" />
+                        </TextBox.InputBindings>
+                    </TextBox>
+                    <Button Content="查询" Command="{Binding SearchCommand}" Margin="8,0,0,0" Padding="14,5"
+                            FontSize="{DynamicResource FontSize.Caption}" Cursor="Hand" />
+                </StackPanel>
+                <StackPanel Orientation="Horizontal">
+                    <Button Content="全部" Command="{Binding SetFilterCommand}" CommandParameter="All" Margin="0,0,8,0">
                     <Button.Style>
                         <Style TargetType="Button" BasedOn="{StaticResource ModeBtn}">
                             <Style.Triggers>
@@ -181,7 +210,8 @@
                         </Style>
                     </Button.Style>
                 </Button>
-            </StackPanel>
+                </StackPanel>
+            </DockPanel>
 
             <!-- SCT 样品台账（真实数据） -->
             <Border Style="{StaticResource Card}" Margin="{DynamicResource Spacing.CardGap}">
@@ -291,6 +321,20 @@
                             </DataGridTemplateColumn>
                         </DataGrid.Columns>
                     </DataGrid>
+                    <!-- 分页栏（每页 20 条） -->
+                    <DockPanel Margin="0,8,0,0" LastChildFill="False">
+                        <StackPanel Orientation="Horizontal" DockPanel.Dock="Left">
+                            <Button Content="上一页" Command="{Binding PrevPageCommand}" Padding="10,3"
+                                    FontSize="{DynamicResource FontSize.Caption}" Cursor="Hand" />
+                            <TextBlock Text="{Binding PageDisplay}" VerticalAlignment="Center" Margin="8,0"
+                                       Style="{StaticResource Text.Caption}" />
+                            <Button Content="下一页" Command="{Binding NextPageCommand}" Padding="10,3"
+                                    FontSize="{DynamicResource FontSize.Caption}" Cursor="Hand" />
+                        </StackPanel>
+                        <TextBlock DockPanel.Dock="Right" VerticalAlignment="Center" Style="{StaticResource Text.Caption}">
+                            <Run Text="共 " /><Run Text="{Binding TotalCount, Mode=OneWay}" /><Run Text=" 条" />
+                        </TextBlock>
+                    </DockPanel>
                     <TextBlock Text="使用次数达到上限自动标记「需测高」；厚度低于最小厚度自动「禁用」并报警更换；删除经弹窗二次确认（级联删除标准值与控制限，操作日志保留）" Style="{StaticResource Text.Caption}" Margin="0,8,0,0" />
                 </StackPanel>
             </Border>

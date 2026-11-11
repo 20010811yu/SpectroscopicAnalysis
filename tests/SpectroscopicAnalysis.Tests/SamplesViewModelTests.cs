@@ -227,5 +227,156 @@ public sealed class SamplesViewModelTests
         await vm.DeleteCommand.ExecuteAsync(null);
         Assert.Single(vm.SctSamples);                       // 状态不变
     }
+
+    // ==================== 查询（关键词模糊匹配编号/名称） ====================
+
+    private static SctSample MakeNamed(string id, string name, string type) => new()
+    {
+        SampleId = id, SampleName = name, SampleType = type,
+        InitialThickness = 12.0, CurrentThickness = 11.0, MinThickness = 8.0,
+        UsageCount = 1, MaxUsageCount = 50, Status = SampleStatus.Normal,
+    };
+
+    [Fact]
+    public async Task Search_按编号命中()
+    {
+        var vm = CreateWith(
+            MakeNamed("SUS-001", "设置样 1", SampleType.SettingUp),
+            MakeNamed("CTL-002", "控制样 2", SampleType.Control));
+        await vm.LoadCommand.ExecuteAsync(null);
+
+        vm.SearchText = "CTL";
+        vm.SearchCommand.Execute(null);
+
+        Assert.Single(vm.SctSamples);
+        Assert.Equal("CTL-002", vm.SctSamples[0].SampleId);
+        Assert.Equal(1, vm.TotalCount);
+    }
+
+    [Fact]
+    public async Task Search_按名称命中且大小写不敏感()
+    {
+        var vm = CreateWith(
+            MakeNamed("TS-A-01", "TypeStd-6061", SampleType.TypeStd),
+            MakeNamed("TS-B-01", "TypeStd-1050", SampleType.TypeStd));
+        await vm.LoadCommand.ExecuteAsync(null);
+
+        vm.SearchText = "6061";
+        vm.SearchCommand.Execute(null);
+
+        Assert.Single(vm.SctSamples);
+        Assert.Equal("TS-A-01", vm.SctSamples[0].SampleId);
+    }
+
+    [Fact]
+    public async Task Search_类型筛选与关键词组合过滤()
+    {
+        var vm = CreateWith(
+            MakeNamed("SUS-001", "设置样 1", SampleType.SettingUp),
+            MakeNamed("SUS-002", "设置样 2", SampleType.SettingUp),
+            MakeNamed("CTL-001", "控制样 1", SampleType.Control));
+        await vm.LoadCommand.ExecuteAsync(null);
+
+        vm.SetFilterCommand.Execute(SampleType.SettingUp);
+        vm.SearchText = "1";
+        vm.SearchCommand.Execute(null);
+
+        Assert.Single(vm.SctSamples);                       // 设置样 ∩ "1" → 仅 SUS-001
+        Assert.Equal("SUS-001", vm.SctSamples[0].SampleId);
+    }
+
+    [Fact]
+    public async Task Search_无命中显示空集()
+    {
+        var vm = CreateWith(MakeNamed("SUS-001", "设置样 1", SampleType.SettingUp));
+        await vm.LoadCommand.ExecuteAsync(null);
+
+        vm.SearchText = "ZZZ";
+        vm.SearchCommand.Execute(null);
+
+        Assert.Empty(vm.SctSamples);
+        Assert.Equal(0, vm.TotalCount);
+        Assert.Equal(1, vm.TotalPages);                     // 至少 1 页
+    }
+
+    // ==================== 分页（每页 20 条） ====================
+
+    private static List<SctSample> MakeMany(int count) =>
+        Enumerable.Range(1, count)
+            .Select(i => MakeNamed($"S-{i:000}", $"样品 {i:000}", SampleType.SettingUp))
+            .ToList();
+
+    [Fact]
+    public async Task Paging_总数与页数正确且只显示当前页()
+    {
+        var vm = CreateWith(MakeMany(45).ToArray());
+        await vm.LoadCommand.ExecuteAsync(null);
+
+        Assert.Equal(45, vm.TotalCount);
+        Assert.Equal(3, vm.TotalPages);
+        Assert.Equal(SamplesViewModel.PageSize, vm.SctSamples.Count);   // 第 1 页满 20 条
+        Assert.Equal("S-001", vm.SctSamples[0].SampleId);
+        Assert.False(vm.HasPrevPage);
+        Assert.True(vm.HasNextPage);
+    }
+
+    [Fact]
+    public async Task Paging_翻页与边界禁用()
+    {
+        var vm = CreateWith(MakeMany(45).ToArray());
+        await vm.LoadCommand.ExecuteAsync(null);
+
+        vm.NextPageCommand.Execute(null);
+        Assert.Equal(2, vm.CurrentPage);
+        Assert.Equal("S-021", vm.SctSamples[0].SampleId);
+        Assert.True(vm.HasPrevPage && vm.HasNextPage);
+
+        vm.NextPageCommand.Execute(null);
+        Assert.Equal(3, vm.CurrentPage);
+        Assert.Equal(5, vm.SctSamples.Count);               // 末页 45 - 40 = 5 条
+        Assert.False(vm.HasNextPage);
+        Assert.False(vm.NextPageCommand.CanExecute(null));  // 末页"下一页"禁用
+
+        vm.PrevPageCommand.Execute(null);
+        Assert.Equal(2, vm.CurrentPage);
+
+        vm.PrevPageCommand.Execute(null);
+        vm.PrevPageCommand.Execute(null);                   // 已在第 1 页，再点不再前翻（CanExecute=false）
+        Assert.Equal(1, vm.CurrentPage);
+    }
+
+    [Fact]
+    public async Task Paging_搜索后回到第1页且页数收敛()
+    {
+        var vm = CreateWith(MakeMany(45).ToArray());
+        await vm.LoadCommand.ExecuteAsync(null);
+        vm.NextPageCommand.Execute(null);
+        vm.NextPageCommand.Execute(null);
+        Assert.Equal(3, vm.CurrentPage);
+
+        // 搜索命中 7 条（S-004、S-040~045）→ 回到第 1 页，总页数变 1
+        vm.SearchText = "04";
+        vm.SearchCommand.Execute(null);
+        Assert.Equal(1, vm.CurrentPage);
+        Assert.Equal(7, vm.TotalCount);
+        Assert.Equal(1, vm.TotalPages);
+    }
+
+    [Fact]
+    public async Task Paging_删除末页最后一条后页码回退()
+    {
+        var dialogs = new FakeDialogService();
+        var many = MakeMany(21);
+        var vm = CreateWith(dialogs, many.ToArray());
+        await vm.LoadCommand.ExecuteAsync(null);
+
+        vm.NextPageCommand.Execute(null);                   // 第 2 页只剩 1 条
+        Assert.Single(vm.SctSamples);
+        await vm.DeleteCommand.ExecuteAsync(vm.SctSamples[0]);
+
+        Assert.Equal(1, vm.CurrentPage);                    // 末页空 → 回退第 1 页
+        Assert.Equal(SamplesViewModel.PageSize, vm.SctSamples.Count);
+        Assert.Equal(20, vm.TotalCount);
+    }
 }
 

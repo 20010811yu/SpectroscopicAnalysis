@@ -1,17 +1,13 @@
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
-using System.Windows.Controls.Primitives;
 using SpectroscopicAnalysis.Host.ViewModels;
 
 namespace SpectroscopicAnalysis.Host.Views;
 
-/// <summary>样品档案页（InitializeComponent + 纯视觉行为：按视口高度反算台账行高）。</summary>
+/// <summary>样品档案页（InitializeComponent + 纯视觉行为：按缩放档位切换台账列宽模式）。</summary>
 public partial class SamplesPage : UserControl
 {
-    /// <summary>台账行高下限（极小窗口兜底；正常缩放范围内行高随窗口等比收缩，15 行始终完整显示）。</summary>
-    private const double MinRowHeight = 8.0;
-
     /// <summary>缩放分档阈值：≤125% 时操作列固定最右（列宽 Star 模式），>125% 切 Auto 模式。</summary>
     private const double CompactScaleThreshold = 1.25;
 
@@ -24,30 +20,14 @@ public partial class SamplesPage : UserControl
     public SamplesPage() => InitializeComponent();
 
     /// <summary>
-    /// 每次布局后：① 把台账可用高度均分为每页 15 行（表头除外），保证恰好显示 15 行数据；
-    /// ② 按窗口缩放档位切换列布局（≤125% 列宽 Star 自适应、操作列固定最右；>125% 列宽 Auto、横向滚动）。
-    /// 均为纯视觉行为，不涉及业务。值不变时跳过，避免触发布局死循环。
+    /// 每次布局后：按窗口缩放档位切换列布局（≤125% 列宽 Star 自适应、操作列固定最右；>125% 列宽 Auto、横向滚动）。
+    /// 行高保持自然高度，纵向空间不足时由表格内部 ScrollViewer 滚动。纯视觉行为，不涉及业务。
     /// </summary>
     private void LedGrid_LayoutUpdated(object? sender, EventArgs e)
     {
         if (LedgerGrid is not DataGrid dg || !dg.IsLoaded || dg.ActualHeight <= 0)
         {
             return;
-        }
-
-        var headerHeight = FindColumnHeadersPresenter(dg)?.ActualHeight ?? 0;
-        if (headerHeight <= 0)
-        {
-            return;
-        }
-
-        // 预留每行 1px 水平网格线（15 行 + 表头 1px），避免总额高超出视口 1~3px 导致滚动条残留
-        var gridLineSlack = SamplesViewModel.PageSize + 1;
-        var rowHeight = Math.Floor((dg.ActualHeight - headerHeight - gridLineSlack) / SamplesViewModel.PageSize);
-        var clamped = Math.Max(MinRowHeight, rowHeight);
-        if (!double.IsNaN(clamped) && !AreClose(dg.RowHeight, clamped))
-        {
-            dg.RowHeight = clamped;
         }
 
         ApplyColumnMode();
@@ -98,26 +78,4 @@ public partial class SamplesPage : UserControl
         }
     }
 
-    private static bool AreClose(double a, double b) => Math.Abs(a - b) < 0.5;
-
-    /// <summary>在可视树中查找列头呈现器（取其当前高度参与行高计算）。</summary>
-    private static DataGridColumnHeadersPresenter? FindColumnHeadersPresenter(DependencyObject root)
-    {
-        var count = VisualTreeHelper.GetChildrenCount(root);
-        for (var i = 0; i < count; i++)
-        {
-            var child = VisualTreeHelper.GetChild(root, i);
-            if (child is DataGridColumnHeadersPresenter presenter)
-            {
-                return presenter;
-            }
-
-            var found = FindColumnHeadersPresenter(child);
-            if (found is not null)
-            {
-                return found;
-            }
-        }
-        return null;
-    }
 }

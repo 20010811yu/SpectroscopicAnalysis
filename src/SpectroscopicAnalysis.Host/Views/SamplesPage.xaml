@@ -3,9 +3,10 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
     <!-- 样品档案：数据绑定视图（真实 SQLite 数据；状态徽章经 Status DataTrigger 切换颜色） -->
     <UserControl.Resources>
-        <!-- 表格行：只读展示，选中不加任何高亮，外观与普通行一致 -->
+        <!-- 表格行：只读展示，选中不加任何高亮，外观与普通行一致；行高取自然高度并保证舒适的最小行高 -->
         <Style x:Key="GridRow" TargetType="DataGridRow" BasedOn="{StaticResource {x:Type DataGridRow}}">
             <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Primary}" />
+            <Setter Property="MinHeight" Value="32" />
             <Style.Triggers>
                 <Trigger Property="IsMouseOver" Value="True">
                     <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Primary}" />
@@ -243,7 +244,7 @@
                 </StackPanel>
             </DockPanel>
 
-            <!-- SCT 样品台账（真实数据；撑满剩余高度，内部滚动） -->
+            <!-- SCT 样品台账（真实数据；撑满剩余高度，行高自然，高度不足时表格内部纵向滚动） -->
             <Border Grid.Row="3" Style="{StaticResource Card}" Margin="{DynamicResource Spacing.CardGap}">
                 <Grid>
                     <Grid.RowDefinitions>
@@ -268,7 +269,7 @@
                             </TextBlock.Style>
                         </TextBlock>
                     </DockPanel>
-                    <!-- 表格撑满卡片剩余高度（行 3 为 Star），内部滚动，滚轮滚动表格行 -->
+                    <!-- 表格撑满卡片剩余高度（行 3 为 Star），行高不随窗口压缩，纵向不足时内部滚动 -->
                     <DataGrid Grid.Row="1" ItemsSource="{Binding SctSamples}" AutoGenerateColumns="False"
                               x:Name="LedgerGrid"
                               LayoutUpdated="LedGrid_LayoutUpdated"

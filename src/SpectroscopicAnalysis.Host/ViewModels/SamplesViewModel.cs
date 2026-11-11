@@ -122,41 +122,15 @@ public sealed partial class SamplesViewModel : ObservableObject, IPageLifecycle
     [ObservableProperty]
     private StatusOption _statusFilter = StatusOption.All;
 
-    partial void OnStatusFilterChanged(StatusOption value) => RefreshView(resetPage: true);
+    partial void OnStatusFilterChanged(StatusOption value) => RefreshView();
 
     /// <summary>查询关键词（模糊匹配样品编号/名称；空即不过滤）。</summary>
     [ObservableProperty]
     private string _searchText = string.Empty;
 
-    /// <summary>分页大小（台账每页行数）。</summary>
-    public const int PageSize = 15;
-
-    /// <summary>当前页码（从 1 起）。</summary>
-    [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(PageDisplay))]
-    [NotifyPropertyChangedFor(nameof(HasPrevPage))]
-    [NotifyPropertyChangedFor(nameof(HasNextPage))]
-    [NotifyCanExecuteChangedFor(nameof(PrevPageCommand))]
-    [NotifyCanExecuteChangedFor(nameof(NextPageCommand))]
-    private int _currentPage = 1;
-
-    /// <summary>筛选后总页数（至少 1 页）。变化时刷新翻页命令的 CanExecute。</summary>
-    [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(PageDisplay))]
-    [NotifyCanExecuteChangedFor(nameof(PrevPageCommand))]
-    [NotifyCanExecuteChangedFor(nameof(NextPageCommand))]
-    private int _totalPages = 1;
-
-    /// <summary>筛选后总条数（分页栏"共 N 条"）。</summary>
+    /// <summary>筛选后总条数（表格下方"共 N 条"；不做分页，全部行由表格内部滚动展示）。</summary>
     [ObservableProperty]
     private int _totalCount;
-
-    /// <summary>分页栏显示文本："第 X / Y 页"。</summary>
-    public string PageDisplay => $"第 {CurrentPage} / {TotalPages} 页";
-
-    public bool HasPrevPage => CurrentPage > 1;
-
-    public bool HasNextPage => CurrentPage < TotalPages;
 
     /// <summary>正在加载标记（防重复加载）。</summary>
     [ObservableProperty]
@@ -600,8 +574,7 @@ public sealed partial class SamplesViewModel : ObservableObject, IPageLifecycle
         }
 
         FilterKey = key;
-        // 切换类型筛选回到第 1 页
-        RefreshView(resetPage: true);
+        RefreshView();
     }
 
     private void ApplyFilter(string key)
@@ -610,12 +583,12 @@ public sealed partial class SamplesViewModel : ObservableObject, IPageLifecycle
         RefreshView();
     }
 
-    /// <summary>搜索命令：关键词变化后回到第 1 页刷新（回车/按钮触发）。</summary>
+    /// <summary>搜索命令：关键词变化后刷新（回车/按钮触发）。</summary>
     [RelayCommand]
-    private void Search() => RefreshView(resetPage: true);
+    private void Search() => RefreshView();
 
-    /// <summary>类型筛选 + 关键词过滤 + 分页切片统一入口。</summary>
-    private void RefreshView(bool resetPage = false)
+    /// <summary>类型筛选 + 状态筛选 + 关键词过滤统一入口（不分页，全部行交由表格内部滚动）。</summary>
+    private void RefreshView()
     {
         var keyword = SearchText?.Trim();
         var filtered = FilterKey == FilterAll
@@ -635,36 +608,7 @@ public sealed partial class SamplesViewModel : ObservableObject, IPageLifecycle
 
         var list = filtered.ToList();
         TotalCount = list.Count;
-        TotalPages = Math.Max(1, (int)Math.Ceiling(list.Count / (double)PageSize));
-        if (resetPage || CurrentPage > TotalPages)
-        {
-            CurrentPage = resetPage ? 1 : TotalPages;
-        }
-
-        var pageRows = list.Skip((CurrentPage - 1) * PageSize).Take(PageSize);
-        SctSamples = new ObservableCollection<SampleRowItem>(pageRows);
-    }
-
-    /// <summary>上一页（第 1 页时禁用）。</summary>
-    [RelayCommand(CanExecute = nameof(HasPrevPage))]
-    private void PrevPage() => GoToPage(CurrentPage - 1);
-
-    /// <summary>下一页（末页时禁用）。</summary>
-    [RelayCommand(CanExecute = nameof(HasNextPage))]
-    private void NextPage() => GoToPage(CurrentPage + 1);
-
-    /// <summary>跳转到指定页码（越界收敛到有效范围）。</summary>
-    [RelayCommand]
-    private void GoToPage(int page)
-    {
-        var target = Math.Clamp(page, 1, TotalPages);
-        if (target == CurrentPage)
-        {
-            return;
-        }
-
-        CurrentPage = target;
-        RefreshView();
+        SctSamples = new ObservableCollection<SampleRowItem>(list);
     }
 
     // ==================== 样品删除（弹窗确认，危险操作） ====================

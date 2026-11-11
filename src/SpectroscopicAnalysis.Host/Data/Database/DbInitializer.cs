@@ -94,9 +94,40 @@ public sealed class DbInitializer
             LimitType  TEXT NOT NULL DEFAULT 'Sigma' CHECK (LimitType IN ('Absolute','Percent','Sigma'))
         );
         """,
+        // 生产样品档案表（取 SCT_Sample 的生产样子集独立建表，生产样不再存于 SCT_Sample）
+        """
+        CREATE TABLE IF NOT EXISTS Production_Sample (
+            SampleID         TEXT PRIMARY KEY,
+            SampleName       TEXT NOT NULL,
+            SampleType       TEXT NOT NULL DEFAULT 'Production' CHECK (SampleType = 'Production'),
+            AlloyType        TEXT,
+            RackPosition     TEXT,
+            AssociatedMethod TEXT,
+            Status           TEXT NOT NULL DEFAULT 'Normal' CHECK (Status IN ('Normal','Analyzing','Completed','Failed')),
+            CreatedTime      TEXT NOT NULL DEFAULT (datetime('now','localtime')),
+            Remark           TEXT
+        );
+        """,
+        // 分析结果表（生产样分析归档：原始/校正后双存 + 系数版本可追溯）
+        """
+        CREATE TABLE IF NOT EXISTS Analysis_Result (
+            ResultID        INTEGER PRIMARY KEY AUTOINCREMENT,
+            SampleID        TEXT NOT NULL REFERENCES Production_Sample(SampleID) ON DELETE CASCADE,
+            RawIntensity    TEXT,
+            MeasuredConc    REAL,
+            CorrectedConc   REAL,
+            CoeffVersion    INTEGER,
+            IsPass          INTEGER NOT NULL DEFAULT 1,
+            ResultStatus    TEXT NOT NULL DEFAULT 'Success' CHECK (ResultStatus IN ('Success','Fail','Warning')),
+            ArchivePosition TEXT,
+            OperationTime   TEXT NOT NULL DEFAULT (datetime('now','localtime'))
+        );
+        """,
         // 常用查询索引
         "CREATE INDEX IF NOT EXISTS IX_OperationLog_Sample_Time ON SCT_OperationLog(SampleID, OperationTime);",
         "CREATE INDEX IF NOT EXISTS IX_Coefficient_Method_Current ON CorrectionCoefficient(MethodID, Element, IsCurrent);",
+        "CREATE INDEX IF NOT EXISTS IX_ProductionSample_Status_Time ON Production_Sample(Status, CreatedTime);",
+        "CREATE INDEX IF NOT EXISTS IX_AnalysisResult_Sample_Time ON Analysis_Result(SampleID, OperationTime);",
     };
 
     /// <summary>创建全部表与索引（单事务执行）；并迁移存量库缺失列。</summary>
@@ -113,7 +144,31 @@ public sealed class DbInitializer
         }
         // 存量库迁移：建表脚本对旧库不生效（IF NOT EXISTS），缺失列按表逐个补齐
         AddColumnIfMissing(conn, tx, "SCT_Sample", "AssociatedMethod", "TEXT");
+        // 生产样档案独立建表后，清理存量库 SCT_Sample 中的生产样行（先删子表引用再删本体，生产样数据由 Production_Sample 提供）
+        PurgeProductionFromSctSample(conn, tx);
         tx.Commit();
+    }
+
+    /// <summary>清理存量库 SCT_Sample 中的生产样行（幂等）：先删子表引用再删本体；生产样数据由 Production_Sample 表提供。
+    /// SCT_OperationLog 为审计日志按规范保留（其 SampleID 无外键约束，不受影响）。</summary>
+    private static void PurgeProductionFromSctSample(DbConnection conn, DbTransaction tx)
+    {
+        foreach (var table in new[] { "ControlLimit", "SCT_CertifiedValue" })
+        {
+            using var cmd = conn.CreateCommand();
+            cmd.Transaction = tx;
+            cmd.CommandText = $"""
+                DELETE FROM {table} WHERE SampleID IN (
+                    SELECT SampleID FROM SCT_Sample WHERE SampleType = 'Production'
+                )
+                """;
+            cmd.ExecuteNonQuery();
+        }
+
+        using var purge = conn.CreateCommand();
+        purge.Transaction = tx;
+        purge.CommandText = "DELETE FROM SCT_Sample WHERE SampleType = 'Production'";
+        purge.ExecuteNonQuery();
     }
 
     /// <summary>列不存在时 ALTER TABLE 补列（幂等；SQLite 仅支持 ADD COLUMN）。</summary>

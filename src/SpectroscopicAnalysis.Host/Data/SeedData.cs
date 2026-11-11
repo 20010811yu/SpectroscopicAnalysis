@@ -21,7 +21,7 @@ public sealed class SeedData
     public void SeedIfEmpty()
     {
         using var conn = _db.Open();
-        foreach (var (table, target) in new[] { ("SCT_Sample", SeedTargetCount), ("SCT_CertifiedValue", 5000), ("ControlLimit", 5000), ("CorrectionCoefficient", 5000), ("SCT_OperationLog", 5000) })
+        foreach (var (table, target) in new[] { ("SCT_Sample", SeedTargetCount), ("SCT_CertifiedValue", 5000), ("ControlLimit", 5000), ("CorrectionCoefficient", 5000), ("SCT_OperationLog", 5000), ("Production_Sample", SeedTargetCount), ("Analysis_Result", SeedTargetCount) })
         {
             using var cmd = conn.CreateCommand();
             cmd.CommandText = $"SELECT COUNT(*) FROM {table}";
@@ -50,9 +50,6 @@ public sealed class SeedData
             new() { SampleId = "CTL-004", SampleName = "控制样（低）", SampleType = SampleType.Control, AlloyType = "3xxx", RackPosition = "B04", InitialThickness = 17.5, CurrentThickness = 17.5, MinThickness = 6.0, UsageCount = 0, MaxUsageCount = 60, Status = SampleStatus.Normal },
             new() { SampleId = "TS-6061-01", SampleName = "类型标准化样 6061", SampleType = SampleType.TypeStd, AlloyType = "6061", RackPosition = "C01", InitialThickness = 16.0, CurrentThickness = 15.2, MinThickness = 7.0, UsageCount = 12, MaxUsageCount = 40, Status = SampleStatus.Normal, LastHeightCheckTime = DateTime.Parse("2026-11-01 09:30") },
             new() { SampleId = "TS-1050-01", SampleName = "类型标准化样 1050", SampleType = SampleType.TypeStd, AlloyType = "1050", RackPosition = "C02", InitialThickness = 15.0, CurrentThickness = 14.7, MinThickness = 7.0, UsageCount = 28, MaxUsageCount = 40, Status = SampleStatus.Normal, LastHeightCheckTime = DateTime.Parse("2026-10-30 16:00") },
-            new() { SampleId = "PRD-6061-001", SampleName = "生产样 6061-001", SampleType = SampleType.Production, AlloyType = "6061", RackPosition = "D01", InitialThickness = 20.0, CurrentThickness = 19.6, MinThickness = 5.0, UsageCount = 6, MaxUsageCount = 100, Status = SampleStatus.Normal, LastUseTime = DateTime.Parse("2026-11-09 10:15"), LastHeightCheckTime = DateTime.Parse("2026-11-08 08:00") },
-            new() { SampleId = "PRD-1050-002", SampleName = "生产样 1050-002", SampleType = SampleType.Production, AlloyType = "1050", RackPosition = "D02", InitialThickness = 18.0, CurrentThickness = 17.2, MinThickness = 5.0, UsageCount = 15, MaxUsageCount = 100, Status = SampleStatus.Normal, LastUseTime = DateTime.Parse("2026-11-09 11:02") },
-            new() { SampleId = "PRD-3003-003", SampleName = "生产样 3003-003", SampleType = SampleType.Production, AlloyType = "3003", RackPosition = "D03", InitialThickness = 22.0, CurrentThickness = 5.5, MinThickness = 6.0, UsageCount = 88, MaxUsageCount = 100, Status = SampleStatus.Disabled, LastUseTime = DateTime.Parse("2026-11-06 14:40"), LastHeightCheckTime = DateTime.Parse("2026-11-06 14:30") },
         };
 
         samples.AddRange(GenerateSamples(samples.Count));
@@ -100,6 +97,9 @@ public sealed class SeedData
         // 批量子表数据：标准值/控制限/校正系数/操作日志各 ≥5000 行（确定性生成）
         SeedBulkSubTables(conn, tx, samples);
 
+        // 生产样独立档案表：≥3000 条（多日期入库）+ 分析结果（每样 1~2 条）
+        SeedProductionSamples(conn, tx);
+
         tx.Commit();
     }
 
@@ -126,11 +126,11 @@ public sealed class SeedData
             InsertCertifiedValue(conn, tx, s.SampleId, elements[(i + 3) % elements.Length], 0.10 + (i % 50) / 100.0, 0.002 + (i % 3) / 10000.0);
         }
 
-        // 控制限：控制样 × 7 个元素（轮转），≥5000 行（四类轮转后控制样约 754 条，7×754≈5278）
+        // 控制限：控制样（约 1004 条）× 5 个元素（轮转），≥5000 行
         for (var i = 0; i < controlSamples.Count; i++)
         {
             var s = controlSamples[i];
-            for (var j = 0; j < 7; j++)
+            for (var j = 0; j < 5; j++)
             {
                 var element = elements[(i + j) % elements.Length];
                 var upper = 0.60 + ((i + j) % 20) / 20.0;
@@ -256,7 +256,8 @@ public sealed class SeedData
 
     /// <summary>
     /// 生成补充演示样品（确定性：按索引取模生成，保证每次种子一致）。
-    /// 三类轮转覆盖 正常/需测高/禁用 各状态，编号带 G 前缀与手工演示样区分。
+    /// 三类轮转覆盖 设置样/控制样/类型标准化样 各类型，编号带 G 前缀与手工演示样区分。
+    /// 生产样不再入 SCT_Sample——由 SeedProductionSamples 独立生成到 Production_Sample 表。
     /// </summary>
     private static IEnumerable<SctSample> GenerateSamples(int existingCount)
     {
@@ -266,9 +267,9 @@ public sealed class SeedData
 
         for (var i = existingCount; i < SeedTargetCount; i++)
         {
-            // 四类轮转：0=设置样，1=控制样，2=类型标准化样，3=生产样
-            var kind = i % 4;
-            var seq = i / 4 + 1;
+            // 三类轮转：0=设置样，1=控制样，2=类型标准化样
+            var kind = i % 3;
+            var seq = i / 3 + 1;
             // 状态轮转：5 个一组 [正常, 正常, 需测高, 正常, 禁用]
             var status = (seq % 5) switch
             {
@@ -276,10 +277,10 @@ public sealed class SeedData
                 4 => SampleStatus.Disabled,
                 _ => SampleStatus.Normal,
             };
-            var maxUsage = kind switch { 1 => 60, 2 => 40, 3 => 100, _ => 50 };
+            var maxUsage = kind switch { 1 => 60, _ => 50 };
             var usage = status == SampleStatus.Disabled ? maxUsage : seq * 7 % (maxUsage + 1);
             var initThk = 10.0 + seq % 10 + 0.5; // 10.5 ~ 19.5
-            var minThk = kind switch { 0 => 8.0, 1 => 6.0, 2 => 7.0, _ => 5.0 };
+            var minThk = kind switch { 0 => 8.0, _ => 6.0 };
             // 当前厚度：禁用（过薄）压到最小值以下，需测高接近最小值，正常小幅磨损
             var curThk = status == SampleStatus.Disabled
                 ? minThk - 0.5
@@ -293,10 +294,83 @@ public sealed class SeedData
             {
                 1 => new() { SampleId = $"CTL-G{seq:000}", SampleName = $"控制样 G-{seq:000}", SampleType = SampleType.Control, AlloyType = alloys[seq % alloys.Length], RackPosition = $"B{seq % 60 + 10:00}", InitialThickness = initThk, CurrentThickness = curThk, MinThickness = minThk, UsageCount = usage, MaxUsageCount = maxUsage, Status = status, LastUseTime = lastUse, LastHeightCheckTime = lastHeight },
                 2 => new() { SampleId = $"TS-{tsAlloys[seq % tsAlloys.Length]}-G{seq:00}", SampleName = $"类型标准化样 G-{seq:000}", SampleType = SampleType.TypeStd, AlloyType = tsAlloys[seq % tsAlloys.Length], RackPosition = $"C{seq % 60 + 10:00}", InitialThickness = initThk, CurrentThickness = curThk, MinThickness = minThk, UsageCount = usage, MaxUsageCount = maxUsage, Status = status, LastUseTime = lastUse, LastHeightCheckTime = lastHeight },
-                3 => new() { SampleId = $"PRD-G{seq:000}", SampleName = $"生产样 G-{seq:000}", SampleType = SampleType.Production, AlloyType = alloys[seq % alloys.Length], RackPosition = $"D{seq % 60 + 10:00}", InitialThickness = initThk, CurrentThickness = curThk, MinThickness = minThk, UsageCount = usage, MaxUsageCount = maxUsage, Status = status, LastUseTime = lastUse, LastHeightCheckTime = lastHeight },
                 _ => new() { SampleId = $"SUS-G{seq:000}", SampleName = $"设置样 G-{seq:000}", SampleType = SampleType.SettingUp, RackPosition = $"A{seq % 60 + 10:00}", InitialThickness = initThk, CurrentThickness = curThk, MinThickness = minThk, UsageCount = usage, MaxUsageCount = maxUsage, Status = status, LastUseTime = lastUse, LastHeightCheckTime = lastHeight },
             };
             yield return s;
+        }
+    }
+
+    /// <summary>
+    /// 生产样演示数据（确定性）：3000 条生产样（入库时间近 30 天内多日期分布）
+    /// + 每样 1~2 条分析结果（共约 4500 条，原始/校正后双存、系数版本可追溯）。
+    /// </summary>
+    private static void SeedProductionSamples(SqliteConnection conn, SqliteTransaction tx)
+    {
+        var alloys = new[] { "1xxx", "3xxx", "5xxx", "6xxx" };
+        var methods = new[] { "GB/T 7999-A", "ASTM E1251-A" };
+        var baseTime = DateTime.Parse("2026-11-10 08:00");
+
+        for (var seq = 1; seq <= SeedTargetCount; seq++)
+        {
+            // 状态轮转：10 个一组 [正常×6, 分析中, 完成×2, 失败]
+            var status = (seq % 10) switch
+            {
+                7 => ProductionStatus.Analyzing,
+                8 or 9 => ProductionStatus.Completed,
+                0 => ProductionStatus.Failed,
+                _ => ProductionStatus.Normal,
+            };
+            var created = baseTime.AddDays(-(seq % 30)).AddMinutes(seq % 1440); // 近 30 天多日期分布
+            using (var cmd = conn.CreateCommand())
+            {
+                cmd.Transaction = tx;
+                cmd.CommandText = """
+                    INSERT OR IGNORE INTO Production_Sample (SampleID, SampleName, SampleType, AlloyType,
+                        RackPosition, AssociatedMethod, Status, CreatedTime, Remark)
+                    VALUES ($id, $name, 'Production', $alloy, $rack, $method, $status, $created, $remark)
+                    """;
+                cmd.Parameters.AddWithValue("$id", $"PRD-G{seq:000}");
+                cmd.Parameters.AddWithValue("$name", $"生产样 G-{seq:000}");
+                cmd.Parameters.AddWithValue("$alloy", alloys[seq % alloys.Length]);
+                cmd.Parameters.AddWithValue("$rack", $"D{seq % 60 + 10:00}");
+                cmd.Parameters.AddWithValue("$method", methods[seq % methods.Length]);
+                cmd.Parameters.AddWithValue("$status", status);
+                cmd.Parameters.AddWithValue("$created", created.ToString("yyyy-MM-dd HH:mm:ss"));
+                cmd.Parameters.AddWithValue("$remark", seq % 20 == 0 ? "加急样品" : "常规生产分析");
+                cmd.ExecuteNonQuery();
+            }
+
+            // 分析结果：每样 1~2 条（约 4500 行）
+            var resultCount = seq % 2 + 1;
+            for (var r = 0; r < resultCount; r++)
+            {
+                var measured = 0.10 + seq % 80 / 100.0 + r * 0.01;
+                var corrected = measured * (1.0 + (seq % 15 - 7) / 200.0);
+                var resultStatus = status switch
+                {
+                    ProductionStatus.Failed => AnalysisResultStatus.Fail,
+                    ProductionStatus.Completed or ProductionStatus.Analyzing => seq % 9 == 0 ? AnalysisResultStatus.Warning : AnalysisResultStatus.Success,
+                    _ => AnalysisResultStatus.Success,
+                };
+                var isPass = resultStatus == AnalysisResultStatus.Success;
+                using var cmd = conn.CreateCommand();
+                cmd.Transaction = tx;
+                cmd.CommandText = """
+                    INSERT INTO Analysis_Result (SampleID, RawIntensity, MeasuredConc, CorrectedConc,
+                        CoeffVersion, IsPass, ResultStatus, ArchivePosition, OperationTime)
+                    VALUES ($id, $raw, $measured, $corrected, $coeff, $pass, $status, $archive, $time)
+                    """;
+                cmd.Parameters.AddWithValue("$id", $"PRD-G{seq:000}");
+                cmd.Parameters.AddWithValue("$raw", $"{{\"Si\":{1000 + seq % 500}.5,\"Fe\":{200 + seq % 90}.2}}");
+                cmd.Parameters.AddWithValue("$measured", measured);
+                cmd.Parameters.AddWithValue("$corrected", corrected);
+                cmd.Parameters.AddWithValue("$coeff", seq % 125 + 1);
+                cmd.Parameters.AddWithValue("$pass", isPass ? 1 : 0);
+                cmd.Parameters.AddWithValue("$status", resultStatus);
+                cmd.Parameters.AddWithValue("$archive", status == ProductionStatus.Analyzing ? DBNull.Value : $"A-{seq % 40:00}-{r + 1}");
+                cmd.Parameters.AddWithValue("$time", created.AddMinutes(5 + r).ToString("yyyy-MM-dd HH:mm:ss"));
+                cmd.ExecuteNonQuery();
+            }
         }
     }
 }

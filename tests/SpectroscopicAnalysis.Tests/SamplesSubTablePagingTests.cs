@@ -3,7 +3,7 @@ using SpectroscopicAnalysis.Host.ViewModels;
 
 namespace SpectroscopicAnalysis.Tests;
 
-/// <summary>子表分页/搜索/删除测试（与样品台账同规则：每页 20 条、共用搜索框、删除二次确认）。</summary>
+/// <summary>子表分页/搜索/删除测试（与样品台账同规则：每页 10 条、共用搜索框、删除二次确认）。</summary>
 public sealed class SamplesSubTablePagingTests
 {
     private static SamplesViewModel Create(
@@ -45,14 +45,17 @@ public sealed class SamplesSubTablePagingTests
         await vm.SetTableCommand.ExecuteAsync(SamplesViewModel.TableCertifiedValue);
 
         Assert.Equal(45, vm.TotalCount);
-        Assert.Equal(3, vm.TotalPages);
-        Assert.Equal(20, vm.CertifiedValues.Count);             // 第 1 页满 20 条
+        Assert.Equal(5, vm.TotalPages);
+        Assert.Equal(10, vm.CertifiedValues.Count);             // 第 1 页满 10 条
         Assert.Equal("S-001", vm.CertifiedValues[0].SampleId);
 
         vm.NextPageCommand.Execute(null);
-        Assert.Equal("S-021", vm.CertifiedValues[0].SampleId);  // 第 2 页从 S-021 起
+        Assert.Equal("S-011", vm.CertifiedValues[0].SampleId);  // 第 2 页从 S-011 起
 
         vm.NextPageCommand.Execute(null);
+        vm.NextPageCommand.Execute(null);
+        vm.NextPageCommand.Execute(null);
+        Assert.Equal(5, vm.CurrentPage);
         Assert.Equal(5, vm.CertifiedValues.Count);              // 末页 45 - 40 = 5 条
         Assert.False(vm.HasNextPage);
     }
@@ -74,8 +77,8 @@ public sealed class SamplesSubTablePagingTests
 
         Assert.Equal(15, vm.TotalCount);                        // 仅 Fe 行
         Assert.All(vm.CertifiedValues, r => Assert.Equal("Fe", r.Element));
-        Assert.Equal(15, vm.CertifiedValues.Count);             // 15 条不超过页大小，全在本页
-        Assert.Equal(1, vm.TotalPages);
+        Assert.Equal(SamplesViewModel.PageSize, vm.CertifiedValues.Count); // 15 条 > 页大小 → 第 1 页满页
+        Assert.Equal(2, vm.TotalPages);
     }
 
     [Fact]
@@ -97,7 +100,7 @@ public sealed class SamplesSubTablePagingTests
 
         await vm.SetTableCommand.ExecuteAsync(SamplesViewModel.TableCertifiedValue);
         Assert.Equal(1, vm.CurrentPage);                        // 切回同样重置
-        Assert.Equal(20, vm.CertifiedValues.Count);
+        Assert.Equal(10, vm.CertifiedValues.Count);
     }
 
     [Fact]

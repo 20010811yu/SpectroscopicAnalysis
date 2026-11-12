@@ -11,12 +11,44 @@ public static class ControlInsertMode
     public const string ByTime = "ByTime";
 }
 
+/// <summary>设置样选择规则（任务清单第 5 节②：多个可用时选使用次数最少 / 轮询）。</summary>
+public static class SettingSampleSelectionMode
+{
+    /// <summary>选使用次数最少的设置样。</summary>
+    public const string LeastUsed = "LeastUsed";
+
+    /// <summary>轮询选取。</summary>
+    public const string RoundRobin = "RoundRobin";
+}
+
 /// <summary>
-/// SCT 策略配置（PDF 第六节：控制样插入、超差判定、标准化触发项）。
+/// SCT 策略配置（PDF 第六节 + 任务清单第 5 节：控制样插入、超差判定、标准化触发项、
+/// 设置样选择规则、控制样轮换与合金匹配、类型标准化触发、超差闭环重测上限）。
 /// 纯数据对象，不含策略逻辑；持久化经 ISctPolicyStore。
 /// </summary>
 public sealed class SctPolicyOptions
 {
+    /// <summary>设置样选择规则：LeastUsed / RoundRobin（任务清单第 5 节②）。</summary>
+    public string SettingSampleSelectionMode { get; set; } = "LeastUsed";
+
+    /// <summary>多块控制样轮换启用（任务清单第 5 节③）。</summary>
+    public bool ControlRotationEnabled { get; set; } = true;
+
+    /// <summary>控制样按合金类型匹配（任务清单第 5 节③）。</summary>
+    public bool ControlMatchByAlloy { get; set; } = true;
+
+    /// <summary>合金类型切换时触发类型标准化（任务清单第 5 节⑤）。</summary>
+    public bool TypeStandardizeOnAlloySwitch { get; set; } = true;
+
+    /// <summary>类型标准化期限届满触发开关（任务清单第 5 节⑤）。</summary>
+    public bool TypeStandardizePeriodEnabled { get; set; } = false;
+
+    /// <summary>类型标准化期限（天）。</summary>
+    public int TypeStandardizePeriodDays { get; set; } = 7;
+
+    /// <summary>控制样超差闭环：标准化后验证重测次数上限（仍失败 → 报警并暂停自动模式，任务清单第 5 节④）。</summary>
+    public int ControlRecheckMaxCount { get; set; } = 1;
+
     /// <summary>控制样插入模式：ByCount / ByTime。</summary>
     public string ControlInsertMode { get; set; } = "ByCount";
 

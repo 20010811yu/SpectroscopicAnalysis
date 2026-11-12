@@ -242,6 +242,34 @@ public sealed partial class SctViewModel : ObservableObject, IPageLifecycle
 
     // ==================== 策略配置（SctPolicyOptions 表单绑定） ====================
 
+    /// <summary>设置样选择规则选项（任务清单第 5 节②）。</summary>
+    public IReadOnlyList<string> SettingSelectionModeOptions { get; } = new[]
+    {
+        SettingSampleSelectionMode.LeastUsed, SettingSampleSelectionMode.RoundRobin
+    };
+
+    [ObservableProperty]
+    private string _policySettingSelectionMode = SettingSampleSelectionMode.LeastUsed;
+
+    [ObservableProperty]
+    private bool _policyRotationEnabled = true;
+
+    [ObservableProperty]
+    private bool _policyMatchByAlloy = true;
+
+    [ObservableProperty]
+    private bool _policyTypeOnAlloySwitch = true;
+
+    [ObservableProperty]
+    private bool _policyTypePeriodEnabled;
+
+    [ObservableProperty]
+    private string _policyTypePeriodDays = "7";
+
+    /// <summary>控制样超差闭环验证重测次数上限（文本承接，保存时校验）。</summary>
+    [ObservableProperty]
+    private string _policyRecheckMax = "1";
+
     [ObservableProperty]
     private string _policyInsertMode = ControlInsertMode.ByCount;
 
@@ -646,6 +674,13 @@ public sealed partial class SctViewModel : ObservableObject, IPageLifecycle
     private void LoadPolicyToForm()
     {
         var p = _policyStore.Load();
+        PolicySettingSelectionMode = p.SettingSampleSelectionMode;
+        PolicyRotationEnabled = p.ControlRotationEnabled;
+        PolicyMatchByAlloy = p.ControlMatchByAlloy;
+        PolicyTypeOnAlloySwitch = p.TypeStandardizeOnAlloySwitch;
+        PolicyTypePeriodEnabled = p.TypeStandardizePeriodEnabled;
+        PolicyTypePeriodDays = p.TypeStandardizePeriodDays.ToString();
+        PolicyRecheckMax = p.ControlRecheckMaxCount.ToString();
         PolicyInsertMode = p.ControlInsertMode;
         PolicyInsertCount = p.ControlInsertCount.ToString();
         PolicyInsertMinutes = p.ControlInsertMinutes.ToString();
@@ -688,10 +723,29 @@ public sealed partial class SctViewModel : ObservableObject, IPageLifecycle
             return;
         }
 
+        if (!int.TryParse(PolicyTypePeriodDays, out var typePeriodDays) || typePeriodDays < 1)
+        {
+            PolicyError = "类型标准化期限必须为不小于 1 的整数（天）";
+            return;
+        }
+
+        if (!int.TryParse(PolicyRecheckMax, out var recheckMax) || recheckMax < 1 || recheckMax > 5)
+        {
+            PolicyError = "超差验证重测次数上限必须为 1–5 的整数";
+            return;
+        }
+
         try
         {
             _policyStore.Save(new SctPolicyOptions
             {
+                SettingSampleSelectionMode = PolicySettingSelectionMode,
+                ControlRotationEnabled = PolicyRotationEnabled,
+                ControlMatchByAlloy = PolicyMatchByAlloy,
+                TypeStandardizeOnAlloySwitch = PolicyTypeOnAlloySwitch,
+                TypeStandardizePeriodEnabled = PolicyTypePeriodEnabled,
+                TypeStandardizePeriodDays = typePeriodDays,
+                ControlRecheckMaxCount = recheckMax,
                 ControlInsertMode = PolicyInsertMode,
                 ControlInsertCount = insertCount,
                 ControlInsertMinutes = insertMinutes,

@@ -382,30 +382,51 @@
                             <RowDefinition Height="Auto" /><RowDefinition Height="Auto" />
                             <RowDefinition Height="Auto" /><RowDefinition Height="Auto" />
                             <RowDefinition Height="Auto" /><RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" /><RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" /><RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" /><RowDefinition Height="Auto" />
                         </Grid.RowDefinitions>
 
-                        <TextBlock Grid.Row="0" Grid.Column="0" Text="控制样插入模式" Style="{StaticResource Text.Caption}" VerticalAlignment="Center" Margin="0,0,12,8" />
-                        <ComboBox Grid.Row="0" Grid.Column="1" ItemsSource="{Binding InsertModeOptions}" SelectedItem="{Binding PolicyInsertMode}" Margin="0,0,0,8" />
+                        <TextBlock Grid.Row="0" Grid.Column="0" Text="设置样选择规则" Style="{StaticResource Text.Caption}" VerticalAlignment="Center" Margin="0,0,12,8" />
+                        <ComboBox Grid.Row="0" Grid.Column="1" ItemsSource="{Binding SettingSelectionModeOptions}" SelectedItem="{Binding PolicySettingSelectionMode}" Margin="0,0,0,8" />
 
-                        <TextBlock Grid.Row="1" Grid.Column="0" Text="每 N 个生产样插入" Style="{StaticResource Text.Caption}" VerticalAlignment="Center" Margin="0,0,12,8" />
-                        <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding PolicyInsertCount, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,8" />
+                        <TextBlock Grid.Row="1" Grid.Column="0" Text="控制样插入模式" Style="{StaticResource Text.Caption}" VerticalAlignment="Center" Margin="0,0,12,8" />
+                        <ComboBox Grid.Row="1" Grid.Column="1" ItemsSource="{Binding InsertModeOptions}" SelectedItem="{Binding PolicyInsertMode}" Margin="0,0,0,8" />
 
-                        <TextBlock Grid.Row="2" Grid.Column="0" Text="时间间隔（分钟）" Style="{StaticResource Text.Caption}" VerticalAlignment="Center" Margin="0,0,12,8" />
-                        <TextBox Grid.Row="2" Grid.Column="1" Text="{Binding PolicyInsertMinutes, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,8" />
+                        <TextBlock Grid.Row="2" Grid.Column="0" Text="每 N 个生产样插入" Style="{StaticResource Text.Caption}" VerticalAlignment="Center" Margin="0,0,12,8" />
+                        <TextBox Grid.Row="2" Grid.Column="1" Text="{Binding PolicyInsertCount, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,8" />
 
-                        <TextBlock Grid.Row="3" Grid.Column="0" Text="判定限类型" Style="{StaticResource Text.Caption}" VerticalAlignment="Center" Margin="0,0,12,8" />
-                        <ComboBox Grid.Row="3" Grid.Column="1" ItemsSource="{Binding LimitTypeOptions}" SelectedItem="{Binding PolicyLimitType}" Margin="0,0,0,8" />
+                        <TextBlock Grid.Row="3" Grid.Column="0" Text="时间间隔（分钟）" Style="{StaticResource Text.Caption}" VerticalAlignment="Center" Margin="0,0,12,8" />
+                        <TextBox Grid.Row="3" Grid.Column="1" Text="{Binding PolicyInsertMinutes, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,8" />
 
-                        <TextBlock Grid.Row="4" Grid.Column="0" Text="判定限值" Style="{StaticResource Text.Caption}" VerticalAlignment="Center" Margin="0,0,12,8" />
-                        <TextBox Grid.Row="4" Grid.Column="1" Text="{Binding PolicyLimitValue, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,8" />
+                        <CheckBox Grid.Row="4" Grid.Column="0" Grid.ColumnSpan="2" Content="多块控制样轮换"
+                                  IsChecked="{Binding PolicyRotationEnabled}" Margin="0,0,0,8" />
+                        <CheckBox Grid.Row="5" Grid.Column="0" Grid.ColumnSpan="2" Content="控制样按合金类型匹配"
+                                  IsChecked="{Binding PolicyMatchByAlloy}" Margin="0,0,0,8" />
 
-                        <CheckBox Grid.Row="5" Grid.Column="0" Grid.ColumnSpan="2" Content="控制样超差自动触发标准化"
+                        <TextBlock Grid.Row="6" Grid.Column="0" Text="判定限类型" Style="{StaticResource Text.Caption}" VerticalAlignment="Center" Margin="0,0,12,8" />
+                        <ComboBox Grid.Row="6" Grid.Column="1" ItemsSource="{Binding LimitTypeOptions}" SelectedItem="{Binding PolicyLimitType}" Margin="0,0,0,8" />
+
+                        <TextBlock Grid.Row="7" Grid.Column="0" Text="判定限值" Style="{StaticResource Text.Caption}" VerticalAlignment="Center" Margin="0,0,12,8" />
+                        <TextBox Grid.Row="7" Grid.Column="1" Text="{Binding PolicyLimitValue, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,8" />
+
+                        <TextBlock Grid.Row="8" Grid.Column="0" Text="超差验证重测上限" Style="{StaticResource Text.Caption}" VerticalAlignment="Center" Margin="0,0,12,8" />
+                        <TextBox Grid.Row="8" Grid.Column="1" Text="{Binding PolicyRecheckMax, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,8" />
+
+                        <CheckBox Grid.Row="9" Grid.Column="0" Grid.ColumnSpan="2" Content="控制样超差自动触发标准化"
                                   IsChecked="{Binding AutoOnControlFail}" Margin="0,0,0,8" />
-                        <CheckBox Grid.Row="6" Grid.Column="0" Grid.ColumnSpan="2" Content="切换自动模式时执行标准化"
+                        <CheckBox Grid.Row="10" Grid.Column="0" Grid.ColumnSpan="2" Content="切换自动模式时执行标准化"
                                   IsChecked="{Binding StandardizeOnAutoMode}" Margin="0,0,0,8" />
-                        <StackPanel Grid.Row="7" Grid.Column="0" Grid.ColumnSpan="2" Orientation="Horizontal" Margin="0,0,0,8">
+                        <StackPanel Grid.Row="11" Grid.Column="0" Grid.ColumnSpan="2" Orientation="Horizontal" Margin="0,0,0,8">
                             <CheckBox Content="定时标准化，间隔（小时）" IsChecked="{Binding PeriodicEnabled}" VerticalAlignment="Center" />
                             <TextBox Width="80" Text="{Binding PeriodicHours, UpdateSourceTrigger=PropertyChanged}" VerticalAlignment="Center" Margin="8,0,0,0" />
+                        </StackPanel>
+
+                        <CheckBox Grid.Row="12" Grid.Column="0" Grid.ColumnSpan="2" Content="合金类型切换时执行类型标准化"
+                                  IsChecked="{Binding PolicyTypeOnAlloySwitch}" Margin="0,0,0,8" />
+                        <StackPanel Grid.Row="13" Grid.Column="0" Grid.ColumnSpan="2" Orientation="Horizontal" Margin="0,0,0,8">
+                            <CheckBox Content="类型标准化期限，间隔（天）" IsChecked="{Binding PolicyTypePeriodEnabled}" VerticalAlignment="Center" />
+                            <TextBox Width="80" Text="{Binding PolicyTypePeriodDays, UpdateSourceTrigger=PropertyChanged}" VerticalAlignment="Center" Margin="8,0,0,0" />
                         </StackPanel>
                     </Grid>
                     <StackPanel Orientation="Horizontal" Margin="0,4,0,0">

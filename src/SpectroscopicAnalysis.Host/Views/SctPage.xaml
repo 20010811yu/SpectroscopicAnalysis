@@ -325,12 +325,10 @@
                     <DataGrid Grid.Row="1" ItemsSource="{Binding OperationRows}" AutoGenerateColumns="False"
                               IsReadOnly="True" CanUserAddRows="False" CanUserSortColumns="False"
                               HeadersVisibility="Column" GridLinesVisibility="Horizontal"
-                              ScrollViewer.CanContentScroll="True"
                               BorderThickness="0" Background="Transparent"
                               RowBackground="Transparent" AlternatingRowBackground="Transparent"
                               RowStyle="{StaticResource GridRow}" CellStyle="{StaticResource GridCell}"
                               ColumnHeaderStyle="{StaticResource GridColumnHeader}"
-                              MaxHeight="360"
                               FontSize="{DynamicResource FontSize.Body}">
                         <DataGrid.Columns>
                             <DataGridTextColumn Header="时间" Binding="{Binding TimeText}" FontFamily="Consolas" Width="1.3*" MinWidth="90" ElementStyle="{StaticResource GridCellText}" />

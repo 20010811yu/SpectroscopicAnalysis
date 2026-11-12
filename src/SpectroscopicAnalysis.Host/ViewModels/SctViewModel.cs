@@ -163,8 +163,8 @@ public sealed partial class SctViewModel : ObservableObject, IPageLifecycle
     /// <summary>标样库分页大小（每页 10 行，完整展示不内部滚动）。</summary>
     public const int PageSize = 10;
 
-    /// <summary>执行记录分页大小（每页行数）。</summary>
-    public const int LogPageSize = 20;
+    /// <summary>执行记录分页大小（每页 10 行，完整展示不内部滚动）。</summary>
+    public const int LogPageSize = 10;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(PageDisplay))]

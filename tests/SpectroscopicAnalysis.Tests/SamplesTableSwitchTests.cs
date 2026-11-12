@@ -198,6 +198,54 @@ public sealed class SamplesTableSwitchTests
     }
 
     [Fact]
+    public async Task SearchText_切表时关键词按表独立记忆()
+    {
+        var production = new FakeProductionSampleRepository();
+        production.Store.Add(new ProductionSample { SampleId = "PRD-G001", SampleName = "生产样 G-001", AlloyType = "1xxx", Status = ProductionStatus.Completed, CreatedTime = DateTime.Today });
+        production.Store.Add(new ProductionSample { SampleId = "PRD-G002", SampleName = "生产样 G-002", AlloyType = "6xxx", Status = ProductionStatus.Analyzing, CreatedTime = DateTime.Today });
+
+        var vm = Create(production: production);
+
+        // 台账表输入关键词并搜索
+        vm.SearchText = "keepA";
+        vm.SearchCommand.Execute(null);
+
+        // 切到生产样档案表：搜索框切换为该表缓存的关键词（初始为空），数据不过滤
+        await vm.SetTableCommand.ExecuteAsync(SamplesViewModel.TableProductionSample);
+        await vm.LoadCommand.ExecuteAsync(null);
+        Assert.Equal(string.Empty, vm.SearchText);
+        Assert.Equal(2, vm.ProductionRows.Count);
+
+        // 生产样表输入自己的关键词并搜索
+        vm.SearchText = "G002";
+        vm.SearchCommand.Execute(null);
+        Assert.Single(vm.ProductionRows);
+        Assert.Equal("PRD-G002", vm.ProductionRows[0].SampleId);
+
+        // 切回台账表：关键词恢复为台账表上次输入的值
+        await vm.SetTableCommand.ExecuteAsync(SamplesViewModel.TableSample);
+        Assert.Equal("keepA", vm.SearchText);
+    }
+
+    [Fact]
+    public async Task SearchText_专属属性与路由属性指向同一表缓存()
+    {
+        var vm = Create();
+
+        vm.ProductionSearchText = "prod-key";
+        await vm.SetTableCommand.ExecuteAsync(SamplesViewModel.TableProductionSample);
+        Assert.Equal("prod-key", vm.SearchText);            // 路由属性读到生产样表缓存
+
+        vm.SearchText = "route-key";
+        Assert.Equal("route-key", vm.ProductionSearchText); // 专属属性同步更新
+
+        await vm.SetTableCommand.ExecuteAsync(SamplesViewModel.TableAnalysisResult);
+        vm.AnalysisSearchText = "analysis-key";
+        Assert.Equal("analysis-key", vm.SearchText);
+        Assert.Equal("route-key", vm.ProductionSearchText); // 生产样表缓存未被分析结果表影响
+    }
+
+    [Fact]
     public async Task SetTable_非法键与重复键_忽略且不报错()
     {
         var vm = Create();

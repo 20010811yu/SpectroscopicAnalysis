@@ -32,6 +32,9 @@ public static class ErrorCodes
     public const int SctThicknessBelowMinimum = 5104;
 
     // 9xxx 系统/急停
+    /// <summary>9001 急停（按钮/PLC 信号/通信中断升级）。</summary>
+    public const int EmergencyStop = 9001;
+
     /// <summary>9002 未捕获异常兜底。</summary>
     public const int UnhandledException = 9002;
 }

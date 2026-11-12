@@ -457,11 +457,10 @@ public sealed class SamplesViewModelTests
         await vm.LoadCommand.ExecuteAsync(null);
 
         vm.NextPageCommand.Execute(null);
-        vm.NextPageCommand.Execute(null);                   // 第 3 页（末页，6 条后仅剩第 21 条）只剩 1 条
-        Assert.Single(vm.SctSamples);
+        Assert.Equal(6, vm.SctSamples.Count);               // 第 2 页（末页）45→21 条，剩 21 - 15 = 6 条
         await vm.DeleteCommand.ExecuteAsync(vm.SctSamples[0]);
 
-        Assert.Equal(2, vm.CurrentPage);                    // 删除后 20 条共 2 页 → 回退到末页（第 2 页，5 条）
+        Assert.Equal(2, vm.CurrentPage);                    // 删除后 20 条共 2 页 → 保持末页（第 2 页，5 条）
         Assert.Equal(5, vm.SctSamples.Count);
         Assert.Equal(20, vm.TotalCount);
     }

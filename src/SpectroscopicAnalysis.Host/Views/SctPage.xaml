@@ -244,6 +244,7 @@
                 <!-- 标样库表格 -->
                 <DataGrid Grid.Row="2" ItemsSource="{Binding SctSamples}" SelectedItem="{Binding SelectedSample}"
                           AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False" CanUserSortColumns="False"
+                          PreviewMouseWheel="Grid_PreviewMouseWheel"
                           HeadersVisibility="Column" GridLinesVisibility="Horizontal"
                           BorderThickness="0" Background="Transparent"
                           RowBackground="Transparent" AlternatingRowBackground="Transparent"
@@ -324,6 +325,7 @@
                     <TextBlock Grid.Row="0" Text="SCT 执行记录" Style="{StaticResource Text.CardTitle}" Margin="0,0,0,8" />
                     <DataGrid Grid.Row="1" ItemsSource="{Binding OperationRows}" AutoGenerateColumns="False"
                               IsReadOnly="True" CanUserAddRows="False" CanUserSortColumns="False"
+                              PreviewMouseWheel="Grid_PreviewMouseWheel"
                               HeadersVisibility="Column" GridLinesVisibility="Horizontal"
                               BorderThickness="0" Background="Transparent"
                               RowBackground="Transparent" AlternatingRowBackground="Transparent"

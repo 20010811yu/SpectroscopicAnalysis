@@ -18,6 +18,19 @@ public static class ErrorCodes
     /// <summary>5006 SCT 标样维护写库失败（测高登记/阈值调整/启用禁用）。</summary>
     public const int SctSampleMaintainFailed = 5006;
 
+    // 51xx SCT 策略引擎
+    /// <summary>5101 设置样选择无可用样品（报警暂停分析）。</summary>
+    public const int SctSettingSampleUnavailable = 5101;
+
+    /// <summary>5102 控制样超差闭环重测耗尽（报警暂停自动模式）。</summary>
+    public const int SctRecheckExhausted = 5102;
+
+    /// <summary>5103 类型标准化样无匹配（合金无对应标样）。</summary>
+    public const int SctTypeStdUnavailable = 5103;
+
+    /// <summary>5104 测高后厚度低于最小厚度（报废更换报警）。</summary>
+    public const int SctThicknessBelowMinimum = 5104;
+
     // 9xxx 系统/急停
     /// <summary>9002 未捕获异常兜底。</summary>
     public const int UnhandledException = 9002;

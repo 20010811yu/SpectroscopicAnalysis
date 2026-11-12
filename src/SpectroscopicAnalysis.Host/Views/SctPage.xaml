@@ -1,33 +1,445 @@
 <UserControl x:Class="SpectroscopicAnalysis.Host.Views.SctPage"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
-    <!-- SCT 管理骨架（对照 docs/prototypes/sct.html；静态占位） -->
-    <ScrollViewer VerticalScrollBarVisibility="Auto">
-        <StackPanel Margin="16">
-            <TextBlock Text="SCT 管理" Style="{StaticResource Text.PageTitle}" Margin="{DynamicResource Spacing.CardGap}" />
+    <!-- SCT 管理：状态监控概览 + 标样库运行维护 + 执行记录 + 策略配置（设计见 docs/SCT管理页面设计.md） -->
+    <Grid Margin="16">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
 
-            <Border Style="{StaticResource Card}" Margin="{DynamicResource Spacing.CardGap}">
-                <StackPanel>
-                    <TextBlock Text="SCT 子状态进度" Style="{StaticResource Text.CardTitle}" Margin="0,0,0,8" />
-                    <TextBlock Text="Selecting → Retrieving → MeasuringHeight → Milling → Analyzing → UpdatingCoeff → Returning" Style="{StaticResource Text.Caption}" TextWrapping="Wrap" />
-                    <TextBlock Text="（SCT 执行期间生产样品分析自动暂停）" Style="{StaticResource Text.Caption}" Margin="0,8,0,0" />
-                </StackPanel>
-            </Border>
+        <!-- 行0：页标题 -->
+        <TextBlock Grid.Row="0" Text="SCT 管理" Style="{StaticResource Text.PageTitle}" Margin="{DynamicResource Spacing.CardGap}" />
 
-            <Border Style="{StaticResource Card}" Margin="{DynamicResource Spacing.CardGap}">
-                <StackPanel>
-                    <TextBlock Text="标样库" Style="{StaticResource Text.CardTitle}" Margin="0,0,0,8" />
-                    <TextBlock Text="设置样（漂移校正，更新系数）· 控制样（状态监控，只判断）· 类型标准化样（按合金系列）" Style="{StaticResource Text.Caption}" TextWrapping="Wrap" />
-                </StackPanel>
-            </Border>
-
-            <Border Style="{StaticResource Card}">
-                <StackPanel>
-                    <TextBlock Text="标准化 / 控制检查记录" Style="{StaticResource Text.CardTitle}" Margin="0,0,0,8" />
-                    <TextBlock Text="时间 / 操作类型 / 样品 / 触发原因 / 结果 / 系数变更 / 偏差" Style="{StaticResource Table.Header}" TextWrapping="Wrap" />
-                    <TextBlock Text="（数据随 M2 SctStrategyEngine 接入）" Style="{StaticResource Text.Caption}" Margin="0,8,0,0" />
-                </StackPanel>
-            </Border>
+        <!-- 行1：状态监控概览（4 统计卡 + 最近操作摘要行） -->
+        <StackPanel Grid.Row="1" Margin="{DynamicResource Spacing.CardGap}">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" /><ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="*" /><ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <Border Grid.Column="0" Style="{StaticResource Card}" Margin="0,0,12,0">
+                    <StackPanel>
+                        <TextBlock Text="设置样" Style="{StaticResource Text.Caption}" />
+                        <TextBlock Text="{Binding SettingUpCount, Mode=OneWay}" Style="{StaticResource Text.CardTitle}" />
+                    </StackPanel>
+                </Border>
+                <Border Grid.Column="1" Style="{StaticResource Card}" Margin="0,0,12,0">
+                    <StackPanel>
+                        <TextBlock Text="控制样" Style="{StaticResource Text.Caption}" />
+                        <TextBlock Text="{Binding ControlCount, Mode=OneWay}" Style="{StaticResource Text.CardTitle}" />
+                    </StackPanel>
+                </Border>
+                <Border Grid.Column="2" Style="{StaticResource Card}" Margin="0,0,12,0">
+                    <StackPanel>
+                        <TextBlock Text="类型标准化样" Style="{StaticResource Text.Caption}" />
+                        <TextBlock Text="{Binding TypeStdCount, Mode=OneWay}" Style="{StaticResource Text.CardTitle}" />
+                    </StackPanel>
+                </Border>
+                <Border Grid.Column="3" Style="{StaticResource Card}">
+                    <StackPanel>
+                        <TextBlock Text="待维护（需测高/过薄）" Style="{StaticResource Text.Caption}" />
+                        <TextBlock Text="{Binding NeedMaintenanceCount, Mode=OneWay}">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock" BasedOn="{StaticResource Text.CardTitle}">
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding NeedMaintenanceCount}" Value="0">
+                                            <Setter Property="Foreground" Value="{DynamicResource Brush.Status.Idle}" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+                    </StackPanel>
+                </Border>
+            </Grid>
+            <!-- 最近操作摘要行 -->
+            <StackPanel Orientation="Horizontal" Margin="4,8,0,0">
+                <TextBlock Text="最近标准化：" Style="{StaticResource Text.Caption}" />
+                <TextBlock Text="{Binding LastStandardizationSummary}" Style="{StaticResource Text.Caption}" />
+                <TextBlock Text="    最近控制检查：" Style="{StaticResource Text.Caption}" Margin="24,0,0,0" />
+                <TextBlock Text="{Binding LastControlCheckSummary}" Style="{StaticResource Text.Caption}" />
+            </StackPanel>
         </StackPanel>
-    </ScrollViewer>
+
+        <!-- 行2：标样库 Card（运行维护） -->
+        <Border Grid.Row="2" Style="{StaticResource Card}" Margin="{DynamicResource Spacing.CardGap}">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+
+                <!-- 工具栏：类型筛选 + 搜索 + 维护按钮 + 手动触发（挂点） -->
+                <DockPanel Grid.Row="0" Margin="0,0,0,8">
+                    <StackPanel Orientation="Horizontal" DockPanel.Dock="Left" VerticalAlignment="Center">
+                        <Button Content="全部" Command="{Binding SetFilterCommand}" CommandParameter="All" Margin="0,0,8,0">
+                            <Button.Style>
+                                <Style TargetType="Button" BasedOn="{StaticResource ModeBtn}">
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding FilterKey}" Value="All">
+                                            <Setter Property="Background" Value="{DynamicResource Brush.Primary}" />
+                                            <Setter Property="Foreground" Value="White" />
+                                            <Setter Property="FontWeight" Value="SemiBold" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Button.Style>
+                        </Button>
+                        <Button Content="设置样" Command="{Binding SetFilterCommand}" CommandParameter="SettingUp" Margin="0,0,8,0">
+                            <Button.Style>
+                                <Style TargetType="Button" BasedOn="{StaticResource ModeBtn}">
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding FilterKey}" Value="SettingUp">
+                                            <Setter Property="Background" Value="{DynamicResource Brush.Primary}" />
+                                            <Setter Property="Foreground" Value="White" />
+                                            <Setter Property="FontWeight" Value="SemiBold" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Button.Style>
+                        </Button>
+                        <Button Content="控制样" Command="{Binding SetFilterCommand}" CommandParameter="Control" Margin="0,0,8,0">
+                            <Button.Style>
+                                <Style TargetType="Button" BasedOn="{StaticResource ModeBtn}">
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding FilterKey}" Value="Control">
+                                            <Setter Property="Background" Value="{DynamicResource Brush.Primary}" />
+                                            <Setter Property="Foreground" Value="White" />
+                                            <Setter Property="FontWeight" Value="SemiBold" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Button.Style>
+                        </Button>
+                        <Button Content="类型标准化样" Command="{Binding SetFilterCommand}" CommandParameter="TypeStd" Margin="0,0,12,0">
+                            <Button.Style>
+                                <Style TargetType="Button" BasedOn="{StaticResource ModeBtn}">
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding FilterKey}" Value="TypeStd">
+                                            <Setter Property="Background" Value="{DynamicResource Brush.Primary}" />
+                                            <Setter Property="Foreground" Value="White" />
+                                            <Setter Property="FontWeight" Value="SemiBold" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Button.Style>
+                        </Button>
+                        <Grid Width="200" VerticalAlignment="Center">
+                            <TextBox Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}" />
+                            <TextBlock Margin="4,0,0,0" VerticalAlignment="Center" IsHitTestVisible="False"
+                                       Text="搜索标样（编号 / 名称 / 合金 / 架位）"
+                                       Foreground="{DynamicResource Brush.Text.Disabled}"
+                                       FontSize="{DynamicResource FontSize.Body}">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="Visibility" Value="Visible" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding HasSearchText}" Value="True">
+                                                <Setter Property="Visibility" Value="Collapsed" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
+                        </Grid>
+                        <Button Content="查询" Command="{Binding SearchCommand}" Style="{StaticResource PrimaryBtn}" Margin="8,0,0,0" Padding="14,5" />
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" DockPanel.Dock="Right" HorizontalAlignment="Right" VerticalAlignment="Center">
+                        <Button Content="测高登记" Command="{Binding OpenMeasureCommand}" Style="{StaticResource SecondaryBtn}" Padding="10,5" />
+                        <Button Content="阈值调整" Command="{Binding OpenThresholdCommand}" Style="{StaticResource SecondaryBtn}" Margin="8,0,0,0" Padding="10,5" />
+                        <Button Content="启用/禁用" Command="{Binding ToggleActiveCommand}" Style="{StaticResource SecondaryBtn}" Margin="8,0,0,0" Padding="10,5" />
+                        <Button Content="手动标准化" Command="{Binding TriggerStandardizationCommand}" IsEnabled="False"
+                                ToolTip="待 SctStrategyEngine 接入后启用" Style="{StaticResource PrimaryBtn}" Margin="16,0,0,0" Padding="10,5" />
+                        <Button Content="手动控制检查" Command="{Binding TriggerControlCheckCommand}" IsEnabled="False"
+                                ToolTip="待 SctStrategyEngine 接入后启用" Style="{StaticResource PrimaryBtn}" Margin="8,0,0,0" Padding="10,5" />
+                    </StackPanel>
+                </DockPanel>
+
+                <!-- 测高登记表单（选中行且面板展开时显示） -->
+                <Border Grid.Row="1" Margin="0,0,0,8">
+                    <Border.Style>
+                        <Style TargetType="Border" BasedOn="{StaticResource Card}">
+                            <Setter Property="Visibility" Value="Collapsed" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsMeasureOpen}" Value="True">
+                                    <Setter Property="Visibility" Value="Visible" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Border.Style>
+                    <StackPanel>
+                        <TextBlock Text="测高登记" Style="{StaticResource Text.CardTitle}" Margin="0,0,0,8" />
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="选中标样：" Style="{StaticResource Text.Caption}" VerticalAlignment="Center" />
+                            <TextBlock Text="{Binding SelectedSample.SampleId}" Style="{StaticResource Text.Caption}" VerticalAlignment="Center" Margin="0,0,24,0" />
+                            <TextBlock Text="实测厚度 (mm)*" Style="{StaticResource Text.Caption}" VerticalAlignment="Center" Margin="0,0,8,0" />
+                            <TextBox Width="140" Text="{Binding MeasureThicknessText, UpdateSourceTrigger=PropertyChanged}" VerticalAlignment="Center" />
+                            <Button Content="登记" Command="{Binding ApplyMeasureCommand}" Style="{StaticResource PrimaryBtn}" Margin="12,0,0,0" Padding="14,5" />
+                            <Button Content="取消" Command="{Binding CancelMeasureCommand}" Style="{StaticResource SecondaryBtn}" Margin="8,0,0,0" Padding="14,5" />
+                        </StackPanel>
+                        <TextBlock Text="低于最小厚度将自动标记「禁用（过薄）」并报警更换；否则恢复「正常」；本次登记写入操作日志留痕"
+                                   Style="{StaticResource Text.Caption}" Margin="0,8,0,0" />
+                        <TextBlock Text="{Binding MeasureError}" Foreground="{DynamicResource Brush.Status.Failed}" Margin="0,4,0,0">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock" BasedOn="{StaticResource Text.Caption}">
+                                    <Setter Property="Visibility" Value="Visible" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding MeasureError}" Value="{x:Null}">
+                                            <Setter Property="Visibility" Value="Collapsed" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+                    </StackPanel>
+                </Border>
+
+                <!-- 阈值调整表单 -->
+                <Border Grid.Row="1" Margin="0,0,0,8">
+                    <Border.Style>
+                        <Style TargetType="Border" BasedOn="{StaticResource Card}">
+                            <Setter Property="Visibility" Value="Collapsed" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsThresholdOpen}" Value="True">
+                                    <Setter Property="Visibility" Value="Visible" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Border.Style>
+                    <StackPanel>
+                        <TextBlock Text="阈值调整" Style="{StaticResource Text.CardTitle}" Margin="0,0,0,8" />
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="选中标样：" Style="{StaticResource Text.Caption}" VerticalAlignment="Center" />
+                            <TextBlock Text="{Binding SelectedSample.SampleId}" Style="{StaticResource Text.Caption}" VerticalAlignment="Center" Margin="0,0,24,0" />
+                            <TextBlock Text="最小厚度 (mm)*" Style="{StaticResource Text.Caption}" VerticalAlignment="Center" Margin="0,0,8,0" />
+                            <TextBox Width="120" Text="{Binding EditMinThicknessText, UpdateSourceTrigger=PropertyChanged}" VerticalAlignment="Center" />
+                            <TextBlock Text="最大使用次数*" Style="{StaticResource Text.Caption}" VerticalAlignment="Center" Margin="16,0,8,0" />
+                            <TextBox Width="120" Text="{Binding EditMaxUsageText, UpdateSourceTrigger=PropertyChanged}" VerticalAlignment="Center" />
+                            <Button Content="保存" Command="{Binding SaveThresholdsCommand}" Style="{StaticResource PrimaryBtn}" Margin="12,0,0,0" Padding="14,5" />
+                            <Button Content="取消" Command="{Binding CancelThresholdCommand}" Style="{StaticResource SecondaryBtn}" Margin="8,0,0,0" Padding="14,5" />
+                        </StackPanel>
+                        <TextBlock Text="{Binding ThresholdError}" Foreground="{DynamicResource Brush.Status.Failed}" Margin="0,4,0,0">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock" BasedOn="{StaticResource Text.Caption}">
+                                    <Setter Property="Visibility" Value="Visible" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding ThresholdError}" Value="{x:Null}">
+                                            <Setter Property="Visibility" Value="Collapsed" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+                    </StackPanel>
+                </Border>
+
+                <!-- 标样库表格 -->
+                <DataGrid Grid.Row="2" ItemsSource="{Binding SctSamples}" SelectedItem="{Binding SelectedSample}"
+                          AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False" CanUserSortColumns="False"
+                          HeadersVisibility="Column" GridLinesVisibility="Horizontal"
+                          BorderThickness="0" Background="Transparent"
+                          RowBackground="Transparent" AlternatingRowBackground="Transparent"
+                          RowStyle="{StaticResource GridRow}" CellStyle="{StaticResource GridCell}"
+                          ColumnHeaderStyle="{StaticResource GridColumnHeader}"
+                          FontSize="{DynamicResource FontSize.Body}">
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="编号" Binding="{Binding SampleId}" FontFamily="Consolas" Width="1.2*" MinWidth="70" ElementStyle="{StaticResource GridCellText}" />
+                        <DataGridTextColumn Header="名称" Binding="{Binding SampleName}" Width="1.4*" MinWidth="80" ElementStyle="{StaticResource GridCellText}" />
+                        <DataGridTextColumn Header="类型" Binding="{Binding TypeDisplay}" Width="1.1*" MinWidth="70" ElementStyle="{StaticResource GridCellText}" />
+                        <DataGridTextColumn Header="合金" Binding="{Binding AlloyType}" Width="0.7*" MinWidth="50" ElementStyle="{StaticResource GridCellText}" />
+                        <DataGridTextColumn Header="架位" Binding="{Binding RackPosition}" Width="0.7*" MinWidth="50" ElementStyle="{StaticResource GridCellText}" />
+                        <DataGridTextColumn Header="厚度 当前/初始" Binding="{Binding ThicknessText}" FontFamily="Consolas" Width="1.1*" MinWidth="75" ElementStyle="{StaticResource GridCellText}" />
+                        <DataGridTextColumn Header="最小厚度" Binding="{Binding MinThicknessText}" FontFamily="Consolas" Width="0.8*" MinWidth="55" ElementStyle="{StaticResource GridCellText}" />
+                        <DataGridTextColumn Header="使用次数" Binding="{Binding UsageText}" FontFamily="Consolas" Width="0.8*" MinWidth="55" ElementStyle="{StaticResource GridCellText}" />
+                        <DataGridTemplateColumn Header="状态" Width="1.2*" MinWidth="80">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding StatusText}">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock" BasedOn="{StaticResource GridCellText}">
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding Status}" Value="Normal">
+                                                        <Setter Property="Foreground" Value="{DynamicResource Brush.Status.Idle}" />
+                                                    </DataTrigger>
+                                                    <DataTrigger Binding="{Binding Status}" Value="NeedMeasure">
+                                                        <Setter Property="Foreground" Value="{DynamicResource Brush.Status.Running}" />
+                                                    </DataTrigger>
+                                                    <DataTrigger Binding="{Binding Status}" Value="Warning">
+                                                        <Setter Property="Foreground" Value="{DynamicResource Brush.Status.Running}" />
+                                                    </DataTrigger>
+                                                    <DataTrigger Binding="{Binding Status}" Value="Disabled">
+                                                        <Setter Property="Foreground" Value="{DynamicResource Brush.Status.Failed}" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+                        <DataGridTextColumn Header="上次测高" Binding="{Binding LastHeightText}" FontFamily="Consolas" Width="1*" MinWidth="70" ElementStyle="{StaticResource GridCellText}" />
+                        <DataGridTextColumn Header="上次使用" Binding="{Binding LastUseText}" FontFamily="Consolas" Width="1*" MinWidth="70" ElementStyle="{StaticResource GridCellText}" />
+                        <DataGridTextColumn Header="启用" Binding="{Binding ActiveText}" Width="0.7*" MinWidth="50" ElementStyle="{StaticResource GridCellText}" />
+                    </DataGrid.Columns>
+                </DataGrid>
+
+                <!-- 分页栏 -->
+                <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,8,0,0">
+                    <Button Content="首页" Command="{Binding FirstPageCommand}" Style="{StaticResource PrimaryBtn}" />
+                    <Button Content="上一页" Command="{Binding PrevPageCommand}" Style="{StaticResource PrimaryBtn}" Margin="4,0,0,0" />
+                    <TextBlock Text="{Binding PageDisplay}" VerticalAlignment="Center" Margin="8,0" Style="{StaticResource Text.Caption}" />
+                    <Button Content="下一页" Command="{Binding NextPageCommand}" Style="{StaticResource PrimaryBtn}" />
+                    <TextBlock VerticalAlignment="Center" Margin="8,0,0,0" Style="{StaticResource Text.Caption}">
+                        <Run Text="共 " /><Run Text="{Binding TotalCount, Mode=OneWay}" /><Run Text=" 条" />
+                    </TextBlock>
+                </StackPanel>
+                <TextBlock Grid.Row="4" Text="使用次数达到上限自动标记「需测高」；厚度低于最小厚度自动「禁用」并报警更换；测高登记/启用禁用经弹窗二次确认"
+                           Style="{StaticResource Text.Caption}" Margin="0,8,0,0" />
+            </Grid>
+        </Border>
+
+        <!-- 行3：执行记录 + 策略配置（左右各半） -->
+        <Grid Grid.Row="3" Margin="{DynamicResource Spacing.CardGap}">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="1.4*" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+
+            <!-- 执行记录 Card -->
+            <Border Grid.Column="0" Style="{StaticResource Card}" Margin="0,0,12,0">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+                    <TextBlock Grid.Row="0" Text="SCT 执行记录" Style="{StaticResource Text.CardTitle}" Margin="0,0,0,8" />
+                    <DataGrid Grid.Row="1" ItemsSource="{Binding OperationRows}" AutoGenerateColumns="False"
+                              IsReadOnly="True" CanUserAddRows="False" CanUserSortColumns="False"
+                              HeadersVisibility="Column" GridLinesVisibility="Horizontal"
+                              BorderThickness="0" Background="Transparent"
+                              RowBackground="Transparent" AlternatingRowBackground="Transparent"
+                              RowStyle="{StaticResource GridRow}" CellStyle="{StaticResource GridCell}"
+                              ColumnHeaderStyle="{StaticResource GridColumnHeader}"
+                              MaxHeight="240"
+                              FontSize="{DynamicResource FontSize.Body}">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="时间" Binding="{Binding TimeText}" FontFamily="Consolas" Width="1.3*" MinWidth="90" ElementStyle="{StaticResource GridCellText}" />
+                            <DataGridTextColumn Header="样品" Binding="{Binding SampleIdText}" FontFamily="Consolas" Width="1*" MinWidth="65" ElementStyle="{StaticResource GridCellText}" />
+                            <DataGridTextColumn Header="操作类型" Binding="{Binding OperationTypeText}" Width="0.9*" MinWidth="60" ElementStyle="{StaticResource GridCellText}" />
+                            <DataGridTextColumn Header="触发原因" Binding="{Binding TriggerReasonText}" Width="1*" MinWidth="65" ElementStyle="{StaticResource GridCellText}" />
+                            <DataGridTextColumn Header="厚度变化" Binding="{Binding ThicknessText}" FontFamily="Consolas" Width="1*" MinWidth="70" ElementStyle="{StaticResource GridCellText}" />
+                            <DataGridTextColumn Header="合格判定" Binding="{Binding PassText}" Width="0.8*" MinWidth="55" ElementStyle="{StaticResource GridCellText}" />
+                            <DataGridTemplateColumn Header="结果" Width="0.9*" MinWidth="60">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding ResultStatusText}">
+                                            <TextBlock.Style>
+                                                <Style TargetType="TextBlock" BasedOn="{StaticResource GridCellText}">
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding ResultStatus}" Value="Success">
+                                                            <Setter Property="Foreground" Value="{DynamicResource Brush.Status.Idle}" />
+                                                        </DataTrigger>
+                                                        <DataTrigger Binding="{Binding ResultStatus}" Value="Warning">
+                                                            <Setter Property="Foreground" Value="{DynamicResource Brush.Status.Running}" />
+                                                        </DataTrigger>
+                                                        <DataTrigger Binding="{Binding ResultStatus}" Value="Fail">
+                                                            <Setter Property="Foreground" Value="{DynamicResource Brush.Status.Failed}" />
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </TextBlock.Style>
+                                        </TextBlock>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                    <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,8,0,0">
+                        <Button Content="上一页" Command="{Binding LogPrevPageCommand}" Style="{StaticResource PrimaryBtn}" />
+                        <TextBlock Text="{Binding LogPageDisplay}" VerticalAlignment="Center" Margin="8,0" Style="{StaticResource Text.Caption}" />
+                        <Button Content="下一页" Command="{Binding LogNextPageCommand}" Style="{StaticResource PrimaryBtn}" />
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <!-- 策略配置 Card -->
+            <Border Grid.Column="1" Style="{StaticResource Card}">
+                <StackPanel>
+                    <TextBlock Text="SCT 策略配置" Style="{StaticResource Text.CardTitle}" Margin="0,0,0,8" />
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" /><RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" /><RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" /><RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" /><RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+
+                        <TextBlock Grid.Row="0" Grid.Column="0" Text="控制样插入模式" Style="{StaticResource Text.Caption}" VerticalAlignment="Center" Margin="0,0,12,8" />
+                        <ComboBox Grid.Row="0" Grid.Column="1" ItemsSource="{Binding InsertModeOptions}" SelectedItem="{Binding PolicyInsertMode}" Margin="0,0,0,8" />
+
+                        <TextBlock Grid.Row="1" Grid.Column="0" Text="每 N 个生产样插入" Style="{StaticResource Text.Caption}" VerticalAlignment="Center" Margin="0,0,12,8" />
+                        <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding PolicyInsertCount, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,8" />
+
+                        <TextBlock Grid.Row="2" Grid.Column="0" Text="时间间隔（分钟）" Style="{StaticResource Text.Caption}" VerticalAlignment="Center" Margin="0,0,12,8" />
+                        <TextBox Grid.Row="2" Grid.Column="1" Text="{Binding PolicyInsertMinutes, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,8" />
+
+                        <TextBlock Grid.Row="3" Grid.Column="0" Text="判定限类型" Style="{StaticResource Text.Caption}" VerticalAlignment="Center" Margin="0,0,12,8" />
+                        <ComboBox Grid.Row="3" Grid.Column="1" ItemsSource="{Binding LimitTypeOptions}" SelectedItem="{Binding PolicyLimitType}" Margin="0,0,0,8" />
+
+                        <TextBlock Grid.Row="4" Grid.Column="0" Text="判定限值" Style="{StaticResource Text.Caption}" VerticalAlignment="Center" Margin="0,0,12,8" />
+                        <TextBox Grid.Row="4" Grid.Column="1" Text="{Binding PolicyLimitValue, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,8" />
+
+                        <CheckBox Grid.Row="5" Grid.Column="0" Grid.ColumnSpan="2" Content="控制样超差自动触发标准化"
+                                  IsChecked="{Binding AutoOnControlFail}" Margin="0,0,0,8" />
+                        <CheckBox Grid.Row="6" Grid.Column="0" Grid.ColumnSpan="2" Content="切换自动模式时执行标准化"
+                                  IsChecked="{Binding StandardizeOnAutoMode}" Margin="0,0,0,8" />
+                        <StackPanel Grid.Row="7" Grid.Column="0" Grid.ColumnSpan="2" Orientation="Horizontal" Margin="0,0,0,8">
+                            <CheckBox Content="定时标准化，间隔（小时）" IsChecked="{Binding PeriodicEnabled}" VerticalAlignment="Center" />
+                            <TextBox Width="80" Text="{Binding PeriodicHours, UpdateSourceTrigger=PropertyChanged}" VerticalAlignment="Center" Margin="8,0,0,0" />
+                        </StackPanel>
+                    </Grid>
+                    <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
+                        <Button Content="保存配置" Command="{Binding SavePolicyCommand}" Style="{StaticResource PrimaryBtn}" Padding="14,5" />
+                        <TextBlock Text="{Binding PolicySavedMessage}" VerticalAlignment="Center" Margin="12,0,0,0"
+                                   Foreground="{DynamicResource Brush.Status.Idle}">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock" BasedOn="{StaticResource Text.Caption}">
+                                    <Setter Property="Visibility" Value="Visible" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding PolicySavedMessage}" Value="{x:Null}">
+                                            <Setter Property="Visibility" Value="Collapsed" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+                    </StackPanel>
+                    <TextBlock Text="{Binding PolicyError}" Foreground="{DynamicResource Brush.Status.Failed}" Margin="0,4,0,0">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock" BasedOn="{StaticResource Text.Caption}">
+                                <Setter Property="Visibility" Value="Collapsed" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding PolicyError}" Value="{x:Null}">
+                                        <Setter Property="Visibility" Value="Collapsed" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+                    <TextBlock Text="手动触发按钮待 SctStrategyEngine 接入后启用；配置持久化于 config/sct_policy.json"
+                               Style="{StaticResource Text.Caption}" Margin="0,8,0,0" />
+                </StackPanel>
+            </Border>
+        </Grid>
+    </Grid>
 </UserControl>

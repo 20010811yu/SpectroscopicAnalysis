@@ -127,10 +127,27 @@ public sealed partial class SamplesViewModel : ObservableObject, IPageLifecycle
     [NotifyPropertyChangedFor(nameof(IsSampleTable))]
     [NotifyPropertyChangedFor(nameof(ActiveTableDisplay))]
     [NotifyPropertyChangedFor(nameof(SearchText))]
+    [NotifyPropertyChangedFor(nameof(SearchHint))]
+    [NotifyPropertyChangedFor(nameof(HasSearchText))]
     private string _activeTable = TableSample;
 
     /// <summary>当前激活表的进行中加载任务（切表后可 await 确定性等待；初始为已完成）。</summary>
     private Task _activeTableLoad = Task.CompletedTask;
+
+    /// <summary>搜索框水印提示词（随激活数据表切换，描述该表的可搜索字段）。</summary>
+    public string SearchHint => ActiveTable switch
+    {
+        TableCertifiedValue => "搜索标准值（编号 / 元素）",
+        TableControlLimit => "搜索控制限（编号 / 元素）",
+        TableCoefficient => "搜索校正系数（方法 / 元素 / 来源样品）",
+        TableOperationLog => "搜索操作日志（编号 / 操作类型 / 触发原因）",
+        TableProductionSample => "搜索生产样（编号 / 名称 / 合金 / 状态）",
+        TableAnalysisResult => "搜索分析结果（编号 / 归档位置 / 状态）",
+        _ => "搜索关键字（编号 / 名称）",
+    };
+
+    /// <summary>当前表是否已输入关键词（控制搜索框水印提示词的显隐）。</summary>
+    public bool HasSearchText => !string.IsNullOrEmpty(GetTableSearchText(ActiveTable));
 
     partial void OnActiveTableChanged(string value)
     {
@@ -229,6 +246,7 @@ public sealed partial class SamplesViewModel : ObservableObject, IPageLifecycle
 
             _tableSearchTexts[ActiveTable] = value;
             OnPropertyChanged();
+            OnPropertyChanged(nameof(HasSearchText));
         }
     }
 

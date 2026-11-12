@@ -1,3 +1,4 @@
+using System.IO;
 using SpectroscopicAnalysis.Host.Data.Models;
 using SpectroscopicAnalysis.Host.SctStrategy;
 using SpectroscopicAnalysis.Host.ViewModels;
@@ -256,6 +257,13 @@ public sealed class SctPageTests
         Assert.NotNull(vm.PolicyError);                          // 非法值被拦截
         Assert.Null(policy.LastSaved);
 
+        vm.PolicySettingSelectionMode = SettingSampleSelectionMode.RoundRobin;
+        vm.PolicyRotationEnabled = false;
+        vm.PolicyMatchByAlloy = false;
+        vm.PolicyTypeOnAlloySwitch = false;
+        vm.PolicyTypePeriodEnabled = true;
+        vm.PolicyTypePeriodDays = "0";
+        vm.PolicyRecheckMax = "6";
         vm.PolicyInsertMode = ControlInsertMode.ByTime;
         vm.PolicyInsertCount = "12";
         vm.PolicyInsertMinutes = "45";
@@ -264,11 +272,29 @@ public sealed class SctPageTests
         vm.AutoOnControlFail = false;
         vm.PeriodicEnabled = true;
         vm.PeriodicHours = "4";
+
+        // 新增字段非法值被拦截（期限天 0 / 重测次数超上限）
+        vm.SavePolicyCommand.Execute(null);
+        Assert.NotNull(vm.PolicyError);
+        Assert.Null(policy.LastSaved);
+        vm.PolicyTypePeriodDays = "14";
+        vm.SavePolicyCommand.Execute(null);
+        Assert.NotNull(vm.PolicyError);
+        Assert.Null(policy.LastSaved);
+
+        vm.PolicyRecheckMax = "2";
         vm.SavePolicyCommand.Execute(null);
 
         Assert.Null(vm.PolicyError);
         Assert.NotNull(policy.LastSaved);
-        Assert.Equal(ControlInsertMode.ByTime, policy.LastSaved!.ControlInsertMode);
+        Assert.Equal(SettingSampleSelectionMode.RoundRobin, policy.LastSaved!.SettingSampleSelectionMode);
+        Assert.False(policy.LastSaved.ControlRotationEnabled);
+        Assert.False(policy.LastSaved.ControlMatchByAlloy);
+        Assert.False(policy.LastSaved.TypeStandardizeOnAlloySwitch);
+        Assert.True(policy.LastSaved.TypeStandardizePeriodEnabled);
+        Assert.Equal(14, policy.LastSaved.TypeStandardizePeriodDays);
+        Assert.Equal(2, policy.LastSaved.ControlRecheckMaxCount);
+        Assert.Equal(ControlInsertMode.ByTime, policy.LastSaved.ControlInsertMode);
         Assert.Equal(12, policy.LastSaved.ControlInsertCount);
         Assert.Equal(45, policy.LastSaved.ControlInsertMinutes);
         Assert.Equal("Percent", policy.LastSaved.LimitType);
@@ -280,8 +306,43 @@ public sealed class SctPageTests
         // 往返：新 VM 从同一 store 加载
         var vm2 = new SctViewModel(new FakeSampleRepository(), new FakeOperationLogRepository(), policy,
             new FakeUiDispatcher(), new FakeDialogService(), new FakeErrorCollector());
+        Assert.Equal(SettingSampleSelectionMode.RoundRobin, vm2.PolicySettingSelectionMode);
+        Assert.False(vm2.PolicyRotationEnabled);
+        Assert.False(vm2.PolicyMatchByAlloy);
+        Assert.True(vm2.PolicyTypePeriodEnabled);
+        Assert.Equal("14", vm2.PolicyTypePeriodDays);
+        Assert.Equal("2", vm2.PolicyRecheckMax);
         Assert.Equal("12", vm2.PolicyInsertCount);
         Assert.Equal("Percent", vm2.PolicyLimitType);
         Assert.False(vm2.AutoOnControlFail);
+    }
+
+    [Fact]
+    public void PolicyStore_旧版JSON缺新字段回退默认值()
+    {
+        var path = Path.Combine(Path.GetTempPath(), $"sct_policy_test_{Guid.NewGuid():N}.json");
+        try
+        {
+            // 旧版配置（仅含第一版字段）
+            File.WriteAllText(path, """{ "ControlInsertMode": "ByTime", "ControlInsertMinutes": 30 }""");
+            var store = new JsonSctPolicyStore(path);
+
+            var loaded = store.Load();
+
+            Assert.Equal("ByTime", loaded.ControlInsertMode);          // 旧字段正常读取
+            Assert.Equal(30, loaded.ControlInsertMinutes);
+            Assert.Equal("LeastUsed", loaded.SettingSampleSelectionMode); // 新字段回退默认值
+            Assert.True(loaded.ControlRotationEnabled);
+            Assert.Equal(1, loaded.ControlRecheckMaxCount);
+
+            // 往返：保存后新字段落盘
+            loaded.TypeStandardizePeriodDays = 9;
+            store.Save(loaded);
+            Assert.Equal(9, new JsonSctPolicyStore(path).Load().TypeStandardizePeriodDays);
+        }
+        finally
+        {
+            File.Delete(path);
+        }
     }
 }

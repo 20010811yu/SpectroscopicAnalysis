@@ -245,7 +245,6 @@
                 <DataGrid Grid.Row="2" ItemsSource="{Binding SctSamples}" SelectedItem="{Binding SelectedSample}"
                           AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False" CanUserSortColumns="False"
                           HeadersVisibility="Column" GridLinesVisibility="Horizontal"
-                          MaxHeight="360" ScrollViewer.CanContentScroll="True"
                           BorderThickness="0" Background="Transparent"
                           RowBackground="Transparent" AlternatingRowBackground="Transparent"
                           RowStyle="{StaticResource GridRow}" CellStyle="{StaticResource GridCell}"

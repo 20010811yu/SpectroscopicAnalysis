@@ -160,8 +160,11 @@ public sealed partial class SctViewModel : ObservableObject, IPageLifecycle
     [NotifyCanExecuteChangedFor(nameof(ToggleActiveCommand))]
     private SctRowItem? _selectedSample;
 
-    /// <summary>分页大小（每页行数，与样品档案页一致）。</summary>
-    public const int PageSize = 20;
+    /// <summary>标样库分页大小（每页 10 行，完整展示不内部滚动）。</summary>
+    public const int PageSize = 10;
+
+    /// <summary>执行记录分页大小（每页行数）。</summary>
+    public const int LogPageSize = 20;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(PageDisplay))]
@@ -375,14 +378,14 @@ public sealed partial class SctViewModel : ObservableObject, IPageLifecycle
     /// <summary>执行记录分页切片（缓存已倒序）。</summary>
     private void RefreshLogView(bool resetPage = false)
     {
-        LogTotalPages = Math.Max(1, (int)Math.Ceiling(_allLogRows.Count / (double)PageSize));
+        LogTotalPages = Math.Max(1, (int)Math.Ceiling(_allLogRows.Count / (double)LogPageSize));
         if (resetPage || LogCurrentPage > LogTotalPages)
         {
             LogCurrentPage = resetPage ? 1 : LogTotalPages;
         }
 
         OperationRows = new ObservableCollection<SctLogRowItem>(
-            _allLogRows.Skip((LogCurrentPage - 1) * PageSize).Take(PageSize));
+            _allLogRows.Skip((LogCurrentPage - 1) * LogPageSize).Take(LogPageSize));
     }
 
     /// <summary>关键词模糊匹配（忽略大小写；空关键词恒命中）。</summary>

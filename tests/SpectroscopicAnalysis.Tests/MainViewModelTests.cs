@@ -13,7 +13,8 @@ public sealed class MainViewModelTests
         new SamplesViewModel(new FakeSampleRepository(), new FakeProductionSampleRepository(), new FakeCertifiedValueRepository(), new FakeControlLimitRepository(),
             new FakeCoefficientRepository(), new FakeOperationLogRepository(),
             new FakeUiDispatcher(), new FakeDialogService(), new FakeErrorCollector()),
-        new SctViewModel(),
+        new SctViewModel(new FakeSampleRepository(), new FakeOperationLogRepository(), new FakeSctPolicyStore(),
+            new FakeUiDispatcher(), new FakeDialogService(), new FakeErrorCollector()),
         new CoefficientsViewModel(),
         new AlarmsViewModel(),
         new SettingsViewModel());

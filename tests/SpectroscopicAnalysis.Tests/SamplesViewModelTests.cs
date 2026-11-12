@@ -2,6 +2,7 @@
 using SpectroscopicAnalysis.Host.Data.Models;
 using SpectroscopicAnalysis.Host.Data.Repositories;
 using SpectroscopicAnalysis.Host.LoggingAlarm;
+using SpectroscopicAnalysis.Host.SctStrategy;
 using SpectroscopicAnalysis.Host.Ui;
 using SpectroscopicAnalysis.Host.ViewModels;
 
@@ -15,6 +16,9 @@ internal sealed class FakeSampleRepository : ISctSampleRepository
     /// <summary>DeleteWithChildren 调用记录（供断言）。</summary>
     public List<string> DeletedWithChildren { get; } = new();
 
+    /// <summary>Update 调用记录（供维护写库断言）。</summary>
+    public List<string> Updated { get; } = new();
+
     public SctSample? GetById(string sampleId) => Store.FirstOrDefault(s => s.SampleId == sampleId);
 
     public IReadOnlyList<SctSample> GetAll() =>
@@ -25,7 +29,15 @@ internal sealed class FakeSampleRepository : ISctSampleRepository
 
     public void Insert(SctSample sample) => Store.Add(sample);
 
-    public void Update(SctSample sample) { }
+    public void Update(SctSample sample)
+    {
+        Updated.Add(sample.SampleId);
+        var idx = Store.FindIndex(s => s.SampleId == sample.SampleId);
+        if (idx >= 0)
+        {
+            Store[idx] = sample;
+        }
+    }
 
     public void Delete(string sampleId) { }
 
@@ -111,9 +123,29 @@ internal sealed class FakeOperationLogRepository : ISctOperationLogRepository
     public List<SctOperationLog> Store { get; } = new();
     public List<long> Deleted { get; } = new();
 
+    /// <summary>Insert 调用记录（供审计写入断言）。</summary>
+    public List<SctOperationLog> Inserted { get; } = new();
+
     public IReadOnlyList<SctOperationLog> GetAll() =>
         Store.OrderByDescending(l => l.OperationTime, StringComparer.Ordinal).ToList();
+    public void Insert(SctOperationLog log) { Inserted.Add(log); log.LogId = Store.Count + 1; Store.Add(log); }
     public void Delete(long logId) { Deleted.Add(logId); Store.RemoveAll(l => l.LogId == logId); }
+}
+
+/// <summary>Fake SCT 策略配置存储：内存字典模拟 JSON 文件往返（不落盘）。</summary>
+internal sealed class FakeSctPolicyStore : ISctPolicyStore
+{
+    public SctPolicyOptions? LastSaved { get; private set; }
+
+    public SctPolicyOptions Current { get; set; } = new();
+
+    public SctPolicyOptions Load() => Current;
+
+    public void Save(SctPolicyOptions options)
+    {
+        LastSaved = options;
+        Current = options;
+    }
 }
 
 /// <summary>样品档案 ViewModel 测试：数据加载 / 展示映射 / 类型筛选（开发计划 D4 先行项验收）。</summary>

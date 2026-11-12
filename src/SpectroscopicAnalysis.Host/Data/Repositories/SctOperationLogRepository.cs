@@ -3,7 +3,7 @@ using SpectroscopicAnalysis.Host.Data.Models;
 
 namespace SpectroscopicAnalysis.Host.Data.Repositories;
 
-/// <summary>SCT 操作日志仓储实现（只读）：参数化 SQL（开发规范第 5 节）。</summary>
+/// <summary>SCT 操作日志仓储实现（查询 + 审计写入 + 删除）：参数化 SQL（开发规范第 5 节）。</summary>
 public sealed class SctOperationLogRepository : ISctOperationLogRepository
 {
     private const string SelectColumns =
@@ -42,6 +42,31 @@ public sealed class SctOperationLogRepository : ISctOperationLogRepository
             });
         }
         return list;
+    }
+
+    /// <summary>插入操作日志（审计留痕，参数化 SQL）。</summary>
+    public void Insert(SctOperationLog log)
+    {
+        using var conn = _db.Open();
+        using var cmd = conn.CreateCommand();
+        cmd.CommandText =
+            "INSERT INTO SCT_OperationLog (SampleID, OperationType, TriggerReason, RawIntensity, MeasuredConc, CorrectedConc, IsPass, " +
+            "ThicknessBefore, ThicknessAfter, CoeffBefore, CoeffAfter, OperationTime, ResultStatus) " +
+            "VALUES ($sampleId, $opType, $reason, $raw, $measured, $corrected, $isPass, $thkBefore, $thkAfter, $coeffBefore, $coeffAfter, $time, $status)";
+        cmd.Parameters.AddWithValue("$sampleId", (object?)log.SampleId ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("$opType", log.OperationType);
+        cmd.Parameters.AddWithValue("$reason", (object?)log.TriggerReason ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("$raw", (object?)log.RawIntensity ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("$measured", (object?)log.MeasuredConc ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("$corrected", (object?)log.CorrectedConc ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("$isPass", log.IsPass.HasValue ? (log.IsPass.Value ? 1 : 0) : DBNull.Value);
+        cmd.Parameters.AddWithValue("$thkBefore", (object?)log.ThicknessBefore ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("$thkAfter", (object?)log.ThicknessAfter ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("$coeffBefore", (object?)log.CoeffBefore ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("$coeffAfter", (object?)log.CoeffAfter ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("$time", log.OperationTime);
+        cmd.Parameters.AddWithValue("$status", log.ResultStatus);
+        cmd.ExecuteNonQuery();
     }
 
     public void Delete(long logId)

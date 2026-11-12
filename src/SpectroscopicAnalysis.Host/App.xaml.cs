@@ -38,6 +38,8 @@ public partial class App
                 services.AddSingleton<IControlLimitRepository, ControlLimitRepository>();
                 services.AddSingleton<ICorrectionCoefficientRepository, CorrectionCoefficientRepository>();
                 services.AddSingleton<ISctOperationLogRepository, SctOperationLogRepository>();
+                // SCT 策略配置存取（仅配置持久化；策略引擎后续接入）
+                services.AddSingleton<SctStrategy.ISctPolicyStore, SctStrategy.JsonSctPolicyStore>();
                 services.AddSingleton<SeedData>();
 
                 // UI 层：调度抽象（MVVM 分层要求）+ 页面 ViewModel（单例，导航共享状态）

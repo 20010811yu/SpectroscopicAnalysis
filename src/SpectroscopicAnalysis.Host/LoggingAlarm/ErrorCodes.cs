@@ -15,6 +15,9 @@ public static class ErrorCodes
     /// <summary>5005 样品删除失败（SQLite 约束/I/O）。</summary>
     public const int SampleDeleteFailed = 5005;
 
+    /// <summary>5006 SCT 标样维护写库失败（测高登记/阈值调整/启用禁用）。</summary>
+    public const int SctSampleMaintainFailed = 5006;
+
     // 9xxx 系统/急停
     /// <summary>9002 未捕获异常兜底。</summary>
     public const int UnhandledException = 9002;

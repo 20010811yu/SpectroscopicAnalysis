@@ -286,8 +286,8 @@ public sealed partial class SamplesViewModel : ObservableObject, IPageLifecycle
     private string GetTableSearchText(string tableKey) =>
         _tableSearchTexts.TryGetValue(tableKey, out var text) ? text : string.Empty;
 
-    /// <summary>分页大小（台账每页行数）。</summary>
-    public const int PageSize = 10;
+    /// <summary>分页大小（各数据表每页 15 行，统一行高完整展示）。</summary>
+    public const int PageSize = 15;
 
     /// <summary>当前页码（从 1 起）。</summary>
     [ObservableProperty]

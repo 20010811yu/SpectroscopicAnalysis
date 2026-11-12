@@ -385,7 +385,7 @@ public sealed class SamplesViewModelTests
         Assert.Equal(1, vm.TotalPages);                     // 至少 1 页
     }
 
-    // ==================== 分页（每页 10 条，行高统一完整展示） ====================
+    // ==================== 分页（每页 15 条，行高统一完整展示） ====================
 
     private static List<SctSample> MakeMany(int count) =>
         Enumerable.Range(1, count)
@@ -399,8 +399,8 @@ public sealed class SamplesViewModelTests
         await vm.LoadCommand.ExecuteAsync(null);
 
         Assert.Equal(45, vm.TotalCount);
-        Assert.Equal(5, vm.TotalPages);
-        Assert.Equal(SamplesViewModel.PageSize, vm.SctSamples.Count);   // 第 1 页满 10 条
+        Assert.Equal(3, vm.TotalPages);
+        Assert.Equal(SamplesViewModel.PageSize, vm.SctSamples.Count);   // 第 1 页满 15 条
         Assert.Equal("S-001", vm.SctSamples[0].SampleId);
         Assert.False(vm.HasPrevPage);
         Assert.True(vm.HasNextPage);
@@ -414,23 +414,19 @@ public sealed class SamplesViewModelTests
 
         vm.NextPageCommand.Execute(null);
         Assert.Equal(2, vm.CurrentPage);
-        Assert.Equal("S-011", vm.SctSamples[0].SampleId);   // 每页 10 条，第 2 页从 S-011 起
+        Assert.Equal("S-016", vm.SctSamples[0].SampleId);   // 每页 15 条，第 2 页从 S-016 起
         Assert.True(vm.HasPrevPage && vm.HasNextPage);
 
         vm.NextPageCommand.Execute(null);
-        vm.NextPageCommand.Execute(null);
-        vm.NextPageCommand.Execute(null);
-        Assert.Equal(5, vm.CurrentPage);
-        Assert.Equal(5, vm.SctSamples.Count);               // 末页 45 - 40 = 5 条
+        Assert.Equal(3, vm.CurrentPage);
+        Assert.Equal(15, vm.SctSamples.Count);              // 末页 45 - 30 = 15 条（满页）
         Assert.False(vm.HasNextPage);
         Assert.False(vm.NextPageCommand.CanExecute(null));  // 末页"下一页"禁用
 
         vm.PrevPageCommand.Execute(null);
-        Assert.Equal(4, vm.CurrentPage);
+        Assert.Equal(2, vm.CurrentPage);
 
         vm.PrevPageCommand.Execute(null);
-        vm.PrevPageCommand.Execute(null);
-        vm.PrevPageCommand.Execute(null);                   // 回到第 1 页
         vm.PrevPageCommand.Execute(null);                   // 已在第 1 页，再点不再前翻（CanExecute=false）
         Assert.Equal(1, vm.CurrentPage);
     }
@@ -461,12 +457,12 @@ public sealed class SamplesViewModelTests
         await vm.LoadCommand.ExecuteAsync(null);
 
         vm.NextPageCommand.Execute(null);
-        vm.NextPageCommand.Execute(null);                   // 第 3 页（末页）只剩 1 条
+        vm.NextPageCommand.Execute(null);                   // 第 3 页（末页，6 条后仅剩第 21 条）只剩 1 条
         Assert.Single(vm.SctSamples);
         await vm.DeleteCommand.ExecuteAsync(vm.SctSamples[0]);
 
-        Assert.Equal(2, vm.CurrentPage);                    // 删除后 20 条恰满 2 页 → 回退到末页（第 2 页）
-        Assert.Equal(SamplesViewModel.PageSize, vm.SctSamples.Count);
+        Assert.Equal(2, vm.CurrentPage);                    // 删除后 20 条共 2 页 → 回退到末页（第 2 页，5 条）
+        Assert.Equal(5, vm.SctSamples.Count);
         Assert.Equal(20, vm.TotalCount);
     }
 }

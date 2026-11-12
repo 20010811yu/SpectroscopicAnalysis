@@ -1,5 +1,6 @@
 using System.IO;
 using System.Windows;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Serilog;
@@ -41,6 +42,19 @@ public partial class App
                 // SCT 策略配置存取 + 策略引擎（纯决策：触发判断/选样/优先级队列/超差闭环/测高联动）
                 services.AddSingleton<SctStrategy.ISctPolicyStore, SctStrategy.JsonSctPolicyStore>();
                 services.AddSingleton<SctStrategy.ISctStrategyEngine, SctStrategy.SctStrategyEngine>();
+
+                // 设备抽象 + Workflow 编排（Stub 网关；Modbus 真实现落地后仅替换本节注册）
+                var workflowOptions = new Workflow.WorkflowOptions();
+                context.Configuration.GetSection("Workflow").Bind(workflowOptions);
+                services.AddSingleton(workflowOptions);
+                services.AddSingleton<DeviceInterface.StubDeviceGateway>();
+                services.AddSingleton<DeviceInterface.ISendTask>(sp => sp.GetRequiredService<DeviceInterface.StubDeviceGateway>());
+                services.AddSingleton<DeviceInterface.IGetTaskStatus>(sp => sp.GetRequiredService<DeviceInterface.StubDeviceGateway>());
+                services.AddSingleton<DeviceInterface.IGetSafetyStatus>(sp => sp.GetRequiredService<DeviceInterface.StubDeviceGateway>());
+                services.AddSingleton<DeviceInterface.ISpectrometer>(sp => sp.GetRequiredService<DeviceInterface.StubDeviceGateway>());
+                services.AddSingleton<DeviceInterface.IHeartbeat>(sp => sp.GetRequiredService<DeviceInterface.StubDeviceGateway>());
+                services.AddSingleton<DeviceInterface.INotifyTaskEnd>(sp => sp.GetRequiredService<DeviceInterface.StubDeviceGateway>());
+                services.AddSingleton<Workflow.IWorkflowOrchestrator, Workflow.WorkflowOrchestrator>();
                 services.AddSingleton<SeedData>();
 
                 // UI 层：调度抽象（MVVM 分层要求）+ 页面 ViewModel（单例，导航共享状态）
@@ -87,6 +101,10 @@ public partial class App
         // 建库（幂等，轻量）——失败记录并终止启动（启动期硬失败）
         var dbInitializer = _host.Services.GetRequiredService<DbInitializer>();
         dbInitializer.EnsureCreated();
+
+        // Workflow 状态机自检（转移表写错立即暴露，编排设计文档 §4）+ 主循环启动（Stub 设备）
+        Workflow.TaskState.ValidateTransitions();
+        _ = _host.Services.GetRequiredService<Workflow.IWorkflowOrchestrator>().StartAsync(CancellationToken.None);
 
         // 主窗口由 DI 提供；DataContext = MainViewModel（组合根装配，View 零业务）
         var mainWindow = _host.Services.GetRequiredService<MainWindow>();

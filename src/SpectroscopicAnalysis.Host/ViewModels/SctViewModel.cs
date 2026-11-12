@@ -88,6 +88,9 @@ public sealed partial class SctViewModel : ObservableObject, IPageLifecycle
     private readonly IDialogService _dialogs;
     private readonly IErrorCollector _errors;
 
+    /// <summary>策略引擎（手动触发提交任务；未注入时按钮保持禁用——测试兼容）。</summary>
+    private readonly ISctStrategyEngine? _strategyEngine;
+
     /// <summary>全部 SCT 标样（非生产样），未筛选。</summary>
     private List<SctRowItem> _allRows = new();
 
@@ -100,7 +103,8 @@ public sealed partial class SctViewModel : ObservableObject, IPageLifecycle
         ISctPolicyStore policyStore,
         IUiDispatcher ui,
         IDialogService dialogs,
-        IErrorCollector errors)
+        IErrorCollector errors,
+        ISctStrategyEngine? strategyEngine = null)
     {
         _samples = samples;
         _logs = logs;
@@ -108,6 +112,7 @@ public sealed partial class SctViewModel : ObservableObject, IPageLifecycle
         _ui = ui;
         _dialogs = dialogs;
         _errors = errors;
+        _strategyEngine = strategyEngine;
         LoadPolicyToForm();
     }
 
@@ -158,6 +163,7 @@ public sealed partial class SctViewModel : ObservableObject, IPageLifecycle
     [NotifyCanExecuteChangedFor(nameof(OpenThresholdCommand))]
     [NotifyCanExecuteChangedFor(nameof(SaveThresholdsCommand))]
     [NotifyCanExecuteChangedFor(nameof(ToggleActiveCommand))]
+    [NotifyCanExecuteChangedFor(nameof(TriggerHeightMeasureCommand))]
     private SctRowItem? _selectedSample;
 
     /// <summary>标样库分页大小（每页 10 行，完整展示不内部滚动）。</summary>
@@ -768,27 +774,59 @@ public sealed partial class SctViewModel : ObservableObject, IPageLifecycle
         }
     }
 
-    // ==================== 手动触发（SctStrategyEngine 挂点，暂禁用） ====================
+    // ==================== 手动触发（提交策略引擎任务队列；引擎未注入时保持禁用） ====================
 
-    /// <summary>手动触发标准化（挂点：策略引擎接入后提交 SettingUp 任务，优先级高于生产分析）。</summary>
-    [RelayCommand(CanExecute = nameof(NeverExecute))]
+    /// <summary>手动触发标准化（提交 Standardize 任务，优先级高于生产分析——任务清单第 5 节⑥）。</summary>
+    [RelayCommand(CanExecute = nameof(CanTriggerAnalysis))]
     private void TriggerStandardization()
     {
+        TriggerError = null;
+        if (_strategyEngine is null)
+        {
+            return;
+        }
+
+        _strategyEngine.SubmitTask(SctTaskType.Standardize, null, "人工触发");
+        _ui.Invoke(() => PolicySavedMessage = "✓ 标准化任务已提交队列");
     }
 
-    /// <summary>手动触发控制检查（挂点：策略引擎接入后提交 Control 任务）。</summary>
-    [RelayCommand(CanExecute = nameof(NeverExecute))]
+    /// <summary>手动触发控制检查（提交 ControlCheck 任务，引擎按轮换/合金规则选样）。</summary>
+    [RelayCommand(CanExecute = nameof(CanTriggerAnalysis))]
     private void TriggerControlCheck()
     {
+        TriggerError = null;
+        if (_strategyEngine is null)
+        {
+            return;
+        }
+
+        _strategyEngine.SubmitTask(SctTaskType.ControlCheck, null, "人工触发");
+        _ui.Invoke(() => PolicySavedMessage = "✓ 控制检查任务已提交队列");
     }
 
-    /// <summary>手动触发测高任务（挂点：策略引擎接入后提交 HeightMeasure 任务到 PLC）。</summary>
-    [RelayCommand(CanExecute = nameof(NeverExecute))]
+    /// <summary>手动触发测高任务（提交 HeightMeasure 任务到任务队列，需选中目标标样）。</summary>
+    [RelayCommand(CanExecute = nameof(CanTriggerHeight))]
     private void TriggerHeightMeasure()
     {
+        TriggerError = null;
+        if (_strategyEngine is null || SelectedSample is null)
+        {
+            return;
+        }
+
+        _strategyEngine.SubmitTask(SctTaskType.HeightMeasure, SelectedSample.SampleId, "人工测高触发");
+        _ui.Invoke(() => PolicySavedMessage = $"✓ 测高任务已提交队列（{SelectedSample.SampleId}）");
     }
 
-    private bool NeverExecute() => false;
+    /// <summary>分析类触发可用性：策略引擎已接入。</summary>
+    private bool CanTriggerAnalysis() => _strategyEngine is not null;
+
+    /// <summary>测高触发可用性：策略引擎已接入且选中目标行。</summary>
+    private bool CanTriggerHeight() => _strategyEngine is not null && SelectedSample is not null;
+
+    /// <summary>手动触发错误提示（空即无错误）。</summary>
+    [ObservableProperty]
+    private string? _triggerError;
 
     // ==================== 映射 ====================
 

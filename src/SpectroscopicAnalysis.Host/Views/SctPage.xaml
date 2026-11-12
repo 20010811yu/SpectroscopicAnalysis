@@ -156,10 +156,12 @@
                         <Button Content="测高登记" Command="{Binding OpenMeasureCommand}" Style="{StaticResource SecondaryBtn}" Padding="10,5" />
                         <Button Content="阈值调整" Command="{Binding OpenThresholdCommand}" Style="{StaticResource SecondaryBtn}" Margin="8,0,0,0" Padding="10,5" />
                         <Button Content="启用/禁用" Command="{Binding ToggleActiveCommand}" Style="{StaticResource SecondaryBtn}" Margin="8,0,0,0" Padding="10,5" />
-                        <Button Content="手动标准化" Command="{Binding TriggerStandardizationCommand}" IsEnabled="False"
-                                ToolTip="待 SctStrategyEngine 接入后启用" Style="{StaticResource PrimaryBtn}" Margin="16,0,0,0" Padding="10,5" />
-                        <Button Content="手动控制检查" Command="{Binding TriggerControlCheckCommand}" IsEnabled="False"
-                                ToolTip="待 SctStrategyEngine 接入后启用" Style="{StaticResource PrimaryBtn}" Margin="8,0,0,0" Padding="10,5" />
+                        <Button Content="手动测高执行" Command="{Binding TriggerHeightMeasureCommand}"
+                                ToolTip="提交测高任务到策略引擎队列（需选中行）" Style="{StaticResource SecondaryBtn}" Margin="16,0,0,0" Padding="10,5" />
+                        <Button Content="手动标准化" Command="{Binding TriggerStandardizationCommand}"
+                                ToolTip="提交标准化任务到策略引擎队列" Style="{StaticResource PrimaryBtn}" Margin="8,0,0,0" Padding="10,5" />
+                        <Button Content="手动控制检查" Command="{Binding TriggerControlCheckCommand}"
+                                ToolTip="提交控制检查任务到策略引擎队列" Style="{StaticResource PrimaryBtn}" Margin="8,0,0,0" Padding="10,5" />
                     </StackPanel>
                 </DockPanel>
 
@@ -460,7 +462,7 @@
                             </Style>
                         </TextBlock.Style>
                     </TextBlock>
-                    <TextBlock Text="手动触发按钮待 SctStrategyEngine 接入后启用；配置持久化于 config/sct_policy.json"
+                    <TextBlock Text="手动触发经 SctStrategyEngine 提交任务队列；策略配置持久化于 config/sct_policy.json"
                                Style="{StaticResource Text.Caption}" Margin="0,8,0,0" />
                 </StackPanel>
             </Border>

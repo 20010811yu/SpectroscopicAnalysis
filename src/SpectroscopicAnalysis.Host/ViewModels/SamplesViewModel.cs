@@ -121,19 +121,12 @@ public sealed partial class SamplesViewModel : ObservableObject, IPageLifecycle
     [ObservableProperty]
     private ObservableCollection<AnalysisResultRowItem> _analysisResultRows = new();
 
-    /// <summary>生产样档案表专属搜索关键词（与其他表搜索框互相独立）。</summary>
-    [ObservableProperty]
-    private string _productionSearchText = string.Empty;
-
-    /// <summary>分析结果表专属搜索关键词。</summary>
-    [ObservableProperty]
-    private string _analysisSearchText = string.Empty;
-
     /// <summary>当前展示的数据表（默认样品台账；仅样品表显示录入/筛选控件）。
     /// 变化即触发该表数据加载（ComboBox 双向绑定直接改此属性，也走同一入口）。</summary>
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsSampleTable))]
     [NotifyPropertyChangedFor(nameof(ActiveTableDisplay))]
+    [NotifyPropertyChangedFor(nameof(SearchText))]
     private string _activeTable = TableSample;
 
     /// <summary>当前激活表的进行中加载任务（切表后可 await 确定性等待；初始为已完成）。</summary>
@@ -219,9 +212,61 @@ public sealed partial class SamplesViewModel : ObservableObject, IPageLifecycle
 
     partial void OnStatusFilterChanged(StatusOption value) => RefreshView(resetPage: true);
 
-    /// <summary>查询关键词（模糊匹配样品编号/名称；空即不过滤）。</summary>
-    [ObservableProperty]
-    private string _searchText = string.Empty;
+    /// <summary>各数据表独立缓存的关键词（键 = ActiveTable 表键；切表互不影响）。</summary>
+    private readonly Dictionary<string, string> _tableSearchTexts = new();
+
+    /// <summary>查询关键词（模糊匹配当前表关键字段；空即不过滤）。
+    /// 按激活表路由存取：切表时搜索框自动切换为该表上次输入的关键词。</summary>
+    public string SearchText
+    {
+        get => GetTableSearchText(ActiveTable);
+        set
+        {
+            if (string.Equals(GetTableSearchText(ActiveTable), value, StringComparison.Ordinal))
+            {
+                return;
+            }
+
+            _tableSearchTexts[ActiveTable] = value;
+            OnPropertyChanged();
+        }
+    }
+
+    /// <summary>生产样档案表搜索关键词（兼容存取入口，内部同样走按表缓存）。</summary>
+    public string ProductionSearchText
+    {
+        get => GetTableSearchText(TableProductionSample);
+        set
+        {
+            if (string.Equals(GetTableSearchText(TableProductionSample), value, StringComparison.Ordinal))
+            {
+                return;
+            }
+
+            _tableSearchTexts[TableProductionSample] = value;
+            OnPropertyChanged();
+        }
+    }
+
+    /// <summary>分析结果表搜索关键词（兼容存取入口，内部同样走按表缓存）。</summary>
+    public string AnalysisSearchText
+    {
+        get => GetTableSearchText(TableAnalysisResult);
+        set
+        {
+            if (string.Equals(GetTableSearchText(TableAnalysisResult), value, StringComparison.Ordinal))
+            {
+                return;
+            }
+
+            _tableSearchTexts[TableAnalysisResult] = value;
+            OnPropertyChanged();
+        }
+    }
+
+    /// <summary>读取指定表缓存的关键词（无记录返回空串）。</summary>
+    private string GetTableSearchText(string tableKey) =>
+        _tableSearchTexts.TryGetValue(tableKey, out var text) ? text : string.Empty;
 
     /// <summary>分页大小（台账每页行数）。</summary>
     public const int PageSize = 20;
@@ -830,6 +875,7 @@ public sealed partial class SamplesViewModel : ObservableObject, IPageLifecycle
     /// <summary>筛选 + 关键词过滤 + 分页切片统一入口（按当前激活表分发到对应集合）。</summary>
     private void RefreshView(bool resetPage = false)
     {
+        // 关键词按激活表路由（各表缓存独立，切表互不影响）
         var keyword = SearchText?.Trim();
         switch (ActiveTable)
         {
@@ -850,17 +896,15 @@ public sealed partial class SamplesViewModel : ObservableObject, IPageLifecycle
                     page => OperationLogRows = new ObservableCollection<OperationLogRowItem>(page));
                 break;
             case TableProductionSample:
-                // 生产样档案表：使用专属搜索关键词（与其他表互不影响）
-                var productionKeyword = ProductionSearchText?.Trim();
-                ApplyPagedView(_allProduction, r => Matches(r.SampleId, productionKeyword) || Matches(r.SampleName, productionKeyword)
-                    || Matches(r.AlloyType, productionKeyword) || Matches(r.Status, productionKeyword), resetPage,
+                // 生产样档案表：关键词按表路由（SearchText 即当前表缓存的关键词）
+                ApplyPagedView(_allProduction, r => Matches(r.SampleId, keyword) || Matches(r.SampleName, keyword)
+                    || Matches(r.AlloyType, keyword) || Matches(r.Status, keyword), resetPage,
                     page => ProductionRows = new ObservableCollection<ProductionRowItem>(page));
                 break;
             case TableAnalysisResult:
-                // 分析结果表：使用专属搜索关键词
-                var analysisKeyword = AnalysisSearchText?.Trim();
-                ApplyPagedView(_allAnalysisResults, r => Matches(r.SampleId, analysisKeyword) || Matches(r.ArchiveText, analysisKeyword)
-                    || Matches(r.ResultStatusText, analysisKeyword), resetPage,
+                // 分析结果表：关键词按表路由
+                ApplyPagedView(_allAnalysisResults, r => Matches(r.SampleId, keyword) || Matches(r.ArchiveText, keyword)
+                    || Matches(r.ResultStatusText, keyword), resetPage,
                     page => AnalysisResultRows = new ObservableCollection<AnalysisResultRowItem>(page));
                 break;
             default:

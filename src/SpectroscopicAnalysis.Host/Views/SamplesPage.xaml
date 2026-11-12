@@ -94,97 +94,10 @@
                 </StackPanel>
             </Border>
 
-            <!-- 关键词查询（对当前激活数据表生效）+ 类型筛选/状态筛选（仅样品台账表显示） -->
+            <!-- 关键词查询（对当前激活数据表生效，关键词按表独立记忆）+ 类型筛选/状态筛选（仅样品台账表显示） -->
             <DockPanel Grid.Row="2" Margin="{DynamicResource Spacing.CardGap}">
-                <!-- 生产样档案表专属搜索框（仅该表显示） -->
+                <!-- 统一搜索框：绑定按表路由的 SearchText，切表时内容与提示文案随表切换 -->
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" DockPanel.Dock="Right" Margin="12,0,0,0">
-                    <StackPanel.Style>
-                        <Style TargetType="StackPanel">
-                            <Setter Property="Visibility" Value="Collapsed" />
-                            <Style.Triggers>
-                                <DataTrigger Binding="{Binding ActiveTable}" Value="ProductionSample">
-                                    <Setter Property="Visibility" Value="Visible" />
-                                </DataTrigger>
-                            </Style.Triggers>
-                        </Style>
-                    </StackPanel.Style>
-                    <TextBox Width="200" VerticalAlignment="Center"
-                             Text="{Binding ProductionSearchText, UpdateSourceTrigger=PropertyChanged}">
-                        <TextBox.Style>
-                            <Style TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
-                                <Style.Resources>
-                                    <VisualBrush x:Key="SearchHint" AlignmentX="Left" Stretch="None">
-                                        <VisualBrush.Visual>
-                                            <TextBlock Text="搜索生产样（编号 / 名称 / 合金 / 状态）" Foreground="{DynamicResource Brush.Text.Disabled}"
-                                                       FontSize="{DynamicResource FontSize.Body}" />
-                                        </VisualBrush.Visual>
-                                    </VisualBrush>
-                                </Style.Resources>
-                                <Style.Triggers>
-                                    <Trigger Property="Text" Value="">
-                                        <Setter Property="Background" Value="{StaticResource SearchHint}" />
-                                    </Trigger>
-                                </Style.Triggers>
-                            </Style>
-                        </TextBox.Style>
-                        <TextBox.InputBindings>
-                            <KeyBinding Key="Enter" Command="{Binding SearchCommand}" />
-                        </TextBox.InputBindings>
-                    </TextBox>
-                    <Button Content="查询" Command="{Binding SearchCommand}" Style="{StaticResource PrimaryBtn}" Margin="8,0,0,0" Padding="14,5" />
-                </StackPanel>
-                <!-- 分析结果表专属搜索框（仅该表显示） -->
-                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" DockPanel.Dock="Right" Margin="12,0,0,0">
-                    <StackPanel.Style>
-                        <Style TargetType="StackPanel">
-                            <Setter Property="Visibility" Value="Collapsed" />
-                            <Style.Triggers>
-                                <DataTrigger Binding="{Binding ActiveTable}" Value="AnalysisResult">
-                                    <Setter Property="Visibility" Value="Visible" />
-                                </DataTrigger>
-                            </Style.Triggers>
-                        </Style>
-                    </StackPanel.Style>
-                    <TextBox Width="200" VerticalAlignment="Center"
-                             Text="{Binding AnalysisSearchText, UpdateSourceTrigger=PropertyChanged}">
-                        <TextBox.Style>
-                            <Style TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
-                                <Style.Resources>
-                                    <VisualBrush x:Key="SearchHint" AlignmentX="Left" Stretch="None">
-                                        <VisualBrush.Visual>
-                                            <TextBlock Text="搜索分析结果（编号 / 归档位置 / 状态）" Foreground="{DynamicResource Brush.Text.Disabled}"
-                                                       FontSize="{DynamicResource FontSize.Body}" />
-                                        </VisualBrush.Visual>
-                                    </VisualBrush>
-                                </Style.Resources>
-                                <Style.Triggers>
-                                    <Trigger Property="Text" Value="">
-                                        <Setter Property="Background" Value="{StaticResource SearchHint}" />
-                                    </Trigger>
-                                </Style.Triggers>
-                            </Style>
-                        </TextBox.Style>
-                        <TextBox.InputBindings>
-                            <KeyBinding Key="Enter" Command="{Binding SearchCommand}" />
-                        </TextBox.InputBindings>
-                    </TextBox>
-                    <Button Content="查询" Command="{Binding SearchCommand}" Style="{StaticResource PrimaryBtn}" Margin="8,0,0,0" Padding="14,5" />
-                </StackPanel>
-                <!-- 通用搜索框（其余表显示；两张新表使用各自专属搜索框） -->
-                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" DockPanel.Dock="Right" Margin="12,0,0,0">
-                    <StackPanel.Style>
-                        <Style TargetType="StackPanel">
-                            <Setter Property="Visibility" Value="Visible" />
-                            <Style.Triggers>
-                                <DataTrigger Binding="{Binding ActiveTable}" Value="ProductionSample">
-                                    <Setter Property="Visibility" Value="Collapsed" />
-                                </DataTrigger>
-                                <DataTrigger Binding="{Binding ActiveTable}" Value="AnalysisResult">
-                                    <Setter Property="Visibility" Value="Collapsed" />
-                                </DataTrigger>
-                            </Style.Triggers>
-                        </Style>
-                    </StackPanel.Style>
                     <TextBox Width="200" VerticalAlignment="Center"
                              Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}">
                         <TextBox.Style>
@@ -196,11 +109,37 @@
                                                        FontSize="{DynamicResource FontSize.Body}" />
                                         </VisualBrush.Visual>
                                     </VisualBrush>
+                                    <VisualBrush x:Key="SearchHint.Production" AlignmentX="Left" Stretch="None">
+                                        <VisualBrush.Visual>
+                                            <TextBlock Text="搜索生产样（编号 / 名称 / 合金 / 状态）" Foreground="{DynamicResource Brush.Text.Disabled}"
+                                                       FontSize="{DynamicResource FontSize.Body}" />
+                                        </VisualBrush.Visual>
+                                    </VisualBrush>
+                                    <VisualBrush x:Key="SearchHint.Analysis" AlignmentX="Left" Stretch="None">
+                                        <VisualBrush.Visual>
+                                            <TextBlock Text="搜索分析结果（编号 / 归档位置 / 状态）" Foreground="{DynamicResource Brush.Text.Disabled}"
+                                                       FontSize="{DynamicResource FontSize.Body}" />
+                                        </VisualBrush.Visual>
+                                    </VisualBrush>
                                 </Style.Resources>
                                 <Style.Triggers>
                                     <Trigger Property="Text" Value="">
                                         <Setter Property="Background" Value="{StaticResource SearchHint}" />
                                     </Trigger>
+                                    <MultiDataTrigger>
+                                        <MultiDataTrigger.Conditions>
+                                            <Condition Binding="{Binding Text, RelativeSource={RelativeSource Self}}" Value="" />
+                                            <Condition Binding="{Binding ActiveTable}" Value="ProductionSample" />
+                                        </MultiDataTrigger.Conditions>
+                                        <Setter Property="Background" Value="{StaticResource SearchHint.Production}" />
+                                    </MultiDataTrigger>
+                                    <MultiDataTrigger>
+                                        <MultiDataTrigger.Conditions>
+                                            <Condition Binding="{Binding Text, RelativeSource={RelativeSource Self}}" Value="" />
+                                            <Condition Binding="{Binding ActiveTable}" Value="AnalysisResult" />
+                                        </MultiDataTrigger.Conditions>
+                                        <Setter Property="Background" Value="{StaticResource SearchHint.Analysis}" />
+                                    </MultiDataTrigger>
                                 </Style.Triggers>
                             </Style>
                         </TextBox.Style>

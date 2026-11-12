@@ -228,6 +228,24 @@ public sealed class SamplesTableSwitchTests
     }
 
     [Fact]
+    public void SearchHint_随激活表切换提示词()
+    {
+        var vm = Create();
+        Assert.Contains("关键字", vm.SearchHint);                // 默认台账表
+
+        vm.ActiveTable = SamplesViewModel.TableProductionSample;
+        Assert.Contains("生产样", vm.SearchHint);
+        Assert.False(vm.HasSearchText);
+
+        vm.SearchText = "abc";
+        Assert.True(vm.HasSearchText);                          // 输入关键词后水印隐藏
+
+        vm.ActiveTable = SamplesViewModel.TableAnalysisResult;
+        Assert.Contains("分析结果", vm.SearchHint);
+        Assert.False(vm.HasSearchText);                         // 切表后按新表缓存判定
+    }
+
+    [Fact]
     public async Task SearchText_专属属性与路由属性指向同一表缓存()
     {
         var vm = Create();

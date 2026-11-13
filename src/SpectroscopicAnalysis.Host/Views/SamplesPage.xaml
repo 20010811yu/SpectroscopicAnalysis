@@ -634,10 +634,27 @@
                                         </Style>
                                     </StackPanel.Style>
 
-                                    <!-- 标题 + 状态徽章 -->
-                                    <TextBlock Style="{StaticResource Text.CardTitle}" TextWrapping="Wrap">
-                                        <Run Text="样品详情：" /><Run Text="{Binding Detail.SampleId, Mode=OneWay}" />
-                                    </TextBlock>
+                                    <!-- 标题行：标题靠左、删除按钮同行最右（仅样品台账详情显示） -->
+                                    <DockPanel>
+                                        <Button DockPanel.Dock="Right" VerticalAlignment="Center" Margin="8,0,0,0"
+                                                Content="删除样品"
+                                                Command="{Binding DeleteCommand}"
+                                                CommandParameter="{Binding SelectedRow}">
+                                            <Button.Style>
+                                                <Style TargetType="Button" BasedOn="{StaticResource DangerBtn}">
+                                                    <Setter Property="Visibility" Value="Collapsed" />
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding Detail.Kind}" Value="Sct">
+                                                            <Setter Property="Visibility" Value="Visible" />
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Button.Style>
+                                        </Button>
+                                        <TextBlock Style="{StaticResource Text.CardTitle}" TextWrapping="Wrap" VerticalAlignment="Center">
+                                            <Run Text="样品详情：" /><Run Text="{Binding Detail.SampleId, Mode=OneWay}" />
+                                        </TextBlock>
+                                    </DockPanel>
                                     <Border CornerRadius="10" Padding="8,2" HorizontalAlignment="Left" Margin="0,6,0,0">
                                         <Border.Style>
                                             <Style TargetType="Border" BasedOn="{StaticResource Badge.Base}">
@@ -922,22 +939,6 @@
                                             </DataTemplate>
                                         </ItemsControl.ItemTemplate>
                                     </ItemsControl>
-
-                                    <!-- 删除当前样品（仅样品台账详情显示；级联删除标准值与控制限；弹窗二次确认） -->
-                                    <Button Content="删除样品" HorizontalAlignment="Left" Margin="0,16,0,0"
-                                            Command="{Binding DeleteCommand}"
-                                            CommandParameter="{Binding SelectedRow}">
-                                        <Button.Style>
-                                            <Style TargetType="Button" BasedOn="{StaticResource DangerBtn}">
-                                                <Setter Property="Visibility" Value="Collapsed" />
-                                                <Style.Triggers>
-                                                    <DataTrigger Binding="{Binding Detail.Kind}" Value="Sct">
-                                                        <Setter Property="Visibility" Value="Visible" />
-                                                    </DataTrigger>
-                                                </Style.Triggers>
-                                            </Style>
-                                        </Button.Style>
-                                    </Button>
                                 </StackPanel>
                             </StackPanel>
                         </ScrollViewer>

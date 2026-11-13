@@ -434,7 +434,8 @@ public sealed partial class SamplesViewModel : ObservableObject, IPageLifecycle
             var results = kind == "Production"
                 ? await Task.Run(() => _production.GetResults(sampleId).Select(MapAnalysisRow).ToList())
                 : new List<AnalysisResultRowItem>();
-            var logs = await Task.Run(() => _logRepo.GetRecentBySampleId(sampleId, 10).Select(l => new DetailLogRowItem
+            var logs = kind == "Sct"
+                ? await Task.Run(() => _logRepo.GetRecentBySampleId(sampleId, 10).Select(l => new DetailLogRowItem
             {
                 OperationTimeText = l.OperationTime,   // 完整时间（yyyy-MM-dd HH:mm:ss）
                 OperationTypeText = l.OperationType switch
@@ -453,7 +454,8 @@ public sealed partial class SamplesViewModel : ObservableObject, IPageLifecycle
                     _ => l.ResultStatus,
                 },
                 ResultStatus = l.ResultStatus,
-            }).ToList());
+            }).ToList())
+                : new List<DetailLogRowItem>();
 
             _ui.Invoke(() =>
             {

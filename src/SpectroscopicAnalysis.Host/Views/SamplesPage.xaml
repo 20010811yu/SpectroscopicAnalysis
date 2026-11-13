@@ -885,8 +885,19 @@
                                         </ItemsControl>
                                     </StackPanel>
 
-                                    <!-- 轨迹日志（最近 10 条；带表头子表：完整时间/操作类型/触发原因/结果状态） -->
-                                    <TextBlock Text="轨迹日志（最近）" Style="{StaticResource Text.Caption}" Margin="0,12,0,4" />
+                                    <!-- 轨迹日志（仅样品台账详情显示；最近 10 条；带表头子表：完整时间/操作类型/触发原因/结果状态） -->
+                                    <StackPanel>
+                                        <StackPanel.Style>
+                                            <Style TargetType="StackPanel">
+                                                <Setter Property="Visibility" Value="Collapsed" />
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding Detail.Kind}" Value="Sct">
+                                                        <Setter Property="Visibility" Value="Visible" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </StackPanel.Style>
+                                        <TextBlock Text="轨迹日志（最近）" Style="{StaticResource Text.Caption}" Margin="0,12,0,4" />
                                     <ItemsControl ItemsSource="{Binding DetailLogs}">
                                         <ItemsControl.Template>
                                             <ControlTemplate TargetType="ItemsControl">
@@ -939,6 +950,7 @@
                                             </DataTemplate>
                                         </ItemsControl.ItemTemplate>
                                     </ItemsControl>
+                                    </StackPanel>
                                 </StackPanel>
                             </StackPanel>
                         </ScrollViewer>

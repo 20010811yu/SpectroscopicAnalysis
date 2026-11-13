@@ -184,21 +184,37 @@
                 </StackPanel>
             </DockPanel>
 
-            <!-- SCT 样品台账（真实数据；撑满剩余高度，行高自然，高度不足时表格内部纵向滚动） -->
-            <Border Grid.Row="3" Style="{StaticResource Card}" Margin="{DynamicResource Spacing.CardGap}">
-                <Grid>
+            <!-- 两个独立模块：左=表格卡（标题+表格+分页脚），右=样品详情卡（高度与左卡同行 Stretch 平齐）；
+                 其余 5 张数据表激活时左卡跨两列全宽、右详情卡隐藏 -->
+            <Grid Grid.Row="3" Margin="{DynamicResource Spacing.CardGap}">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="1.7*" MinWidth="420" />
+                    <ColumnDefinition Width="0.9*" MinWidth="280" />
+                </Grid.ColumnDefinitions>
+
+                <!-- 左模块：表格卡片 -->
+                <Border Grid.Column="0">
+                    <Border.Style>
+                        <Style TargetType="Border" BasedOn="{StaticResource Card}">
+                            <Setter Property="Grid.ColumnSpan" Value="2" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding ActiveTable}" Value="Sample">
+                                    <Setter Property="Grid.ColumnSpan" Value="1" />
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding ActiveTable}" Value="ProductionSample">
+                                    <Setter Property="Grid.ColumnSpan" Value="1" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Border.Style>
+                    <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="*" />
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
-                    <!-- 两列弹性布局：左表格区 + 右样品详情面板（仅样品台账/生产样档案两表启用，其余表横向跨两列保持全宽） -->
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="1.7*" MinWidth="420" />
-                        <ColumnDefinition Width="0.9*" MinWidth="280" />
-                    </Grid.ColumnDefinitions>
-                    <DockPanel Grid.Row="0" Grid.ColumnSpan="2" Margin="0,0,0,8">
+                    <DockPanel Grid.Row="0" Margin="0,0,0,8">
                         <TextBlock Text="{Binding ActiveTableDisplay}" Style="{StaticResource Text.CardTitle}" />
                         <!-- 数据表切换（5 张表；标准值/控制限可删，系数/日志只读） -->
                         <StackPanel Orientation="Horizontal" Margin="16,0,0,0">
@@ -223,7 +239,7 @@
                     </DockPanel>
                     <!-- 表格撑满卡片剩余高度（行 3 为 Star），行高不随窗口压缩，纵向不足时内部滚动；
                          5 个表格同格叠放，按 ActiveTable 切换可见性 -->
-                    <DataGrid Grid.Row="1" Grid.Column="0" ItemsSource="{Binding SctSamples}" SelectedItem="{Binding SelectedRow}" AutoGenerateColumns="False"
+                    <DataGrid Grid.Row="1" ItemsSource="{Binding SctSamples}" SelectedItem="{Binding SelectedRow}" AutoGenerateColumns="False"
                               x:Name="LedgerGrid"
                               LayoutUpdated="LedGrid_LayoutUpdated"
                               IsReadOnly="True" CanUserAddRows="False" CanUserSortColumns="False"
@@ -318,7 +334,7 @@
                     </DataGrid>
 
                     <!-- 标准值表（SCT_CertifiedValue；可删除） -->
-                    <DataGrid Grid.Row="1" Grid.ColumnSpan="2" ItemsSource="{Binding CertifiedValues}" AutoGenerateColumns="False"
+                    <DataGrid Grid.Row="1" ItemsSource="{Binding CertifiedValues}" AutoGenerateColumns="False"
                               IsReadOnly="True" CanUserAddRows="False" CanUserSortColumns="False"
                               CanUserResizeColumns="True" CanUserResizeRows="False"
                               ScrollViewer.CanContentScroll="True"
@@ -358,7 +374,7 @@
                     </DataGrid>
 
                     <!-- 控制限表（ControlLimit；可删除） -->
-                    <DataGrid Grid.Row="1" Grid.ColumnSpan="2" ItemsSource="{Binding ControlLimitRows}" AutoGenerateColumns="False"
+                    <DataGrid Grid.Row="1" ItemsSource="{Binding ControlLimitRows}" AutoGenerateColumns="False"
                               IsReadOnly="True" CanUserAddRows="False" CanUserSortColumns="False"
                               CanUserResizeColumns="True" CanUserResizeRows="False"
                               ScrollViewer.CanContentScroll="True"
@@ -398,7 +414,7 @@
                     </DataGrid>
 
                     <!-- 校正系数表（CorrectionCoefficient；版本化数据，可删除） -->
-                    <DataGrid Grid.Row="1" Grid.ColumnSpan="2" ItemsSource="{Binding CoefficientRows}" AutoGenerateColumns="False"
+                    <DataGrid Grid.Row="1" ItemsSource="{Binding CoefficientRows}" AutoGenerateColumns="False"
                               IsReadOnly="True" CanUserAddRows="False" CanUserSortColumns="False"
                               CanUserResizeColumns="True" CanUserResizeRows="False"
                               ScrollViewer.CanContentScroll="True"
@@ -442,7 +458,7 @@
                     </DataGrid>
 
                     <!-- 操作日志表（SCT_OperationLog；审计留痕，可删除） -->
-                    <DataGrid Grid.Row="1" Grid.ColumnSpan="2" ItemsSource="{Binding OperationLogRows}" AutoGenerateColumns="False"
+                    <DataGrid Grid.Row="1" ItemsSource="{Binding OperationLogRows}" AutoGenerateColumns="False"
                               IsReadOnly="True" CanUserAddRows="False" CanUserSortColumns="False"
                               CanUserResizeColumns="True" CanUserResizeRows="False"
                               ScrollViewer.CanContentScroll="True"
@@ -483,7 +499,7 @@
                     </DataGrid>
 
                     <!-- 生产样档案表（Production_Sample）：独立建表的生产样台账 -->
-                    <DataGrid Grid.Row="1" Grid.Column="0" ItemsSource="{Binding ProductionRows}" SelectedItem="{Binding SelectedRow}" AutoGenerateColumns="False"
+                    <DataGrid Grid.Row="1" ItemsSource="{Binding ProductionRows}" SelectedItem="{Binding SelectedRow}" AutoGenerateColumns="False"
                               IsReadOnly="True" CanUserAddRows="False" CanUserSortColumns="False"
                               ScrollViewer.CanContentScroll="True"
                               HeadersVisibility="Column" GridLinesVisibility="Horizontal"
@@ -534,7 +550,7 @@
                     </DataGrid>
 
                     <!-- 分析结果表（Analysis_Result）：原始/校正后浓度双存 + 系数版本可追溯 -->
-                    <DataGrid Grid.Row="1" Grid.ColumnSpan="2" ItemsSource="{Binding AnalysisResultRows}" AutoGenerateColumns="False"
+                    <DataGrid Grid.Row="1" ItemsSource="{Binding AnalysisResultRows}" AutoGenerateColumns="False"
                               IsReadOnly="True" CanUserAddRows="False" CanUserSortColumns="False"
                               ScrollViewer.CanContentScroll="True"
                               HeadersVisibility="Column" GridLinesVisibility="Horizontal"
@@ -566,8 +582,8 @@
                         </DataGrid.Columns>
                     </DataGrid>
 
-                    <!-- 分页栏（每页 15 行，对当前激活数据表生效；整组靠右） -->
-                    <StackPanel Grid.Row="2" Grid.ColumnSpan="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,8,0,0">
+                    <!-- 分页脚（每页 15 行；左对齐紧贴表格下方） -->
+                    <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Left" Margin="0,8,0,0">
                         <Button Content="首页" Command="{Binding FirstPageCommand}" Style="{StaticResource PrimaryBtn}" />
                         <Button Content="上一页" Command="{Binding PrevPageCommand}" Style="{StaticResource PrimaryBtn}" Margin="4,0,0,0" />
                         <TextBlock Text="{Binding PageDisplay}" VerticalAlignment="Center" Margin="8,0"
@@ -577,26 +593,29 @@
                             <Run Text="共 " /><Run Text="{Binding TotalCount, Mode=OneWay}" /><Run Text=" 条" />
                         </TextBlock>
                     </StackPanel>
-                    <TextBlock Grid.Row="3" Grid.ColumnSpan="2" Text="使用次数达到上限自动标记「需测高」；厚度低于最小厚度自动「禁用」并报警更换；删除经弹窗二次确认（级联删除标准值与控制限，操作日志保留）"
+                    <TextBlock Grid.Row="3" Text="使用次数达到上限自动标记「需测高」；厚度低于最小厚度自动「禁用」并报警更换；删除经弹窗二次确认（级联删除标准值与控制限，操作日志保留）"
                                Style="{StaticResource Text.Caption}" Margin="0,8,0,0"
                                Visibility="{Binding IsSampleTable, Converter={StaticResource BoolToVisibility}}" />
+                    </Grid>
+                </Border>
 
-                    <!-- 右侧样品详情面板（仅样品台账/生产样档案两表显示；未选中时显示引导占位；只占表格行，不得跨分页行遮挡分页脚） -->
-                    <Border Grid.Row="1" Grid.Column="1" Margin="12,0,0,0">
-                        <Border.Style>
-                            <Style TargetType="Border" BasedOn="{StaticResource Card}">
-                                <Setter Property="Visibility" Value="Collapsed" />
-                                <Style.Triggers>
-                                    <DataTrigger Binding="{Binding ActiveTable}" Value="Sample">
-                                        <Setter Property="Visibility" Value="Visible" />
-                                    </DataTrigger>
-                                    <DataTrigger Binding="{Binding ActiveTable}" Value="ProductionSample">
-                                        <Setter Property="Visibility" Value="Visible" />
-                                    </DataTrigger>
-                                </Style.Triggers>
-                            </Style>
-                        </Border.Style>
-                        <ScrollViewer VerticalScrollBarVisibility="Auto">
+                <!-- 右模块：样品详情卡片（仅样品台账/生产样档案两表显示；与左卡同行 Stretch 平齐；未选中时显示引导占位） -->
+                <Border Grid.Column="1">
+                    <Border.Style>
+                        <Style TargetType="Border" BasedOn="{StaticResource Card}">
+                            <Setter Property="Margin" Value="12,0,0,0" />
+                            <Setter Property="Visibility" Value="Collapsed" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding ActiveTable}" Value="Sample">
+                                    <Setter Property="Visibility" Value="Visible" />
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding ActiveTable}" Value="ProductionSample">
+                                    <Setter Property="Visibility" Value="Visible" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Border.Style>
+                    <ScrollViewer VerticalScrollBarVisibility="Auto">
                             <StackPanel>
                                 <!-- 未选中引导（描述性占位） -->
                                 <TextBlock Text="点击左侧表格行查看样品详情" TextWrapping="Wrap">
@@ -871,9 +890,8 @@
                                 </StackPanel>
                             </StackPanel>
                         </ScrollViewer>
-                    </Border>
-                </Grid>
-            </Border>
+                </Border>
+            </Grid>
 
     </Grid>
 </UserControl>

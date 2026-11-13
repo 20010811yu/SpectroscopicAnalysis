@@ -174,6 +174,9 @@ public sealed class DbInitializer
     public void EnsureCreated()
     {
         using var conn = _db.Open();
+        // 一次性重建旧结构系数表（缺版本唯一索引即旧表）：来源必填（设置样/类型标准化样）+ 版本唯一约束，
+        // 重建后由 SeedData.SeedCoefficientsIfEmpty 重填；新结构表不重复重建。
+        DropLegacyCoefficientTableIfAny(conn);
         using var tx = conn.BeginTransaction();
         foreach (var sql in Scripts)
         {
@@ -215,17 +218,62 @@ public sealed class DbInitializer
         // 生产样档案独立建表后，清理存量库 SCT_Sample 中的生产样行（先删子表引用再删本体，生产样数据由 Production_Sample 提供）
         PurgeProductionFromSctSample(conn, tx);
         // 校正系数版本化修复（幂等，须在建唯一索引前执行）：
-        // ① 历史库无版本唯一约束时种子数据可能重复播种，先按（方法,元素,版本）去重，保留最小 CoeffID；
+        // ① 历史库无版本唯一约束时种子数据可能重复播种，先按（方法,元素,版本,来源）去重，保留最小 CoeffID
+        //   （来源参与唯一性：同方法/元素/版本允许设置样与类型标准化样两套系数并存）；
         // ② 有效性规则：同（方法,元素）保留多版本，仅生效时间最新的版本为当前有效（并列时取版本高者），归一化 IsCurrent。
         DedupeAndNormalizeCoefficients(conn, tx);
+        // 来源必填：系数来源仅设置样/类型标准化样两类，存量空来源回填为具体设置样型号（按 CoeffID 轮转分配，幂等；
+        // 注意 SQLite 子查询 OFFSET 内不能引用外层列，改用"按编号计数定位"实现轮转）
+        using (var fillSource = conn.CreateCommand())
+        {
+            fillSource.Transaction = tx;
+            fillSource.CommandText = """
+                UPDATE CorrectionCoefficient SET SourceSampleID = (
+                    SELECT s.SampleID FROM SCT_Sample s
+                    WHERE s.SampleType = 'SettingUp'
+                      AND (SELECT COUNT(*) FROM SCT_Sample s2
+                           WHERE s2.SampleType = 'SettingUp' AND s2.SampleID <= s.SampleID)
+                        = (CorrectionCoefficient.CoeffID % (SELECT COUNT(*) FROM SCT_Sample WHERE SampleType = 'SettingUp')) + 1
+                )
+                WHERE SourceSampleID IS NULL
+                  AND EXISTS (SELECT 1 FROM SCT_Sample WHERE SampleType = 'SettingUp')
+                """;
+            fillSource.ExecuteNonQuery();
+        }
         using (var idx = conn.CreateCommand())
         {
             idx.Transaction = tx;
-            // 版本唯一索引：既防重复播种，也使 INSERT OR IGNORE 真正生效
-            idx.CommandText = "CREATE UNIQUE INDEX IF NOT EXISTS UX_Coefficient_Method_Element_Version ON CorrectionCoefficient(MethodID, Element, Version);";
+            // 版本+来源唯一索引：同方法/元素/版本允许设置样与类型标准化样两套系数并存；防重复播种，使 INSERT OR IGNORE 真正生效
+            idx.CommandText = "CREATE UNIQUE INDEX IF NOT EXISTS UX_Coefficient_Method_Element_Version_Source ON CorrectionCoefficient(MethodID, Element, Version, SourceSampleID);";
             idx.ExecuteNonQuery();
         }
         tx.Commit();
+    }
+
+    /// <summary>旧结构系数表一次性重建：表存在但缺版本+来源唯一索引（UX_Coefficient_Method_Element_Version_Source）即视为旧表，整体删除；
+    /// 表结构与演示数据由建表脚本与 SeedData.SeedCoefficientsIfEmpty 重填。新结构表跳过，不丢失后续录入数据。</summary>
+    private static void DropLegacyCoefficientTableIfAny(DbConnection conn)
+    {
+        using (var check = conn.CreateCommand())
+        {
+            check.CommandText = """
+                SELECT COUNT(*) FROM sqlite_master
+                WHERE type = 'table' AND name = 'CorrectionCoefficient'
+                  AND NOT EXISTS (
+                      SELECT 1 FROM sqlite_master
+                      WHERE type = 'index' AND name = 'UX_Coefficient_Method_Element_Version_Source'
+                  )
+                """;
+            var legacy = (long)(check.ExecuteScalar() ?? 0L);
+            if (legacy == 0)
+            {
+                return;
+            }
+        }
+
+        using var drop = conn.CreateCommand();
+        drop.CommandText = "DROP TABLE CorrectionCoefficient;";
+        drop.ExecuteNonQuery();
     }
 
     /// <summary>校正系数去重与 IsCurrent 归一化（幂等）：有效性仅由生效时间最新（并列取版本高者）的版本持有。</summary>
@@ -237,7 +285,7 @@ public sealed class DbInitializer
             dedupe.CommandText = """
                 DELETE FROM CorrectionCoefficient
                 WHERE CoeffID NOT IN (
-                    SELECT MIN(CoeffID) FROM CorrectionCoefficient GROUP BY MethodID, Element, Version
+                    SELECT MIN(CoeffID) FROM CorrectionCoefficient GROUP BY MethodID, Element, Version, SourceSampleID
                 )
                 """;
             dedupe.ExecuteNonQuery();

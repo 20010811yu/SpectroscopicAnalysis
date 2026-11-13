@@ -117,6 +117,7 @@ public partial class App
         {
             var seeded = _host.Services.GetRequiredService<SeedData>();
             await Task.Run(seeded.SeedIfEmpty);
+            await Task.Run(seeded.SeedCoefficientsIfEmpty);
             Log.Information("数据库就绪（建表/种子幂等完成）");
         }
         catch (Exception ex)

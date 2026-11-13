@@ -143,23 +143,8 @@ public sealed class SeedData
             }
         }
 
-        // 校正系数来源样品：仅设置样与类型标准化样（任务清单硬性约束；DB 触发器同规则强制）
-        var coeffSources = samples.Where(s => s.SampleType is SampleType.SettingUp or SampleType.TypeStd).ToList();
-
-        // 校正系数：4 方法 × 10 元素 × 125 版本 = 5000 行（IsCurrent 仅最新版本为 1）
-        foreach (var method in methods)
-        {
-            foreach (var element in elements)
-            {
-                for (var v = 1; v <= 125; v++)
-                {
-                    InsertCoefficient(conn, tx, method, element, 1.0 + (v % 50) / 100.0, -0.5 + (v % 30) / 100.0,
-                        baseTime.AddDays(-125 + v).ToString("yyyy-MM-dd HH:mm:ss"),
-                        v % 25 == 0 ? coeffSources[v % coeffSources.Count].SampleId : null,
-                        v == 125, v);
-                }
-            }
-        }
+        // 校正系数：4 方法 × 10 元素 × 125 版本 = 5000 行（来源必填，轮转设置样/类型标准化样）
+        SeedCoefficients(conn, tx, samples);
 
         // 操作日志：5000 行（类型/结果轮转，时间按小时递减，关联样品轮转）
         for (var i = 0; i < 5000; i++)
@@ -175,6 +160,77 @@ public sealed class SeedData
             var sampleId = samples[i % samples.Count].SampleId;
             InsertOperationLog(conn, tx, i + 1, sampleId, opType, reason,
                 baseTime.AddHours(-i).ToString("yyyy-MM-dd HH:mm:ss"), status);
+        }
+    }
+
+    /// <summary>
+    /// 校正系数表为空时重填演示系数（幂等）：来源仅设置样/类型标准化样两类、必填（轮转分配），
+    /// 有效性仅生效时间最新版本为当前有效（IsCurrent）。配合 DbInitializer 的一次性旧表重建使用。
+    /// </summary>
+    public void SeedCoefficientsIfEmpty()
+    {
+        using var conn = _db.Open();
+        using (var count = conn.CreateCommand())
+        {
+            count.CommandText = "SELECT COUNT(*) FROM CorrectionCoefficient";
+            if ((long)count.ExecuteScalar()! > 0)
+            {
+                return;     // 已有数据不重填（含用户录入的真实系数）
+            }
+        }
+
+        // 来源样品：仅设置样与类型标准化样（任务清单硬性约束；DB 触发器同规则强制）
+        var sources = new List<SctSample>();
+        using (var query = conn.CreateCommand())
+        {
+            query.CommandText = "SELECT SampleID, SampleType FROM SCT_Sample WHERE SampleType IN ('SettingUp','TypeStd')";
+            using var reader = query.ExecuteReader();
+            while (reader.Read())
+            {
+                sources.Add(new SctSample
+                {
+                    SampleId = reader.GetString(0),
+                    SampleType = reader.GetString(1),
+                });
+            }
+        }
+
+        if (sources.Count == 0)
+        {
+            return;         // 无来源样品可引用，留待样品录入后再填
+        }
+
+        using var tx = conn.BeginTransaction();
+        SeedCoefficients(conn, tx, sources);
+        tx.Commit();
+    }
+
+    /// <summary>生成演示校正系数：4 方法 × 10 元素 × 125 版本 = 5000 行；来源必填（设置样/类型标准化样轮转）；IsCurrent 仅最新版本为 1。</summary>
+    private static void SeedCoefficients(SqliteConnection conn, SqliteTransaction tx, List<SctSample> candidates)
+    {
+        // 来源仅允许设置样/类型标准化样（任务清单硬性约束；DB 触发器同规则强制）
+        var sources = candidates.Where(s => s.SampleType is SampleType.SettingUp or SampleType.TypeStd).ToList();
+        if (sources.Count == 0)
+        {
+            return;
+        }
+
+        var elements = new[] { "Si", "Fe", "Cu", "Mg", "Mn", "Zn", "Cr", "Ni", "Ti", "V" };
+        var methods = new[] { "GB/T 7999-A", "GB/T 7999-B", "ASTM E1251-A", "ASTM E1251-B" };
+        var baseTime = DateTime.Parse("2026-11-10 08:00");
+
+        foreach (var method in methods)
+        {
+            foreach (var element in elements)
+            {
+                for (var v = 1; v <= 125; v++)
+                {
+                    InsertCoefficient(conn, tx, method, element, 1.0 + (v % 50) / 100.0, -0.5 + (v % 30) / 100.0,
+                        baseTime.AddDays(-125 + v).ToString("yyyy-MM-dd HH:mm:ss"),
+                        sources[v % sources.Count].SampleId,
+                        v == 125, v);
+                }
+            }
         }
     }
 

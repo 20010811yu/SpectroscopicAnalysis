@@ -89,6 +89,8 @@ internal sealed class FakeCertifiedValueRepository : ISctCertifiedValueRepositor
     public List<long> Deleted { get; } = new();
 
     public IReadOnlyList<SctCertifiedValue> GetAll() => Store.ToList();
+    public IReadOnlyList<SctCertifiedValue> GetBySampleId(string sampleId) =>
+        Store.Where(v => v.SampleId == sampleId).OrderBy(v => v.Element).ToList();
     public void Delete(long id) { Deleted.Add(id); Store.RemoveAll(v => v.Id == id); }
 }
 
@@ -128,6 +130,11 @@ internal sealed class FakeOperationLogRepository : ISctOperationLogRepository
 
     public IReadOnlyList<SctOperationLog> GetAll() =>
         Store.OrderByDescending(l => l.OperationTime, StringComparer.Ordinal).ToList();
+    public IReadOnlyList<SctOperationLog> GetRecentBySampleId(string sampleId, int limit) =>
+        Store.Where(l => l.SampleId == sampleId)
+             .OrderByDescending(l => l.OperationTime, StringComparer.Ordinal)
+             .Take(limit)
+             .ToList();
     public void Insert(SctOperationLog log) { Inserted.Add(log); log.LogId = Store.Count + 1; Store.Add(log); }
     public void Delete(long logId) { Deleted.Add(logId); Store.RemoveAll(l => l.LogId == logId); }
 }

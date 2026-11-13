@@ -60,6 +60,31 @@ public sealed class AnalysisResultRowItem
 }
 
 /// <summary>
+/// 样品详情面板展示模型（左表 + 右详情布局）：SCT 样与生产样共用。
+/// Kind 供视图切换子表区域（Sct → 标准值；Production → 分析结果）；Status 为原始枚举串（DataTrigger 切徽章色）。
+/// </summary>
+public sealed class SampleDetailItem
+{
+    /// <summary>详情类别键："Sct" / "Production"（对应 SamplesViewModel.Table* 常量语义）。</summary>
+    public required string Kind { get; init; }
+
+    public required string SampleId { get; init; }
+    public required string TypeDisplay { get; init; }
+    public required string AlloyTypeText { get; init; }
+    public required string RackPositionText { get; init; }
+    public required string MethodText { get; init; }
+    public required string ThicknessText { get; init; }
+    public required string MinThicknessText { get; init; }
+    public required string UsageText { get; init; }
+    public required string Status { get; init; }
+    public required string StatusText { get; init; }
+    public required string LastUseText { get; init; }
+    public required string LastHeightText { get; init; }
+    public required string CreatedText { get; init; }
+    public required string RemarkText { get; init; }
+}
+
+/// <summary>
 /// 样品档案 ViewModel：从 SQLite（SCT_Sample）加载样品并按类型筛选展示。
 /// 数据库 I/O 经 Task.Run + IUiDispatcher 回 UI 线程（I/O 不阻塞 UI，开发规范第 4 节）。
 /// </summary>
@@ -151,6 +176,7 @@ public sealed partial class SamplesViewModel : ObservableObject, IPageLifecycle
 
     partial void OnActiveTableChanged(string value)
     {
+        SelectedRow = null;                     // 切表清空选中与详情面板
         CurrentPage = 1;                        // 切表回到第 1 页
         _activeTableLoad = LoadActiveTableAsync();
     }
@@ -325,6 +351,175 @@ public sealed partial class SamplesViewModel : ObservableObject, IPageLifecycle
     /// <summary>删除失败提示（空即无错误；如数据库约束冲突）。</summary>
     [ObservableProperty]
     private string? _deleteError;
+
+    // ==================== 样品详情面板（左表 + 右详情布局；样品台账/生产样档案两表启用） ====================
+
+    /// <summary>左侧表格当前选中行（DataGrid SelectedItem 绑定；SCT 样与生产样两表共用）。</summary>
+    [ObservableProperty]
+    private object? _selectedRow;
+
+    /// <summary>右侧详情面板内容（null 即不展示；选中行变化/切表/分页时重算）。</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(DetailVisible))]
+    private SampleDetailItem? _detail;
+
+    /// <summary>详情面板标准值子表（仅 SCT 样；经 ISctCertifiedValueRepository.GetBySampleId）。</summary>
+    [ObservableProperty]
+    private ObservableCollection<CertifiedValueRowItem> _detailCertifiedValues = new();
+
+    /// <summary>详情面板分析结果子表（仅生产样；经 IProductionSampleRepository.GetResults）。</summary>
+    [ObservableProperty]
+    private ObservableCollection<AnalysisResultRowItem> _detailResults = new();
+
+    /// <summary>详情面板轨迹日志文本行（最近 10 条，时间倒序；经 ISctOperationLogRepository.GetRecentBySampleId）。</summary>
+    [ObservableProperty]
+    private ObservableCollection<string> _detailLogs = new();
+
+    /// <summary>是否显示右侧详情面板（仅两张目标表且选中行非空）。</summary>
+    public bool DetailVisible =>
+        Detail is not null && ActiveTable is TableSample or TableProductionSample;
+
+    /// <summary>选中行变化 → 重算详情面板（含子表后台查询；失败走错误链不弹窗）。</summary>
+    partial void OnSelectedRowChanged(object? value) => _ = RefreshDetailAsync(value);
+
+    /// <summary>按选中行装配详情：字段直接取行展示模型，标准值/结果/日志后台查询后回填。</summary>
+    private async Task RefreshDetailAsync(object? row)
+    {
+        switch (row)
+        {
+            case SampleRowItem s:
+                Detail = MapSctDetail(s);
+                break;
+            case ProductionRowItem p:
+                Detail = MapProductionDetail(p);
+                break;
+            default:
+                ClearDetail();
+                return;
+        }
+
+        var sampleId = row switch
+        {
+            SampleRowItem s2 => s2.SampleId,
+            ProductionRowItem p2 => p2.SampleId,
+            _ => string.Empty,
+        };
+        var kind = ((SampleDetailItem)Detail!).Kind;
+
+        try
+        {
+            // 子表数据后台查询（I/O 不阻塞 UI）；结果回 UI 线程整体替换
+            var certs = kind == "Sct"
+                ? await Task.Run(() => _certRepo.GetBySampleId(sampleId).Select(c => new CertifiedValueRowItem
+                {
+                    Id = c.Id,
+                    SampleId = c.SampleId,
+                    Element = c.Element,
+                    ValueText = c.CertifiedValue.ToString("0.####"),
+                    Unit = c.Unit,
+                    UncertaintyText = c.Uncertainty?.ToString("0.####") ?? "—",
+                }).ToList())
+                : new List<CertifiedValueRowItem>();
+            var results = kind == "Production"
+                ? await Task.Run(() => _production.GetResults(sampleId).Select(MapAnalysisRow).ToList())
+                : new List<AnalysisResultRowItem>();
+            var logs = await Task.Run(() => _logRepo.GetRecentBySampleId(sampleId, 10)
+                .Select(l => $"{l.OperationTime}　{l.OperationType}　{(l.TriggerReason ?? "—")}").ToList());
+
+            _ui.Invoke(() =>
+            {
+                // 期间选中行已变化则丢弃本轮结果（防旧查询覆盖新详情）
+                if (!ReferenceEquals(SelectedRow, row))
+                {
+                    return;
+                }
+
+                DetailCertifiedValues = new ObservableCollection<CertifiedValueRowItem>(certs);
+                DetailResults = new ObservableCollection<AnalysisResultRowItem>(results);
+                DetailLogs = new ObservableCollection<string>(logs);
+            });
+        }
+        catch (Exception ex)
+        {
+            _errors.Collect(ErrorCodes.UnhandledException, "样品详情子表查询失败", sampleId, ex);
+        }
+    }
+
+    /// <summary>清空详情面板与全部子表。</summary>
+    private void ClearDetail()
+    {
+        Detail = null;
+        DetailCertifiedValues = new ObservableCollection<CertifiedValueRowItem>();
+        DetailResults = new ObservableCollection<AnalysisResultRowItem>();
+        DetailLogs = new ObservableCollection<string>();
+    }
+
+    private static SampleDetailItem MapSctDetail(SampleRowItem s) => new()
+    {
+        Kind = "Sct",
+        SampleId = s.SampleId,
+        TypeDisplay = s.TypeDisplay,
+        AlloyTypeText = s.AlloyType ?? "—",
+        RackPositionText = s.RackPosition ?? "—",
+        MethodText = string.IsNullOrEmpty(s.AssociatedMethodText) ? "—" : s.AssociatedMethodText,
+        ThicknessText = s.ThicknessText,
+        MinThicknessText = s.MinThicknessText,
+        UsageText = s.UsageText,
+        Status = s.Status,
+        StatusText = s.StatusText,
+        LastUseText = s.LastUseText,
+        LastHeightText = s.LastHeightText,
+        CreatedText = "—",
+        RemarkText = "—",
+    };
+
+    private static SampleDetailItem MapProductionDetail(ProductionRowItem p) => new()
+    {
+        Kind = "Production",
+        SampleId = p.SampleId,
+        TypeDisplay = "生产样",
+        AlloyTypeText = p.AlloyType ?? "—",
+        RackPositionText = p.RackPosition ?? "—",
+        MethodText = p.MethodText,
+        ThicknessText = "—",
+        MinThicknessText = "—",
+        UsageText = "—",
+        Status = p.Status,
+        StatusText = p.StatusText,
+        LastUseText = "—",
+        LastHeightText = "—",
+        CreatedText = p.CreatedText,
+        RemarkText = p.Remark,
+    };
+
+    /// <summary>分页/筛选/删除导致行集合整体替换后，按 SampleID 重选保持详情面板（选不回则清空）。</summary>
+    private void RestoreSelection()
+    {
+        var current = SelectedRow;
+        if (current is null)
+        {
+            return;
+        }
+
+        var sampleId = current switch
+        {
+            SampleRowItem s => s.SampleId,
+            ProductionRowItem p => p.SampleId,
+            _ => null,
+        };
+        if (sampleId is null)
+        {
+            SelectedRow = null;
+            return;
+        }
+
+        object? reselected = ActiveTable switch
+        {
+            TableProductionSample => (object?)ProductionRows.FirstOrDefault(r => r.SampleId == sampleId),
+            _ => (object?)SctSamples.FirstOrDefault(r => r.SampleId == sampleId),
+        };
+        SelectedRow = reselected;   // 找不回即置空 → OnSelectedRowChanged 清空详情
+    }
 
     // ==================== 样品注册（任务清单"入库初始化"） ====================
 
@@ -939,6 +1134,8 @@ public sealed partial class SamplesViewModel : ObservableObject, IPageLifecycle
                     page => SctSamples = new ObservableCollection<SampleRowItem>(page));
                 break;
         }
+
+        RestoreSelection();   // 行集合整体替换后按 SampleID 重选，保持详情面板
     }
 
     /// <summary>通用分页切片：统计总量/页数 → 收敛页码 → 输出当前页行。</summary>

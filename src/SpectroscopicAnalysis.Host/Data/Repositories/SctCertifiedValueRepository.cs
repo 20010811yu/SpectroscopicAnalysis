@@ -21,18 +21,35 @@ public sealed class SctCertifiedValueRepository : ISctCertifiedValueRepository
         using var reader = cmd.ExecuteReader();
         while (reader.Read())
         {
-            list.Add(new SctCertifiedValue
-            {
-                Id = reader.GetInt64(0),
-                SampleId = reader.GetString(1),
-                Element = reader.GetString(2),
-                CertifiedValue = reader.GetDouble(3),
-                Unit = reader.GetString(4),
-                Uncertainty = reader.IsDBNull(5) ? null : reader.GetDouble(5),
-            });
+            list.Add(Map(reader));
         }
         return list;
     }
+
+    public IReadOnlyList<SctCertifiedValue> GetBySampleId(string sampleId)
+    {
+        var list = new List<SctCertifiedValue>();
+        using var conn = _db.Open();
+        using var cmd = conn.CreateCommand();
+        cmd.CommandText = $"SELECT {SelectColumns} FROM SCT_CertifiedValue WHERE SampleID = $sampleId ORDER BY Element";
+        cmd.Parameters.AddWithValue("$sampleId", sampleId);
+        using var reader = cmd.ExecuteReader();
+        while (reader.Read())
+        {
+            list.Add(Map(reader));
+        }
+        return list;
+    }
+
+    private static SctCertifiedValue Map(System.Data.Common.DbDataReader reader) => new()
+    {
+        Id = reader.GetInt64(0),
+        SampleId = reader.GetString(1),
+        Element = reader.GetString(2),
+        CertifiedValue = reader.GetDouble(3),
+        Unit = reader.GetString(4),
+        Uncertainty = reader.IsDBNull(5) ? null : reader.GetDouble(5),
+    };
 
     public void Delete(long id)
     {

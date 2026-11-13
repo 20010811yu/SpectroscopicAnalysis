@@ -7,6 +7,9 @@ public interface ISctOperationLogRepository
 {
     IReadOnlyList<SctOperationLog> GetAll();
 
+    /// <summary>按样品查询最近 N 条日志（时间倒序；样品详情面板轨迹区用）。</summary>
+    IReadOnlyList<SctOperationLog> GetRecentBySampleId(string sampleId, int limit);
+
     /// <summary>插入一条操作日志（审计留痕：测高登记/标准化/控制检查等 SCT 操作）。</summary>
     void Insert(SctOperationLog log);
 

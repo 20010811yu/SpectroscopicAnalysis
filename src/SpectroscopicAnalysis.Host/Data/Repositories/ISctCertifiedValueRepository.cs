@@ -7,6 +7,9 @@ public interface ISctCertifiedValueRepository
 {
     IReadOnlyList<SctCertifiedValue> GetAll();
 
+    /// <summary>按样品查询标准值（元素升序；样品详情面板用）。</summary>
+    IReadOnlyList<SctCertifiedValue> GetBySampleId(string sampleId);
+
     /// <summary>按主键删除单条标准值。</summary>
     void Delete(long id);
 }

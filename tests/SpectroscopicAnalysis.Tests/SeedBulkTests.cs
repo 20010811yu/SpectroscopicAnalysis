@@ -256,4 +256,76 @@ public sealed class SeedBulkTests
             }
         }
     }
+
+    [Fact]
+    public void SctSample_AlloyType_仅类型标准化样可关联()
+    {
+        var path = Path.Combine(Path.GetTempPath(), $"seedtest_{Guid.NewGuid():N}.db");
+        try
+        {
+            var db = new Db(path);
+            new DbInitializer(db).EnsureCreated();
+            var seed = new SeedData(db, new SctSampleRepository(db));
+            seed.SeedDemo();
+            using var conn = db.Open();
+
+            // 种子合规：非 TypeStd 行的 AlloyType 全为 NULL
+            long badCount;
+            using (var cmd = conn.CreateCommand())
+            {
+                cmd.CommandText = "SELECT COUNT(*) FROM SCT_Sample WHERE SampleType != 'TypeStd' AND AlloyType IS NOT NULL";
+                badCount = (long)cmd.ExecuteScalar()!;
+            }
+            Assert.Equal(0L, badCount);
+
+            // 铺底：SettingUp / Control / TypeStd 各一条（无合金）
+            using (var cmd = conn.CreateCommand())
+            {
+                cmd.CommandText = """
+                    INSERT INTO SCT_Sample (SampleID, SampleName, SampleType, InitialThickness, CurrentThickness, MinThickness, UsageCount, MaxUsageCount, Status)
+                    VALUES ('SUS-T3', '设置样 T3', 'SettingUp', 10.0, 10.0, 8.0, 0, 50, 'Normal'),
+                           ('CTL-T3', '控制样 T3', 'Control', 10.0, 10.0, 6.0, 0, 60, 'Normal'),
+                           ('TS-T3-01', '类型标准化样 T3', 'TypeStd', 10.0, 10.0, 7.0, 0, 40, 'Normal')
+                    """;
+                cmd.ExecuteNonQuery();
+            }
+
+            void SetAlloy(string sampleId)
+            {
+                using var cmd = conn.CreateCommand();
+                cmd.CommandText = "UPDATE SCT_Sample SET AlloyType = '6061' WHERE SampleID = $id";
+                cmd.Parameters.AddWithValue("$id", sampleId);
+                cmd.ExecuteNonQuery();
+            }
+
+            SetAlloy("TS-T3-01");       // 类型标准化样 → 成功
+
+            Assert.Throws<Microsoft.Data.Sqlite.SqliteException>(() => SetAlloy("SUS-T3"));
+            Assert.Throws<Microsoft.Data.Sqlite.SqliteException>(() => SetAlloy("CTL-T3"));
+
+            // 存量清理：DROP 触发器模拟旧库，给控制样挂合金 → EnsureCreated 后被清空
+            using (var cmd = conn.CreateCommand())
+            {
+                cmd.CommandText = "DROP TRIGGER trg_SCT_Sample_AlloyType_TypeStdOnly; DROP TRIGGER trg_SCT_Sample_AlloyType_TypeStdOnly_Update";
+                cmd.ExecuteNonQuery();
+                cmd.CommandText = "UPDATE SCT_Sample SET AlloyType = '9xxx' WHERE SampleID = 'CTL-T3'";
+                cmd.ExecuteNonQuery();
+            }
+            new DbInitializer(db).EnsureCreated();
+
+            using (var cmd = conn.CreateCommand())
+            {
+                cmd.CommandText = "SELECT AlloyType FROM SCT_Sample WHERE SampleID = 'CTL-T3'";
+                Assert.Equal(DBNull.Value, cmd.ExecuteScalar());
+            }
+        }
+        finally
+        {
+            SqliteConnection.ClearAllPools();
+            if (File.Exists(path))
+            {
+                File.Delete(path);
+            }
+        }
+    }
 }

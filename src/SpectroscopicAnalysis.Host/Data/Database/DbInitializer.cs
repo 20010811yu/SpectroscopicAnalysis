@@ -149,6 +149,25 @@ public sealed class DbInitializer
             SELECT RAISE(ABORT, '校正系数来源样品仅允许设置样/类型标准化样（SettingUp/TypeStd）');
         END;
         """,
+        // SCT 样品合金仅类型标准化样可关联（设置样/控制样不关联合金；生产样 Production_Sample 不受限）
+        """
+        CREATE TRIGGER IF NOT EXISTS trg_SCT_Sample_AlloyType_TypeStdOnly
+        BEFORE INSERT ON SCT_Sample
+        FOR EACH ROW
+        WHEN NEW.AlloyType IS NOT NULL AND NEW.SampleType != 'TypeStd'
+        BEGIN
+            SELECT RAISE(ABORT, '合金仅允许关联类型标准化样（SampleType=TypeStd）');
+        END;
+        """,
+        """
+        CREATE TRIGGER IF NOT EXISTS trg_SCT_Sample_AlloyType_TypeStdOnly_Update
+        BEFORE UPDATE OF AlloyType ON SCT_Sample
+        FOR EACH ROW
+        WHEN NEW.AlloyType IS NOT NULL AND NEW.SampleType != 'TypeStd'
+        BEGIN
+            SELECT RAISE(ABORT, '合金仅允许关联类型标准化样（SampleType=TypeStd）');
+        END;
+        """,
     };
 
     /// <summary>创建全部表与索引（单事务执行）；并迁移存量库缺失列。</summary>
@@ -185,6 +204,13 @@ public sealed class DbInitializer
                   AND SourceSampleID IN (SELECT SampleID FROM SCT_Sample WHERE SampleType NOT IN ('SettingUp', 'TypeStd'))
                 """;
             cleanCoeff.ExecuteNonQuery();
+        }
+        // SCT 样品合金仅类型标准化样：清理存量库中设置样/控制样上的合金值（幂等）
+        using (var cleanAlloy = conn.CreateCommand())
+        {
+            cleanAlloy.Transaction = tx;
+            cleanAlloy.CommandText = "UPDATE SCT_Sample SET AlloyType = NULL WHERE SampleType != 'TypeStd' AND AlloyType IS NOT NULL";
+            cleanAlloy.ExecuteNonQuery();
         }
         // 生产样档案独立建表后，清理存量库 SCT_Sample 中的生产样行（先删子表引用再删本体，生产样数据由 Production_Sample 提供）
         PurgeProductionFromSctSample(conn, tx);

@@ -581,8 +581,8 @@
                                Style="{StaticResource Text.Caption}" Margin="0,8,0,0"
                                Visibility="{Binding IsSampleTable, Converter={StaticResource BoolToVisibility}}" />
 
-                    <!-- 右侧样品详情面板（仅样品台账/生产样档案两表显示；未选中时显示引导占位） -->
-                    <Border Grid.Row="1" Grid.Column="1" Grid.RowSpan="3" Margin="12,0,0,0">
+                    <!-- 右侧样品详情面板（仅样品台账/生产样档案两表显示；未选中时显示引导占位；只占表格行，不得跨分页行遮挡分页脚） -->
+                    <Border Grid.Row="1" Grid.Column="1" Margin="12,0,0,0">
                         <Border.Style>
                             <Style TargetType="Border" BasedOn="{StaticResource Card}">
                                 <Setter Property="Visibility" Value="Collapsed" />

@@ -17,20 +17,24 @@ public sealed class SeedData
         _samples = samples;
     }
 
-    /// <summary>任一表数据量不足目标时自动补齐演示数据（INSERT OR IGNORE 幂等；开发阶段便捷，生产环境由人工录入替代）。</summary>
+    /// <summary>
+    /// 仅空库首次注入演示数据：两张主档表（SCT_Sample 与 Production_Sample）都为空才播种。
+    /// 库中一旦有数据（含删除后残留）不再重播——删除的数据不会在下次启动恢复；生产数据由人工录入替代。
+    /// </summary>
     public void SeedIfEmpty()
     {
         using var conn = _db.Open();
-        foreach (var (table, target) in new[] { ("SCT_Sample", SeedTargetCount), ("SCT_CertifiedValue", 5000), ("ControlLimit", 5000), ("CorrectionCoefficient", 5000), ("SCT_OperationLog", 5000), ("Production_Sample", SeedTargetCount), ("Analysis_Result", SeedTargetCount) })
+        foreach (var table in new[] { "SCT_Sample", "Production_Sample" })
         {
             using var cmd = conn.CreateCommand();
             cmd.CommandText = $"SELECT COUNT(*) FROM {table}";
-            if ((long)cmd.ExecuteScalar()! < target)
+            if ((long)cmd.ExecuteScalar()! > 0)
             {
-                SeedDemo();
-                return;
+                return;     // 任一主档表非空即视为已有数据，不播种
             }
         }
+
+        SeedDemo();
     }
 
     /// <summary>种子数据目标总量（演示用途：手工演示样 + 生成样凑满 3000 条）。</summary>

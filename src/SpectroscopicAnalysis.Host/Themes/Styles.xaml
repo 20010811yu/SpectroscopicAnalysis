@@ -322,7 +322,8 @@
          右侧保留 PART_RightHeaderGripper 抓取区，鼠标拖拽改列宽功能不变。 -->
     <Style x:Key="GridColumnHeader" TargetType="DataGridColumnHeader" BasedOn="{StaticResource {x:Type DataGridColumnHeader}}">
         <Setter Property="HorizontalContentAlignment" Value="Left" />
-        <Setter Property="Padding" Value="0,0,12,0" />
+        <!-- 左 8px 与单元格 GridCell Padding(8,6) 对齐，保证列标题与数据文字左对齐（界面规范 5.2） -->
+        <Setter Property="Padding" Value="8,0,12,0" />
         <Setter Property="BorderThickness" Value="0" />
         <Setter Property="BorderBrush" Value="Transparent" />
         <Setter Property="Background" Value="Transparent" />

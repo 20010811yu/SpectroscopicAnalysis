@@ -47,7 +47,7 @@ public sealed class DbInitializer
             Uncertainty    REAL
         );
         """,
-        // 校正系数表（版本化：IsCurrent + Version，旧版本归档不删除；不含操作者字段——身份内容已移除）
+        // 校正系数表（版本化：同方法/元素保留多版本，IsCurrent 仅生效时间最新的版本为 1；不含操作者字段——身份内容已移除）
         // SourceSampleID（来源设置样）外键引用 SCT_Sample.SampleID，可空（NULL 不参与约束）；
         // ON DELETE SET NULL：删除被引用设置样时不阻塞级联删除流程，系数版本保留（来源置空）
         """
@@ -214,7 +214,47 @@ public sealed class DbInitializer
         }
         // 生产样档案独立建表后，清理存量库 SCT_Sample 中的生产样行（先删子表引用再删本体，生产样数据由 Production_Sample 提供）
         PurgeProductionFromSctSample(conn, tx);
+        // 校正系数版本化修复（幂等，须在建唯一索引前执行）：
+        // ① 历史库无版本唯一约束时种子数据可能重复播种，先按（方法,元素,版本）去重，保留最小 CoeffID；
+        // ② 有效性规则：同（方法,元素）保留多版本，仅生效时间最新的版本为当前有效（并列时取版本高者），归一化 IsCurrent。
+        DedupeAndNormalizeCoefficients(conn, tx);
+        using (var idx = conn.CreateCommand())
+        {
+            idx.Transaction = tx;
+            // 版本唯一索引：既防重复播种，也使 INSERT OR IGNORE 真正生效
+            idx.CommandText = "CREATE UNIQUE INDEX IF NOT EXISTS UX_Coefficient_Method_Element_Version ON CorrectionCoefficient(MethodID, Element, Version);";
+            idx.ExecuteNonQuery();
+        }
         tx.Commit();
+    }
+
+    /// <summary>校正系数去重与 IsCurrent 归一化（幂等）：有效性仅由生效时间最新（并列取版本高者）的版本持有。</summary>
+    private static void DedupeAndNormalizeCoefficients(DbConnection conn, DbTransaction tx)
+    {
+        using (var dedupe = conn.CreateCommand())
+        {
+            dedupe.Transaction = tx;
+            dedupe.CommandText = """
+                DELETE FROM CorrectionCoefficient
+                WHERE CoeffID NOT IN (
+                    SELECT MIN(CoeffID) FROM CorrectionCoefficient GROUP BY MethodID, Element, Version
+                )
+                """;
+            dedupe.ExecuteNonQuery();
+        }
+
+        using var normalize = conn.CreateCommand();
+        normalize.Transaction = tx;
+        normalize.CommandText = """
+            UPDATE CorrectionCoefficient SET IsCurrent = CASE WHEN CoeffID = (
+                SELECT c2.CoeffID FROM CorrectionCoefficient c2
+                WHERE c2.MethodID = CorrectionCoefficient.MethodID
+                  AND c2.Element  = CorrectionCoefficient.Element
+                ORDER BY c2.EffectiveTime DESC, c2.Version DESC, c2.CoeffID DESC
+                LIMIT 1
+            ) THEN 1 ELSE 0 END
+            """;
+        normalize.ExecuteNonQuery();
     }
 
     /// <summary>清理存量库 SCT_Sample 中的生产样行（幂等）：先删子表引用再删本体；生产样数据由 Production_Sample 表提供。

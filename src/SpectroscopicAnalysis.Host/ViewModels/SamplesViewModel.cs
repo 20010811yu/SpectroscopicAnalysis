@@ -1279,11 +1279,13 @@ public sealed partial class SamplesViewModel : ObservableObject, IPageLifecycle
 
     // ==================== 样品删除（弹窗确认，危险操作） ====================
 
-    /// <summary>删除：先弹窗确认（不动行数据），确认后事务级联删除（样品+标准值+控制限；操作日志保留）。</summary>
+    /// <summary>删除：先弹窗确认（不动行数据），确认后事务级联删除（样品+标准值+控制限；操作日志保留）。
+    /// 参数取 object：SelectedRow 为样品台账/生产样档案两表共享，生产样行时按钮隐藏但 CanExecute 仍会求值，
+    /// 强类型 RelayCommand&lt;T&gt; 对类型不符的参数会抛 ArgumentException（进程崩溃），故此处宽容判型。</summary>
     [RelayCommand]
-    private async Task DeleteAsync(SampleRowItem? row)
+    private async Task DeleteAsync(object? parameter)
     {
-        if (row is null || IsLoading)
+        if (parameter is not SampleRowItem row || IsLoading)
         {
             return;
         }

@@ -138,6 +138,17 @@ public sealed class DbInitializer
             SELECT RAISE(ABORT, '控制限仅允许关联控制样（SampleType=Control）');
         END;
         """,
+        // 校正系数仅来源于设置样/类型标准化样（SourceSampleID 可空；同规则以触发器强制）
+        """
+        CREATE TRIGGER IF NOT EXISTS trg_CorrectionCoefficient_SourceSampleType
+        BEFORE INSERT ON CorrectionCoefficient
+        FOR EACH ROW
+        WHEN NEW.SourceSampleID IS NOT NULL
+             AND (SELECT SampleType FROM SCT_Sample WHERE SampleID = NEW.SourceSampleID) NOT IN ('SettingUp', 'TypeStd')
+        BEGIN
+            SELECT RAISE(ABORT, '校正系数来源样品仅允许设置样/类型标准化样（SettingUp/TypeStd）');
+        END;
+        """,
     };
 
     /// <summary>创建全部表与索引（单事务执行）；并迁移存量库缺失列。</summary>
@@ -163,6 +174,17 @@ public sealed class DbInitializer
                 WHERE SampleID IN (SELECT SampleID FROM SCT_Sample WHERE SampleType != 'Control')
                 """;
             clean.ExecuteNonQuery();
+        }
+        // 校正系数仅来源于设置样/类型标准化样：清理存量库中来源为其他类型的系数行（幂等）
+        using (var cleanCoeff = conn.CreateCommand())
+        {
+            cleanCoeff.Transaction = tx;
+            cleanCoeff.CommandText = """
+                DELETE FROM CorrectionCoefficient
+                WHERE SourceSampleID IS NOT NULL
+                  AND SourceSampleID IN (SELECT SampleID FROM SCT_Sample WHERE SampleType NOT IN ('SettingUp', 'TypeStd'))
+                """;
+            cleanCoeff.ExecuteNonQuery();
         }
         // 生产样档案独立建表后，清理存量库 SCT_Sample 中的生产样行（先删子表引用再删本体，生产样数据由 Production_Sample 提供）
         PurgeProductionFromSctSample(conn, tx);

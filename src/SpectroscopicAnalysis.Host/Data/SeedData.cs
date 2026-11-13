@@ -143,6 +143,9 @@ public sealed class SeedData
             }
         }
 
+        // 校正系数来源样品：仅设置样与类型标准化样（任务清单硬性约束；DB 触发器同规则强制）
+        var coeffSources = samples.Where(s => s.SampleType is SampleType.SettingUp or SampleType.TypeStd).ToList();
+
         // 校正系数：4 方法 × 10 元素 × 125 版本 = 5000 行（IsCurrent 仅最新版本为 1）
         foreach (var method in methods)
         {
@@ -152,7 +155,7 @@ public sealed class SeedData
                 {
                     InsertCoefficient(conn, tx, method, element, 1.0 + (v % 50) / 100.0, -0.5 + (v % 30) / 100.0,
                         baseTime.AddDays(-125 + v).ToString("yyyy-MM-dd HH:mm:ss"),
-                        v % 25 == 0 ? samples[v % samples.Count].SampleId : null,
+                        v % 25 == 0 ? coeffSources[v % coeffSources.Count].SampleId : null,
                         v == 125, v);
                 }
             }

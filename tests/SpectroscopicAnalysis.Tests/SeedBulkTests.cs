@@ -172,4 +172,88 @@ public sealed class SeedBulkTests
             }
         }
     }
+
+    [Fact]
+    public void CorrectionCoefficient_来源仅设置样与类型标准化样()
+    {
+        var path = Path.Combine(Path.GetTempPath(), $"seedtest_{Guid.NewGuid():N}.db");
+        try
+        {
+            var db = new Db(path);
+            new DbInitializer(db).EnsureCreated();
+            var seed = new SeedData(db, new SctSampleRepository(db));
+            seed.SeedDemo();
+            using var conn = db.Open();
+
+            // 种子合规：全部系数的 SourceSampleID 为 NULL 或指向 SettingUp/TypeStd
+            long badCount;
+            using (var cmd = conn.CreateCommand())
+            {
+                cmd.CommandText = """
+                    SELECT COUNT(*) FROM CorrectionCoefficient c
+                    WHERE c.SourceSampleID IS NOT NULL
+                      AND c.SourceSampleID IN (SELECT SampleID FROM SCT_Sample WHERE SampleType NOT IN ('SettingUp', 'TypeStd'))
+                    """;
+                badCount = (long)cmd.ExecuteScalar()!;
+            }
+            Assert.Equal(0L, badCount);
+
+            // 铺底：SettingUp 样 + TypeStd 样 + Control 样
+            using (var cmd = conn.CreateCommand())
+            {
+                cmd.CommandText = """
+                    INSERT INTO SCT_Sample (SampleID, SampleName, SampleType, InitialThickness, CurrentThickness, MinThickness, UsageCount, MaxUsageCount, Status)
+                    VALUES ('SUS-T2', '设置样 T2', 'SettingUp', 10.0, 10.0, 8.0, 0, 50, 'Normal'),
+                           ('TS-T2-01', '类型标准化样 T2', 'TypeStd', 10.0, 10.0, 7.0, 0, 40, 'Normal'),
+                           ('CTL-T2', '控制样 T2', 'Control', 10.0, 10.0, 6.0, 0, 60, 'Normal')
+                    """;
+                cmd.ExecuteNonQuery();
+            }
+
+            void InsertCoeff(string sourceId)
+            {
+                using var cmd = conn.CreateCommand();
+                cmd.CommandText = """
+                    INSERT INTO CorrectionCoefficient (MethodID, Element, Slope, Intercept, EffectiveTime, SourceSampleID, IsCurrent, Version)
+                    VALUES ('M-T', 'Si', 1.0, 0.0, '2026-01-01 00:00:00', $src, 0, 1)
+                    """;
+                cmd.Parameters.AddWithValue("$src", sourceId);
+                cmd.ExecuteNonQuery();
+            }
+
+            InsertCoeff("SUS-T2");      // 设置样 → 成功
+            InsertCoeff("TS-T2-01");    // 类型标准化样 → 成功
+
+            var ex = Assert.Throws<Microsoft.Data.Sqlite.SqliteException>(() => InsertCoeff("CTL-T2"));
+            Assert.Contains("校正系数来源样品仅允许设置样/类型标准化样", ex.Message);
+
+            // 存量清理：DROP 触发器模拟旧库，插入来源为控制样的违规行 → EnsureCreated 后被清除
+            using (var cmd = conn.CreateCommand())
+            {
+                cmd.CommandText = "DROP TRIGGER trg_CorrectionCoefficient_SourceSampleType";
+                cmd.ExecuteNonQuery();
+                cmd.CommandText = """
+                    INSERT INTO CorrectionCoefficient (CoeffID, MethodID, Element, Slope, Intercept, EffectiveTime, SourceSampleID, IsCurrent, Version)
+                    SELECT 99999, MethodID, Element, Slope, Intercept, EffectiveTime, 'CTL-T2', 0, 1
+                    FROM CorrectionCoefficient WHERE SourceSampleID = 'SUS-T2' LIMIT 1
+                    """;
+                cmd.ExecuteNonQuery();
+            }
+            new DbInitializer(db).EnsureCreated();
+
+            using (var cmd = conn.CreateCommand())
+            {
+                cmd.CommandText = "SELECT COUNT(*) FROM CorrectionCoefficient WHERE SourceSampleID = 'CTL-T2'";
+                Assert.Equal(0L, (long)cmd.ExecuteScalar()!);
+            }
+        }
+        finally
+        {
+            SqliteConnection.ClearAllPools();
+            if (File.Exists(path))
+            {
+                File.Delete(path);
+            }
+        }
+    }
 }

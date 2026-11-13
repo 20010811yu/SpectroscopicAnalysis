@@ -275,12 +275,27 @@
             </Trigger>
         </Style.Triggers>
     </Style>
-    <!-- 表格单元格：选中保持正文前景与透明底；内容垂直居中、水平靠左（界面规范 5.2） -->
+    <!-- 表格单元格：选中保持正文前景与透明底；内容垂直居中、水平靠左（界面规范 5.2）。
+         重写 Template：默认模板在选中/聚焦时绘制浅色边框（同框各格边框连成整行轮廓），极简模板去除。 -->
     <Style x:Key="GridCell" TargetType="DataGridCell" BasedOn="{StaticResource {x:Type DataGridCell}}">
         <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Primary}" />
         <Setter Property="VerticalContentAlignment" Value="Center" />
         <Setter Property="HorizontalContentAlignment" Value="Left" />
         <Setter Property="Padding" Value="8,6" />
+        <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="DataGridCell">
+                    <Border Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}"
+                            Padding="{TemplateBinding Padding}"
+                            SnapsToDevicePixels="True">
+                        <ContentPresenter VerticalAlignment="Center" HorizontalAlignment="Left" />
+                    </Border>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
         <Style.Triggers>
             <Trigger Property="IsSelected" Value="True">
                 <Setter Property="Background" Value="Transparent" />

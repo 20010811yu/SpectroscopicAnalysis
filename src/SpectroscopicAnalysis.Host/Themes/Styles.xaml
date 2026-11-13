@@ -253,9 +253,11 @@
                                 <RowDefinition Height="*" />
                                 <RowDefinition Height="Auto" />
                             </SelectiveScrollingGrid.RowDefinitions>
-                            <DataGridCellsPanel Grid.Column="1" Grid.Row="0" />
-                            <DataGridDetailsPresenter Grid.Column="1" Grid.Row="1"
-                                                      SelectiveScrollingGrid.SelectiveScrollingOrientation="Vertical" />
+                            <!-- 单元格承载必须用 DataGridCellsPresenter（ItemsControl），裸 DataGridCellsPanel 无数据源会导致整行退化为 ToString 文本 -->
+                            <DataGridCellsPresenter Grid.Column="1" Grid.Row="0"
+                                                    ItemsPanel="{TemplateBinding ItemsPanel}"
+                                                    SnapsToDevicePixels="{TemplateBinding SnapsToDevicePixels}" />
+                            <!-- 不使用行详情：DataGridDetailsPresenter 在无 RowDetailsTemplate 时仍会渲染行对象 ToString，故不放入模板 -->
                             <DataGridRowHeader Grid.Column="0" Grid.RowSpan="2"
                                                SelectiveScrollingGrid.SelectiveScrollingOrientation="Vertical" />
                         </SelectiveScrollingGrid>

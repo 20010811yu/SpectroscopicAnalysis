@@ -257,9 +257,7 @@
                             <DataGridCellsPresenter Grid.Column="1" Grid.Row="0"
                                                     ItemsPanel="{TemplateBinding ItemsPanel}"
                                                     SnapsToDevicePixels="{TemplateBinding SnapsToDevicePixels}" />
-                            <!-- 不使用行详情：DataGridDetailsPresenter 在无 RowDetailsTemplate 时仍会渲染行对象 ToString，故不放入模板 -->
-                            <DataGridRowHeader Grid.Column="0" Grid.RowSpan="2"
-                                               SelectiveScrollingGrid.SelectiveScrollingOrientation="Vertical" />
+                            <!-- 不放 DataGridRowHeader/DetailsPresenter：行头未使用且默认模板带边框，会在第一列左侧残留竖向分割线 -->
                         </SelectiveScrollingGrid>
                     </Border>
                 </ControlTemplate>

@@ -1083,43 +1083,53 @@ public sealed partial class SamplesViewModel : ObservableObject, IPageLifecycle
         RefreshView();
     }
 
-    /// <summary>搜索命令：关键词变化后回到第 1 页刷新（回车/按钮触发，对当前激活表生效）。</summary>
+    /// <summary>搜索命令：关键词变化后回到第 1 页刷新（回车/按钮触发，对当前激活表生效）。
+    /// 无命中时保留当前数据页并弹窗提示（不再清空表格）。</summary>
     [RelayCommand]
-    private void Search() => RefreshView(resetPage: true);
+    private void Search()
+    {
+        RefreshView(resetPage: true, keepPageWhenEmpty: true);
+        if (_lastSearchKeptPage)
+        {
+            var keyword = SearchText?.Trim();
+            _dialogs.Alert("未找到数据", $"未找到与「{keyword}」匹配的数据，已保留当前数据页。");
+        }
+    }
 
     /// <summary>筛选 + 关键词过滤 + 分页切片统一入口（按当前激活表分发到对应集合）。</summary>
-    private void RefreshView(bool resetPage = false)
+    private void RefreshView(bool resetPage = false, bool keepPageWhenEmpty = false)
     {
         // 关键词按激活表路由（各表缓存独立，切表互不影响）
         var keyword = SearchText?.Trim();
+        _lastSearchKeptPage = false;
         switch (ActiveTable)
         {
             case TableCertifiedValue:
-                ApplyPagedView(_allCertified, r => Matches(r.SampleId, keyword) || Matches(r.Element, keyword), resetPage,
+                ApplyPagedView(_allCertified, r => Matches(r.SampleId, keyword) || Matches(r.Element, keyword), resetPage, keepPageWhenEmpty,
                     page => CertifiedValues = new ObservableCollection<CertifiedValueRowItem>(page));
                 break;
             case TableControlLimit:
-                ApplyPagedView(_allLimits, r => Matches(r.SampleId, keyword) || Matches(r.Element, keyword), resetPage,
+                ApplyPagedView(_allLimits, r => Matches(r.SampleId, keyword) || Matches(r.Element, keyword), resetPage, keepPageWhenEmpty,
                     page => ControlLimitRows = new ObservableCollection<ControlLimitRowItem>(page));
                 break;
             case TableCoefficient:
-                ApplyPagedView(_allCoeffs, r => Matches(r.MethodId, keyword) || Matches(r.Element, keyword) || Matches(r.SourceSampleText, keyword), resetPage,
+                ApplyPagedView(_allCoeffs, r => Matches(r.MethodId, keyword) || Matches(r.Element, keyword) || Matches(r.SourceSampleText, keyword), resetPage, keepPageWhenEmpty,
                     page => CoefficientRows = new ObservableCollection<CoefficientRowItem>(page));
                 break;
             case TableOperationLog:
-                ApplyPagedView(_allLogs, r => Matches(r.SampleIdText, keyword) || Matches(r.OperationTypeText, keyword) || Matches(r.TriggerReasonText, keyword), resetPage,
+                ApplyPagedView(_allLogs, r => Matches(r.SampleIdText, keyword) || Matches(r.OperationTypeText, keyword) || Matches(r.TriggerReasonText, keyword), resetPage, keepPageWhenEmpty,
                     page => OperationLogRows = new ObservableCollection<OperationLogRowItem>(page));
                 break;
             case TableProductionSample:
                 // 生产样档案表：关键词按表路由（SearchText 即当前表缓存的关键词）
                 ApplyPagedView(_allProduction, r => Matches(r.SampleId, keyword) || Matches(r.SampleName, keyword)
-                    || Matches(r.AlloyType, keyword) || Matches(r.Status, keyword), resetPage,
+                    || Matches(r.AlloyType, keyword) || Matches(r.Status, keyword), resetPage, keepPageWhenEmpty,
                     page => ProductionRows = new ObservableCollection<ProductionRowItem>(page));
                 break;
             case TableAnalysisResult:
                 // 分析结果表：关键词按表路由
                 ApplyPagedView(_allAnalysisResults, r => Matches(r.SampleId, keyword) || Matches(r.ArchiveText, keyword)
-                    || Matches(r.ResultStatusText, keyword), resetPage,
+                    || Matches(r.ResultStatusText, keyword), resetPage, keepPageWhenEmpty,
                     page => AnalysisResultRows = new ObservableCollection<AnalysisResultRowItem>(page));
                 break;
             default:
@@ -1132,7 +1142,7 @@ public sealed partial class SamplesViewModel : ObservableObject, IPageLifecycle
                     filtered = filtered.Where(r => r.Status == StatusFilter.Key);
                 }
 
-                ApplyPagedView(filtered.ToList(), r => Matches(r.SampleId, keyword) || Matches(r.SampleName, keyword), resetPage,
+                ApplyPagedView(filtered.ToList(), r => Matches(r.SampleId, keyword) || Matches(r.SampleName, keyword), resetPage, keepPageWhenEmpty,
                     page => SctSamples = new ObservableCollection<SampleRowItem>(page));
                 break;
         }
@@ -1140,8 +1150,12 @@ public sealed partial class SamplesViewModel : ObservableObject, IPageLifecycle
         RestoreSelection();   // 行集合整体替换后按 SampleID 重选，保持详情面板
     }
 
-    /// <summary>通用分页切片：统计总量/页数 → 收敛页码 → 输出当前页行。</summary>
-    private void ApplyPagedView<T>(IReadOnlyList<T> source, Func<T, bool>? predicate, bool resetPage, Action<List<T>> sink)
+    /// <summary>上次刷新是否因搜索无命中而保留了原数据页（Search 据此弹窗提示）。</summary>
+    private bool _lastSearchKeptPage;
+
+    /// <summary>通用分页切片：统计总量/页数 → 收敛页码 → 输出当前页行。
+    /// keepPageWhenEmpty（搜索路径）：过滤后为空且关键词非空时保留原数据页不动，仅置标记供弹窗提示。</summary>
+    private void ApplyPagedView<T>(IReadOnlyList<T> source, Func<T, bool>? predicate, bool resetPage, bool keepPageWhenEmpty, Action<List<T>> sink)
     {
         IEnumerable<T> query = source;
         if (predicate is not null)
@@ -1150,6 +1164,13 @@ public sealed partial class SamplesViewModel : ObservableObject, IPageLifecycle
         }
 
         var list = query.ToList();
+        var keyword = SearchText?.Trim();
+        if (keepPageWhenEmpty && list.Count == 0 && !string.IsNullOrEmpty(keyword))
+        {
+            _lastSearchKeptPage = true;     // 无命中：保留当前数据页，不更新任何分页状态
+            return;
+        }
+
         TotalCount = list.Count;
         TotalPages = Math.Max(1, (int)Math.Ceiling(list.Count / (double)PageSize));
         if (resetPage || CurrentPage > TotalPages)

@@ -8,4 +8,7 @@ public interface IDialogService
 {
     /// <summary>弹出确认对话框；返回 true 表示用户确认。</summary>
     bool Confirm(string title, string message);
+
+    /// <summary>弹出提示对话框（仅告知信息，无分支）。</summary>
+    void Alert(string title, string message);
 }

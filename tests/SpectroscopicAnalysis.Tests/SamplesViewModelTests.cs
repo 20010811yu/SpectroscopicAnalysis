@@ -71,6 +71,8 @@ internal sealed class FakeDialogService : IDialogService
         Messages.Add($"{title}|{message}");
         return Result;
     }
+
+    public void Alert(string title, string message) => Messages.Add($"{title}|{message}");
 }
 
 /// <summary>Fake 错误收集：记录 (错误码, 消息, 样品) 供断言，不做 I/O。</summary>
@@ -379,17 +381,19 @@ public sealed class SamplesViewModelTests
     }
 
     [Fact]
-    public async Task Search_无命中显示空集()
+    public async Task Search_无命中_保留原数据并弹窗提示()
     {
-        var vm = CreateWith(MakeNamed("SUS-001", "设置样 1", SampleType.SettingUp));
+        var dialogs = new FakeDialogService();
+        var vm = CreateWith(dialogs, MakeNamed("SUS-001", "设置样 1", SampleType.SettingUp));
         await vm.LoadCommand.ExecuteAsync(null);
 
         vm.SearchText = "ZZZ";
         vm.SearchCommand.Execute(null);
 
-        Assert.Empty(vm.SctSamples);
-        Assert.Equal(0, vm.TotalCount);
-        Assert.Equal(1, vm.TotalPages);                     // 至少 1 页
+        Assert.Single(vm.SctSamples);                       // 无命中保留当前数据页（不清空）
+        Assert.Equal(1, vm.TotalCount);
+        Assert.Single(dialogs.Messages);                    // 弹窗提示未找到数据
+        Assert.Contains("未找到数据", dialogs.Messages[0]);
     }
 
     // ==================== 分页（每页 15 条，行高统一完整展示） ====================
@@ -508,6 +512,59 @@ public sealed class SamplesViewModelTests
         Assert.Equal(3, vm.TotalPages);
         Assert.Equal(3, vm.CurrentPage);                    // 越界收敛到末页
         Assert.Equal(15, vm.SctSamples.Count);
+    }
+
+    [Fact]
+    public async Task Search_无命中_保留当前数据页并弹窗提示()
+    {
+        var dialogs = new FakeDialogService();
+        var vm = CreateWith(dialogs, MakeMany(45).ToArray());
+        await vm.LoadCommand.ExecuteAsync(null);
+        vm.NextPageCommand.Execute(null);
+        Assert.Equal(2, vm.CurrentPage);
+        var before = vm.SctSamples.Select(r => r.SampleId).ToList();
+
+        vm.SearchText = "不存在的关键词XYZ";
+        vm.SearchCommand.Execute(null);
+
+        Assert.Equal(2, vm.CurrentPage);                    // 保留原数据页
+        Assert.Equal(before, vm.SctSamples.Select(r => r.SampleId).ToList());   // 数据未清空
+        Assert.Equal(45, vm.TotalCount);                    // 分页状态未变
+        Assert.Equal(3, vm.TotalPages);
+        Assert.Single(dialogs.Messages);                    // 弹窗提示一次
+        Assert.Contains("未找到数据", dialogs.Messages[0]);
+    }
+
+    [Fact]
+    public async Task Search_有命中_回到第1页且不弹窗()
+    {
+        var dialogs = new FakeDialogService();
+        var vm = CreateWith(dialogs, MakeMany(45).ToArray());
+        await vm.LoadCommand.ExecuteAsync(null);
+        vm.NextPageCommand.Execute(null);
+
+        vm.SearchText = "04";
+        vm.SearchCommand.Execute(null);
+
+        Assert.Equal(1, vm.CurrentPage);                    // 正常回第 1 页
+        Assert.Equal(7, vm.TotalCount);
+        Assert.Empty(dialogs.Messages);                     // 命中不弹窗
+    }
+
+    [Fact]
+    public async Task Search_关键词为空_正常全量刷新()
+    {
+        var dialogs = new FakeDialogService();
+        var vm = CreateWith(dialogs, MakeMany(45).ToArray());
+        await vm.LoadCommand.ExecuteAsync(null);
+
+        vm.SearchText = string.Empty;
+        vm.SearchCommand.Execute(null);
+
+        Assert.Equal(1, vm.CurrentPage);
+        Assert.Equal(45, vm.TotalCount);
+        Assert.Equal(15, vm.SctSamples.Count);
+        Assert.Empty(dialogs.Messages);
     }
 }
 

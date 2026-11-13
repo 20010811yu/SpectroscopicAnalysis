@@ -194,7 +194,7 @@ public sealed class SamplesTableSwitchTests
 
         vm.AnalysisSearchText = "不存在的关键字";
         vm.SearchCommand.Execute(null);
-        Assert.Empty(vm.AnalysisResultRows);                     // 专属搜索不命中
+        Assert.Single(vm.AnalysisResultRows);                    // 专属搜索不命中 → 保留当前数据页（不清空）
     }
 
     [Fact]

@@ -12,4 +12,10 @@ public sealed class DialogService : IDialogService
         var result = HandyControl.Controls.MessageBox.Show(message, title, MessageBoxButton.OKCancel, MessageBoxImage.Warning);
         return result == MessageBoxResult.OK;
     }
+
+    /// <inheritdoc />
+    public void Alert(string title, string message)
+    {
+        HandyControl.Controls.MessageBox.Show(message, title, MessageBoxButton.OK, MessageBoxImage.Information);
+    }
 }

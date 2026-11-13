@@ -106,4 +106,70 @@ public sealed class SeedBulkTests
             }
         }
     }
+
+    [Fact]
+    public void ControlLimit_仅允许关联控制样()
+    {
+        var path = Path.Combine(Path.GetTempPath(), $"seedtest_{Guid.NewGuid():N}.db");
+        try
+        {
+            var db = new Db(path);
+            new DbInitializer(db).EnsureCreated();
+            using var conn = db.Open();
+
+            // 铺底：一个 Control 样 + 一个 SettingUp 样
+            using (var cmd = conn.CreateCommand())
+            {
+                cmd.CommandText = """
+                    INSERT INTO SCT_Sample (SampleID, SampleName, SampleType, InitialThickness, CurrentThickness, MinThickness, UsageCount, MaxUsageCount, Status)
+                    VALUES ('CTL-T1', '控制样 T1', 'Control', 10.0, 10.0, 6.0, 0, 60, 'Normal'),
+                           ('SUS-T1', '设置样 T1', 'SettingUp', 10.0, 10.0, 8.0, 0, 50, 'Normal')
+                    """;
+                cmd.ExecuteNonQuery();
+            }
+
+            void InsertLimit(string sampleId)
+            {
+                using var cmd = conn.CreateCommand();
+                cmd.CommandText = """
+                    INSERT INTO ControlLimit (SampleID, Element, UpperLimit, LowerLimit, LimitType)
+                    VALUES ($id, 'Si', 1.0, 0.0, 'Absolute')
+                    """;
+                cmd.Parameters.AddWithValue("$id", sampleId);
+                cmd.ExecuteNonQuery();
+            }
+
+            InsertLimit("CTL-T1");   // 控制样 → 成功
+
+            var ex = Assert.Throws<Microsoft.Data.Sqlite.SqliteException>(() => InsertLimit("SUS-T1"));
+            Assert.Contains("控制限仅允许关联控制样", ex.Message);
+
+            // 存量清理：先 DROP 触发器模拟旧库（旧库无触发器），插入违规行后 EnsureCreated 应重建触发器并清除违规行
+            using (var cmd = conn.CreateCommand())
+            {
+                cmd.CommandText = "DROP TRIGGER trg_ControlLimit_ControlOnly";
+                cmd.ExecuteNonQuery();
+                cmd.CommandText = """
+                    INSERT INTO ControlLimit (LimitID, SampleID, Element, UpperLimit, LowerLimit, LimitType)
+                    SELECT 99999, SampleID, 'Si', 1.0, 0.0, 'Absolute' FROM SCT_Sample WHERE SampleID = 'SUS-T1'
+                    """;
+                cmd.ExecuteNonQuery();
+            }
+            new DbInitializer(db).EnsureCreated();
+
+            using (var cmd = conn.CreateCommand())
+            {
+                cmd.CommandText = "SELECT COUNT(*) FROM ControlLimit WHERE SampleID = 'SUS-T1'";
+                Assert.Equal(0L, (long)cmd.ExecuteScalar()!);
+            }
+        }
+        finally
+        {
+            SqliteConnection.ClearAllPools();
+            if (File.Exists(path))
+            {
+                File.Delete(path);
+            }
+        }
+    }
 }

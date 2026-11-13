@@ -128,6 +128,16 @@ public sealed class DbInitializer
         "CREATE INDEX IF NOT EXISTS IX_Coefficient_Method_Current ON CorrectionCoefficient(MethodID, Element, IsCurrent);",
         "CREATE INDEX IF NOT EXISTS IX_ProductionSample_Status_Time ON Production_Sample(Status, CreatedTime);",
         "CREATE INDEX IF NOT EXISTS IX_AnalysisResult_Sample_Time ON Analysis_Result(SampleID, OperationTime);",
+        // 控制限仅允许关联控制样（任务清单第三节硬性约束；SQLite 外键无法跨列限定父表类型，以触发器强制）
+        """
+        CREATE TRIGGER IF NOT EXISTS trg_ControlLimit_ControlOnly
+        BEFORE INSERT ON ControlLimit
+        FOR EACH ROW
+        WHEN (SELECT SampleType FROM SCT_Sample WHERE SampleID = NEW.SampleID) != 'Control'
+        BEGIN
+            SELECT RAISE(ABORT, '控制限仅允许关联控制样（SampleType=Control）');
+        END;
+        """,
     };
 
     /// <summary>创建全部表与索引（单事务执行）；并迁移存量库缺失列。</summary>
@@ -144,6 +154,16 @@ public sealed class DbInitializer
         }
         // 存量库迁移：建表脚本对旧库不生效（IF NOT EXISTS），缺失列按表逐个补齐
         AddColumnIfMissing(conn, tx, "SCT_Sample", "AssociatedMethod", "TEXT");
+        // 控制限仅允许关联控制样：清理存量库中挂在非 Control 样上的控制限（幂等）
+        using (var clean = conn.CreateCommand())
+        {
+            clean.Transaction = tx;
+            clean.CommandText = """
+                DELETE FROM ControlLimit
+                WHERE SampleID IN (SELECT SampleID FROM SCT_Sample WHERE SampleType != 'Control')
+                """;
+            clean.ExecuteNonQuery();
+        }
         // 生产样档案独立建表后，清理存量库 SCT_Sample 中的生产样行（先删子表引用再删本体，生产样数据由 Production_Sample 提供）
         PurgeProductionFromSctSample(conn, tx);
         tx.Commit();

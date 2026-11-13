@@ -272,6 +272,7 @@
             <Trigger Property="IsSelected" Value="True">
                 <Setter Property="Background" Value="Transparent" />
                 <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Primary}" />
+                <Setter Property="BorderBrush" Value="Transparent" />
             </Trigger>
         </Style.Triggers>
     </Style>
@@ -297,13 +298,16 @@
             </Setter.Value>
         </Setter>
         <Style.Triggers>
+            <!-- HandyControl 隐式样式在选中/聚焦时会改 Background/BorderBrush，须一并重置否则残留边框 -->
             <Trigger Property="IsSelected" Value="True">
                 <Setter Property="Background" Value="Transparent" />
                 <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Primary}" />
+                <Setter Property="BorderBrush" Value="Transparent" />
             </Trigger>
             <Trigger Property="IsFocused" Value="True">
                 <Setter Property="Background" Value="Transparent" />
                 <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Primary}" />
+                <Setter Property="BorderBrush" Value="Transparent" />
             </Trigger>
         </Style.Triggers>
     </Style>

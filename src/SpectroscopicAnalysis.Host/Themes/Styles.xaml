@@ -235,10 +235,34 @@
 
 
     <!-- ============ DataGrid 共享样式（样品台账 / 生产样品等表格共用） ============ -->
-    <!-- 表格行：只读展示，选中不加任何高亮，外观与普通行一致；全应用统一固定行高，保证各数据表每页行数完整铺满且不内部滚动 -->
+    <!-- 表格行：只读展示，选中不加任何高亮，外观与普通行一致；全应用统一固定行高，保证各数据表每页行数完整铺满且不内部滚动。
+         重写 Template：默认模板在选中时绘制系统浅色描边（不明显的边框），此处以无描边的极简模板去除。 -->
     <Style x:Key="GridRow" TargetType="DataGridRow" BasedOn="{StaticResource {x:Type DataGridRow}}">
         <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Primary}" />
         <Setter Property="Height" Value="44" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="DataGridRow">
+                    <Border Background="{TemplateBinding Background}" BorderThickness="0" SnapsToDevicePixels="True">
+                        <SelectiveScrollingGrid>
+                            <SelectiveScrollingGrid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                            </SelectiveScrollingGrid.ColumnDefinitions>
+                            <SelectiveScrollingGrid.RowDefinitions>
+                                <RowDefinition Height="*" />
+                                <RowDefinition Height="Auto" />
+                            </SelectiveScrollingGrid.RowDefinitions>
+                            <DataGridCellsPanel Grid.Column="1" Grid.Row="0" />
+                            <DataGridDetailsPresenter Grid.Column="1" Grid.Row="1"
+                                                      SelectiveScrollingGrid.SelectiveScrollingOrientation="Vertical" />
+                            <DataGridRowHeader Grid.Column="0" Grid.RowSpan="2"
+                                               SelectiveScrollingGrid.SelectiveScrollingOrientation="Vertical" />
+                        </SelectiveScrollingGrid>
+                    </Border>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
         <Style.Triggers>
             <Trigger Property="IsMouseOver" Value="True">
                 <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Primary}" />

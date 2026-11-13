@@ -154,7 +154,7 @@ public static class SctTaskStatus
 | 任务类型 | 候选过滤（前置） | 选择规则 | 无可用时 |
 |---|---|---|---|
 | Standardize | `SampleType=SettingUp`、`Status=Normal`、`IsActive`、匹配当前分析方法 | `SettingSampleSelectionMode`：`LeastUsed`（UsageCount 最少）/ `RoundRobin`（按上次使用时间最早轮询） | 报警（登记错误码）+ 暂停分析 |
-| ControlCheck | `SampleType=Control`、`Status=Normal`、`IsActive` | `ControlMatchByAlloy` → 按 AlloyType 匹配生产样；`ControlRotationEnabled` → 多块轮换（选最久未用） | 同上 |
+| ControlCheck | `SampleType=Control`、`Status=Normal`、`IsActive` | `ControlRotationEnabled` → 多块轮换（选最久未用） | 同上 |
 | TypeStandardize | `SampleType=TypeStd`、`Status=Normal`、`IsActive`、AlloyType **精确匹配**目标合金 | 同设置样规则 | 同上 |
 | HeightMeasure | 目标样品即任务携带的 SampleId | 不选择 | — |
 
@@ -200,7 +200,7 @@ public interface ISctStrategyEngine
 ## 12. 测试要点
 
 - 触发判断纯函数穷举：`SctPolicyOptions` 各字段组合（模式 × 开关 × 阈值边界值 ±1）；
-- 选样：LeastUsed/RoundRobin、合金匹配、NeedMeasure/Disabled 过滤、无可用报警路径；
+ - 选样：LeastUsed/RoundRobin、TypeStd 合金精确匹配、NeedMeasure/Disabled 过滤、无可用报警路径；
 - 队列：优先级次序、同优先级 FIFO、去重合并、急停清队；
 - 闭环：超差 → 重测 N 次 → 恢复 / 耗尽报警（`ControlRecheckMaxCount` 边界）；
 - 测高联动：达阈值置 NeedMeasure → 测高结果两种流转；

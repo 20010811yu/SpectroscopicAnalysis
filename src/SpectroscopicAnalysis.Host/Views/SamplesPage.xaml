@@ -428,7 +428,7 @@
                             <DataGridTextColumn Header="斜率 a" Binding="{Binding SlopeText}" Width="1*" MinWidth="60" ElementStyle="{StaticResource GridCellText}" />
                             <DataGridTextColumn Header="截距 b" Binding="{Binding InterceptText}" Width="1*" MinWidth="60" ElementStyle="{StaticResource GridCellText}" />
                             <DataGridTextColumn Header="生效时间" Binding="{Binding EffectiveTimeText}" Width="1.3*" MinWidth="80" ElementStyle="{StaticResource GridCellText}" />
-                            <DataGridTextColumn Header="来源设置样" Binding="{Binding SourceSampleText}" FontFamily="Consolas" Width="1.1*" MinWidth="70" ElementStyle="{StaticResource GridCellText}" />
+                            <DataGridTextColumn Header="来源" Binding="{Binding SourceSampleText}" FontFamily="Consolas" Width="1.1*" MinWidth="70" ElementStyle="{StaticResource GridCellText}" />
                             <DataGridTextColumn Header="当前有效" Binding="{Binding CurrentText}" Width="1*" MinWidth="60" ElementStyle="{StaticResource GridCellText}" />
                             <DataGridTextColumn Header="版本" Binding="{Binding VersionText}" Width="0.6*" MinWidth="40" ElementStyle="{StaticResource GridCellText}" />
                             <DataGridTemplateColumn Header="操作" Width="88" MinWidth="88">

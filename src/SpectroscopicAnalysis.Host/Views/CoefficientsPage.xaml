@@ -9,7 +9,7 @@
             <Border Style="{StaticResource Card}" Margin="{DynamicResource Spacing.CardGap}">
                 <StackPanel>
                     <TextBlock Text="当前有效系数" Style="{StaticResource Text.CardTitle}" Margin="0,0,0,8" />
-                    <TextBlock Text="方法 / 元素 / 斜率 a / 截距 b / 内标 / 版本 / 生效时间 / 来源设置样 / 状态" Style="{StaticResource Table.Header}" TextWrapping="Wrap" />
+                    <TextBlock Text="方法 / 元素 / 斜率 a / 截距 b / 内标 / 版本 / 生效时间 / 来源 / 状态" Style="{StaticResource Table.Header}" TextWrapping="Wrap" />
                     <TextBlock Text="C = a·I + b（生产样品结果应用最新版本系数；原始与校正数据双存）" Style="{StaticResource Text.Caption}" Margin="0,8,0,0" />
                 </StackPanel>
             </Border>

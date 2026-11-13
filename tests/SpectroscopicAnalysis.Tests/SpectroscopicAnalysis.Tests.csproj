@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <!-- 目标框架与主工程对齐（net8.0-windows），否则无法引用 WPF 工程 -->
+    <!-- 目标框架与主工程对齐（net10.0-windows），否则无法引用 WPF 工程 -->
     <TargetFramework>net10.0-windows</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>

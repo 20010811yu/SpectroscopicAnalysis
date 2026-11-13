@@ -471,5 +471,43 @@ public sealed class SamplesViewModelTests
         Assert.Equal(5, vm.SctSamples.Count);
         Assert.Equal(20, vm.TotalCount);
     }
+
+    [Fact]
+    public async Task Paging_页码跳转_合法页码直达并清空输入()
+    {
+        var vm = CreateWith(MakeMany(45).ToArray());
+        await vm.LoadCommand.ExecuteAsync(null);
+
+        vm.PageJumpInput = "3";
+        vm.JumpToPageCommand.Execute(null);
+        Assert.Equal(3, vm.CurrentPage);
+        Assert.Equal("S-031", vm.SctSamples[0].SampleId);   // 第 3 页从 S-031 起
+        Assert.Equal(string.Empty, vm.PageJumpInput);       // 跳转后清空输入框
+    }
+
+    [Fact]
+    public async Task Paging_页码跳转_非法输入忽略()
+    {
+        var vm = CreateWith(MakeMany(45).ToArray());
+        await vm.LoadCommand.ExecuteAsync(null);
+
+        vm.PageJumpInput = "abc";
+        vm.JumpToPageCommand.Execute(null);
+        Assert.Equal(1, vm.CurrentPage);                    // 非法输入不跳转
+        Assert.Equal("abc", vm.PageJumpInput);              // 输入保留便于修正
+    }
+
+    [Fact]
+    public async Task Paging_页码跳转_越界收敛到末页()
+    {
+        var vm = CreateWith(MakeMany(45).ToArray());
+        await vm.LoadCommand.ExecuteAsync(null);
+
+        vm.PageJumpInput = "999";
+        vm.JumpToPageCommand.Execute(null);
+        Assert.Equal(3, vm.TotalPages);
+        Assert.Equal(3, vm.CurrentPage);                    // 越界收敛到末页
+        Assert.Equal(15, vm.SctSamples.Count);
+    }
 }
 

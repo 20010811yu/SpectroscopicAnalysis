@@ -442,6 +442,24 @@ public sealed partial class SctViewModel : ObservableObject, IPageLifecycle
         RefreshSampleView();
     }
 
+    /// <summary>标样库页码输入框（跳页用；解析失败忽略不清空，便于修正）。</summary>
+    [ObservableProperty]
+    private string _pageJumpInput = string.Empty;
+
+    /// <summary>标样库页脚「跳转」：解析输入页码直达（越界收敛到有效范围）。</summary>
+    [RelayCommand]
+    private void JumpToPage()
+    {
+        if (!int.TryParse(PageJumpInput?.Trim(), out var page))
+        {
+            return;
+        }
+
+        CurrentPage = Math.Clamp(page, 1, TotalPages);
+        RefreshSampleView();
+        PageJumpInput = string.Empty;
+    }
+
     [RelayCommand(CanExecute = nameof(HasLogPrevPage))]
     private void LogPrevPage()
     {
@@ -454,6 +472,24 @@ public sealed partial class SctViewModel : ObservableObject, IPageLifecycle
     {
         LogCurrentPage++;
         RefreshLogView();
+    }
+
+    /// <summary>执行记录页码输入框（跳页用；解析失败忽略不清空，便于修正）。</summary>
+    [ObservableProperty]
+    private string _logPageJumpInput = string.Empty;
+
+    /// <summary>执行记录页脚「跳转」：解析输入页码直达（越界收敛到有效范围）。</summary>
+    [RelayCommand]
+    private void LogJumpToPage()
+    {
+        if (!int.TryParse(LogPageJumpInput?.Trim(), out var page))
+        {
+            return;
+        }
+
+        LogCurrentPage = Math.Clamp(page, 1, LogTotalPages);
+        RefreshLogView();
+        LogPageJumpInput = string.Empty;
     }
 
     // ==================== 测高登记 ====================

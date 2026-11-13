@@ -228,6 +228,38 @@ public sealed partial class DashboardViewModel : ObservableObject, IPageLifecycl
         await LoadCommand.ExecuteAsync(null);
     }
 
+    /// <summary>分页脚页码输入框（跳页用；解析失败忽略不清空，便于修正）。</summary>
+    [ObservableProperty]
+    private string _pageJumpInput = string.Empty;
+
+    /// <summary>
+    /// 页脚「跳转」：游标分页无法直接定位任意页，采用顺序推进——先回首页清空游标栈，
+    /// 再向目标页逐页翻（每页一次游标查询，受 HasNextPage 保护提前收敛）。
+    /// </summary>
+    [RelayCommand]
+    private async Task JumpToPageAsync()
+    {
+        if (!int.TryParse(PageJumpInput?.Trim(), out var page))
+        {
+            return;
+        }
+
+        var target = Math.Clamp(page, 1, TotalPages);
+        PageJumpInput = string.Empty;
+        if (target == CurrentPage)
+        {
+            return;
+        }
+
+        _pageCursors.Clear();
+        CurrentPage = 1;
+        await LoadCommand.ExecuteAsync(null);
+        while (CurrentPage < target && HasNextPage)
+        {
+            await NextPageCommand.ExecuteAsync(null);
+        }
+    }
+
     private static ProductionSampleItem MapItem(ProductionSample r) => new()
     {
         SampleId = r.SampleId,

@@ -1203,6 +1203,23 @@ public sealed partial class SamplesViewModel : ObservableObject, IPageLifecycle
         RefreshView();
     }
 
+    /// <summary>分页脚页码输入框内容（跳页用；解析失败忽略不清空，便于修正）。</summary>
+    [ObservableProperty]
+    private string _pageJumpInput = string.Empty;
+
+    /// <summary>页脚「跳转」：解析输入页码直达（经 GoToPage 收敛越界），非法输入忽略。</summary>
+    [RelayCommand]
+    private void JumpToPage()
+    {
+        if (!int.TryParse(PageJumpInput?.Trim(), out var page))
+        {
+            return;
+        }
+
+        GoToPage(page);
+        PageJumpInput = string.Empty;
+    }
+
     // ==================== 样品删除（弹窗确认，危险操作） ====================
 
     /// <summary>删除：先弹窗确认（不动行数据），确认后事务级联删除（样品+标准值+控制限；操作日志保留）。</summary>

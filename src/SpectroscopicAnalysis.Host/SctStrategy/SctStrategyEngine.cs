@@ -453,21 +453,14 @@ public sealed class SctStrategyEngine : ISctStrategyEngine
 
     /// <summary>
     /// 控制样选择（任务清单第 5 节③）：Control/Normal/IsActive；
-    /// ControlMatchByAlloy → 按当前合金过滤；轮换 = 上次使用时间最早（多块轮换）。
+    /// 轮换 = 上次使用时间最早（多块轮换）。控制样不关联合金，不做合金过滤。
     /// </summary>
     private SctSample? SelectControlSample(SctPolicyOptions policy)
     {
-        var candidates = _samples.GetAll()
+        return _samples.GetAll()
             .Where(s => s.SampleType == SampleType.Control && s.Status == SampleStatus.Normal && s.IsActive)
-            .ToList();
-        if (policy.ControlMatchByAlloy && _currentAlloy is not null)
-        {
-            candidates = candidates.Where(s => s.AlloyType == _currentAlloy).ToList();
-        }
-
-        return candidates.Count == 0
-            ? null
-            : candidates.OrderBy(s => s.LastUseTime ?? DateTime.MinValue).First();
+            .OrderBy(s => s.LastUseTime ?? DateTime.MinValue)
+            .FirstOrDefault();
     }
 
     /// <summary>类型标准化样选择（任务清单第 5 节⑤）：TypeStd/Normal/IsActive 且合金精确匹配。</summary>

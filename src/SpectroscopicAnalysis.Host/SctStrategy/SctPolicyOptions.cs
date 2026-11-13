@@ -34,9 +34,6 @@ public sealed class SctPolicyOptions
     /// <summary>多块控制样轮换启用（任务清单第 5 节③）。</summary>
     public bool ControlRotationEnabled { get; set; } = true;
 
-    /// <summary>控制样按合金类型匹配（任务清单第 5 节③）。</summary>
-    public bool ControlMatchByAlloy { get; set; } = true;
-
     /// <summary>合金类型切换时触发类型标准化（任务清单第 5 节⑤）。</summary>
     public bool TypeStandardizeOnAlloySwitch { get; set; } = true;
 

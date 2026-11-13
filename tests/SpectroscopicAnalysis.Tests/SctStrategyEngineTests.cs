@@ -266,19 +266,20 @@ public sealed class SctStrategyEngineTests
     }
 
     [Fact]
-    public void 选样_控制样按合金匹配()
+    public void 选样_控制样轮换选最久未用且不做合金过滤()
     {
-        _policy.Current.ControlMatchByAlloy = true;
         _policy.Current.ControlInsertCount = 1;
-        _samples.Store.Add(MakeSample("CTL-6061", SampleType.Control, alloy: "6061"));
-        _samples.Store.Add(MakeSample("CTL-3003", SampleType.Control, alloy: "3003"));
+        _samples.Store.Add(MakeSample("CTL-A", SampleType.Control));
+        _samples.Store.Add(MakeSample("CTL-B", SampleType.Control));
         _samples.Store.Add(MakeSample("P-001", SampleType.Production, alloy: "3003"));
+        _samples.Store[0].LastUseTime = DateTime.Parse("2026-11-08 08:00");   // CTL-A 最久未用
+        _samples.Store[1].LastUseTime = DateTime.Parse("2026-11-09 08:00");
         var engine = Create();
 
         engine.NotifyAlloySwitched("3003");
         engine.NotifyAnalysisCompleted("P-001");
         Assert.True(engine.TryDequeue(out var task));
-        Assert.Equal("CTL-3003", task.SampleId);                // 按当前合金匹配（ByCount=1 立即插入）
+        Assert.Equal("CTL-A", task.SampleId);                   // 控制样不关联合金，仅按轮换（最久未用）选取
     }
 
     // ==================== 超差闭环 ====================

@@ -259,7 +259,6 @@ public sealed class SctPageTests
 
         vm.PolicySettingSelectionMode = SettingSampleSelectionMode.RoundRobin;
         vm.PolicyRotationEnabled = false;
-        vm.PolicyMatchByAlloy = false;
         vm.PolicyTypeOnAlloySwitch = false;
         vm.PolicyTypePeriodEnabled = true;
         vm.PolicyTypePeriodDays = "0";
@@ -289,7 +288,6 @@ public sealed class SctPageTests
         Assert.NotNull(policy.LastSaved);
         Assert.Equal(SettingSampleSelectionMode.RoundRobin, policy.LastSaved!.SettingSampleSelectionMode);
         Assert.False(policy.LastSaved.ControlRotationEnabled);
-        Assert.False(policy.LastSaved.ControlMatchByAlloy);
         Assert.False(policy.LastSaved.TypeStandardizeOnAlloySwitch);
         Assert.True(policy.LastSaved.TypeStandardizePeriodEnabled);
         Assert.Equal(14, policy.LastSaved.TypeStandardizePeriodDays);
@@ -308,7 +306,6 @@ public sealed class SctPageTests
             new FakeUiDispatcher(), new FakeDialogService(), new FakeErrorCollector());
         Assert.Equal(SettingSampleSelectionMode.RoundRobin, vm2.PolicySettingSelectionMode);
         Assert.False(vm2.PolicyRotationEnabled);
-        Assert.False(vm2.PolicyMatchByAlloy);
         Assert.True(vm2.PolicyTypePeriodEnabled);
         Assert.Equal("14", vm2.PolicyTypePeriodDays);
         Assert.Equal("2", vm2.PolicyRecheckMax);

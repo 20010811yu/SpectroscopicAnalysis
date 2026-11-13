@@ -264,9 +264,6 @@ public sealed partial class SctViewModel : ObservableObject, IPageLifecycle
     private bool _policyRotationEnabled = true;
 
     [ObservableProperty]
-    private bool _policyMatchByAlloy = true;
-
-    [ObservableProperty]
     private bool _policyTypeOnAlloySwitch = true;
 
     [ObservableProperty]
@@ -721,7 +718,6 @@ public sealed partial class SctViewModel : ObservableObject, IPageLifecycle
         var p = _policyStore.Load();
         PolicySettingSelectionMode = p.SettingSampleSelectionMode;
         PolicyRotationEnabled = p.ControlRotationEnabled;
-        PolicyMatchByAlloy = p.ControlMatchByAlloy;
         PolicyTypeOnAlloySwitch = p.TypeStandardizeOnAlloySwitch;
         PolicyTypePeriodEnabled = p.TypeStandardizePeriodEnabled;
         PolicyTypePeriodDays = p.TypeStandardizePeriodDays.ToString();
@@ -786,7 +782,6 @@ public sealed partial class SctViewModel : ObservableObject, IPageLifecycle
             {
                 SettingSampleSelectionMode = PolicySettingSelectionMode,
                 ControlRotationEnabled = PolicyRotationEnabled,
-                ControlMatchByAlloy = PolicyMatchByAlloy,
                 TypeStandardizeOnAlloySwitch = PolicyTypeOnAlloySwitch,
                 TypeStandardizePeriodEnabled = PolicyTypePeriodEnabled,
                 TypeStandardizePeriodDays = typePeriodDays,

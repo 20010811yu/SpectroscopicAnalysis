@@ -59,6 +59,17 @@ public sealed class AnalysisResultRowItem
     public required string TimeText { get; init; }
 }
 
+/// <summary>详情面板轨迹日志行展示模型（最近 10 条，时间倒序）。</summary>
+public sealed class DetailLogRowItem
+{
+    public required string OperationTimeText { get; init; }
+    public required string OperationTypeText { get; init; }
+    public required string TriggerReasonText { get; init; }
+    public required string ResultStatusText { get; init; }
+    /// <summary>原始状态枚举串（视图 DataTrigger 切颜色）。</summary>
+    public required string ResultStatus { get; init; }
+}
+
 /// <summary>
 /// 样品详情面板展示模型（左表 + 右详情布局）：SCT 样与生产样共用。
 /// Kind 供视图切换子表区域（Sct → 标准值；Production → 分析结果）；Status 为原始枚举串（DataTrigger 切徽章色）。
@@ -371,9 +382,9 @@ public sealed partial class SamplesViewModel : ObservableObject, IPageLifecycle
     [ObservableProperty]
     private ObservableCollection<AnalysisResultRowItem> _detailResults = new();
 
-    /// <summary>详情面板轨迹日志文本行（最近 10 条，时间倒序；经 ISctOperationLogRepository.GetRecentBySampleId）。</summary>
+    /// <summary>详情面板轨迹日志子表（最近 10 条，时间倒序；经 ISctOperationLogRepository.GetRecentBySampleId）。</summary>
     [ObservableProperty]
-    private ObservableCollection<string> _detailLogs = new();
+    private ObservableCollection<DetailLogRowItem> _detailLogs = new();
 
     /// <summary>是否显示右侧详情面板（仅两张目标表且选中行非空）。</summary>
     public bool DetailVisible =>
@@ -423,8 +434,26 @@ public sealed partial class SamplesViewModel : ObservableObject, IPageLifecycle
             var results = kind == "Production"
                 ? await Task.Run(() => _production.GetResults(sampleId).Select(MapAnalysisRow).ToList())
                 : new List<AnalysisResultRowItem>();
-            var logs = await Task.Run(() => _logRepo.GetRecentBySampleId(sampleId, 10)
-                .Select(l => $"{l.OperationTime}　{l.OperationType}　{(l.TriggerReason ?? "—")}").ToList());
+            var logs = await Task.Run(() => _logRepo.GetRecentBySampleId(sampleId, 10).Select(l => new DetailLogRowItem
+            {
+                OperationTimeText = l.OperationTime,   // 完整时间（yyyy-MM-dd HH:mm:ss）
+                OperationTypeText = l.OperationType switch
+                {
+                    "Standardization" => "标准化",
+                    "ControlCheck" => "控制检查",
+                    "HeightMeasure" => "测高",
+                    _ => l.OperationType,
+                },
+                TriggerReasonText = l.TriggerReason ?? "—",
+                ResultStatusText = l.ResultStatus switch
+                {
+                    "Success" => "● 成功",
+                    "Warning" => "▲ 预警",
+                    "Fail" => "✖ 失败",
+                    _ => l.ResultStatus,
+                },
+                ResultStatus = l.ResultStatus,
+            }).ToList());
 
             _ui.Invoke(() =>
             {
@@ -436,7 +465,7 @@ public sealed partial class SamplesViewModel : ObservableObject, IPageLifecycle
 
                 DetailCertifiedValues = new ObservableCollection<CertifiedValueRowItem>(certs);
                 DetailResults = new ObservableCollection<AnalysisResultRowItem>(results);
-                DetailLogs = new ObservableCollection<string>(logs);
+                DetailLogs = new ObservableCollection<DetailLogRowItem>(logs);
             });
         }
         catch (Exception ex)
@@ -451,7 +480,7 @@ public sealed partial class SamplesViewModel : ObservableObject, IPageLifecycle
         Detail = null;
         DetailCertifiedValues = new ObservableCollection<CertifiedValueRowItem>();
         DetailResults = new ObservableCollection<AnalysisResultRowItem>();
-        DetailLogs = new ObservableCollection<string>();
+        DetailLogs = new ObservableCollection<DetailLogRowItem>();
     }
 
     private static SampleDetailItem MapSctDetail(SampleRowItem s) => new()

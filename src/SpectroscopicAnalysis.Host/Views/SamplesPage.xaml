@@ -868,12 +868,57 @@
                                         </ItemsControl>
                                     </StackPanel>
 
-                                    <!-- 轨迹日志（最近 10 条；描述性文字可用次要灰） -->
+                                    <!-- 轨迹日志（最近 10 条；带表头子表：完整时间/操作类型/触发原因/结果状态） -->
                                     <TextBlock Text="轨迹日志（最近）" Style="{StaticResource Text.Caption}" Margin="0,12,0,4" />
                                     <ItemsControl ItemsSource="{Binding DetailLogs}">
+                                        <ItemsControl.Template>
+                                            <ControlTemplate TargetType="ItemsControl">
+                                                <Grid>
+                                                    <Grid.RowDefinitions>
+                                                        <RowDefinition Height="Auto" /><RowDefinition Height="Auto" />
+                                                    </Grid.RowDefinitions>
+                                                    <Grid Grid.Row="0" Background="{DynamicResource Brush.Bg.Page}">
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="1.3*" /><ColumnDefinition Width="0.8*" /><ColumnDefinition Width="1*" /><ColumnDefinition Width="0.8*" />
+                                                        </Grid.ColumnDefinitions>
+                                                        <TextBlock Grid.Column="0" Text="时间" Style="{StaticResource Table.Header}" Padding="8,4" />
+                                                        <TextBlock Grid.Column="1" Text="操作类型" Style="{StaticResource Table.Header}" Padding="8,4" />
+                                                        <TextBlock Grid.Column="2" Text="触发原因" Style="{StaticResource Table.Header}" Padding="8,4" />
+                                                        <TextBlock Grid.Column="3" Text="结果状态" Style="{StaticResource Table.Header}" Padding="8,4" />
+                                                    </Grid>
+                                                    <ItemsPresenter Grid.Row="1" />
+                                                </Grid>
+                                            </ControlTemplate>
+                                        </ItemsControl.Template>
                                         <ItemsControl.ItemTemplate>
                                             <DataTemplate>
-                                                <TextBlock Text="{Binding}" Style="{StaticResource Text.Caption}" TextWrapping="Wrap" Margin="0,2" />
+                                                <Border BorderBrush="{DynamicResource Brush.Border.Default}" BorderThickness="0,0,0,1">
+                                                    <Grid>
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="1.3*" /><ColumnDefinition Width="0.8*" /><ColumnDefinition Width="1*" /><ColumnDefinition Width="0.8*" />
+                                                        </Grid.ColumnDefinitions>
+                                                        <TextBlock Grid.Column="0" Text="{Binding OperationTimeText}" Style="{StaticResource Text.Base}" Padding="8,4" FontFamily="Consolas" />
+                                                        <TextBlock Grid.Column="1" Text="{Binding OperationTypeText}" Style="{StaticResource Text.Base}" Padding="8,4" />
+                                                        <TextBlock Grid.Column="2" Text="{Binding TriggerReasonText}" Style="{StaticResource Text.Base}" Padding="8,4" />
+                                                        <TextBlock Grid.Column="3" Text="{Binding ResultStatusText}" Padding="8,4">
+                                                            <TextBlock.Style>
+                                                                <Style TargetType="TextBlock" BasedOn="{StaticResource Text.Base}">
+                                                                    <Style.Triggers>
+                                                                        <DataTrigger Binding="{Binding ResultStatus}" Value="Success">
+                                                                            <Setter Property="Foreground" Value="{DynamicResource Brush.Status.Running}" />
+                                                                        </DataTrigger>
+                                                                        <DataTrigger Binding="{Binding ResultStatus}" Value="Warning">
+                                                                            <Setter Property="Foreground" Value="{DynamicResource Brush.Badge.Warning.Fg}" />
+                                                                        </DataTrigger>
+                                                                        <DataTrigger Binding="{Binding ResultStatus}" Value="Fail">
+                                                                            <Setter Property="Foreground" Value="{DynamicResource Brush.Status.Failed}" />
+                                                                        </DataTrigger>
+                                                                    </Style.Triggers>
+                                                                </Style>
+                                                            </TextBlock.Style>
+                                                        </TextBlock>
+                                                    </Grid>
+                                                </Border>
                                             </DataTemplate>
                                         </ItemsControl.ItemTemplate>
                                     </ItemsControl>

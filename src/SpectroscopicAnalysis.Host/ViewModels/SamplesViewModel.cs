@@ -492,33 +492,35 @@ public sealed partial class SamplesViewModel : ObservableObject, IPageLifecycle
         RemarkText = p.Remark,
     };
 
-    /// <summary>分页/筛选/删除导致行集合整体替换后，按 SampleID 重选保持详情面板（选不回则清空）。</summary>
+    /// <summary>分页/筛选/删除导致行集合整体替换后，按 SampleID 重选保持详情面板；
+    /// 无选中时默认选中第一行（详情面板默认展示，样品台账/生产样档案两表生效）。</summary>
     private void RestoreSelection()
     {
-        var current = SelectedRow;
-        if (current is null)
+        // 其余 5 张表无详情面板，不做默认选中
+        if (ActiveTable is not (TableSample or TableProductionSample))
         {
             return;
         }
 
+        var current = SelectedRow;
         var sampleId = current switch
         {
             SampleRowItem s => s.SampleId,
             ProductionRowItem p => p.SampleId,
             _ => null,
         };
-        if (sampleId is null)
-        {
-            SelectedRow = null;
-            return;
-        }
 
         object? reselected = ActiveTable switch
         {
             TableProductionSample => (object?)ProductionRows.FirstOrDefault(r => r.SampleId == sampleId),
             _ => (object?)SctSamples.FirstOrDefault(r => r.SampleId == sampleId),
         };
-        SelectedRow = reselected;   // 找不回即置空 → OnSelectedRowChanged 清空详情
+        // 旧选中还在当前页则保持；否则回退到第一行（空表即 null → 清空详情）
+        SelectedRow = reselected ?? ActiveTable switch
+        {
+            TableProductionSample => (object?)ProductionRows.FirstOrDefault(),
+            _ => (object?)SctSamples.FirstOrDefault(),
+        };
     }
 
     // ==================== 样品注册（任务清单"入库初始化"） ====================

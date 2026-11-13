@@ -266,7 +266,6 @@
                             <DataGridTextColumn Header="SampleID" Binding="{Binding SampleId}" FontFamily="Consolas" Width="1.1*" MinWidth="60" ElementStyle="{StaticResource GridCellText}" />
                             <DataGridTextColumn Header="类型" Binding="{Binding TypeDisplay}" Width="0.9*" MinWidth="50" ElementStyle="{StaticResource GridCellText}" />
                             <DataGridTextColumn Header="合金" Binding="{Binding AlloyType}" Width="0.7*" MinWidth="40" ElementStyle="{StaticResource GridCellText}" />
-                            <DataGridTextColumn Header="架位" Binding="{Binding RackPosition}" Width="0.7*" MinWidth="40" ElementStyle="{StaticResource GridCellText}" />
                             <DataGridTextColumn Header="当前/初始厚度 (mm)" Binding="{Binding ThicknessText}" Width="1.5*" MinWidth="80" ElementStyle="{StaticResource GridCellText}" />
                             <DataGridTextColumn Header="最小厚度" Binding="{Binding MinThicknessText}" Width="0.8*" MinWidth="50" ElementStyle="{StaticResource GridCellText}" />
                             <DataGridTextColumn Header="使用次数" Binding="{Binding UsageText}" Width="0.9*" MinWidth="50" ElementStyle="{StaticResource GridCellText}" />
@@ -317,19 +316,7 @@
                                     </DataTemplate>
                                 </DataGridTemplateColumn.CellTemplate>
                             </DataGridTemplateColumn>
-                            <DataGridTextColumn Header="上次测高" Binding="{Binding LastHeightText}" Width="1.1*" MinWidth="70" ElementStyle="{StaticResource GridCellText}" />
-                            <!-- 删除（弹窗二次确认，行数据保持原样展示） -->
-                            <!-- 操作列固定宽度：Star 列占满剩余空间时始终靠在最右侧 -->
-                            <DataGridTemplateColumn Header="操作" Width="88" MinWidth="88">
-                                <DataGridTemplateColumn.CellTemplate>
-                                    <DataTemplate>
-                                        <Button Content="删除" HorizontalAlignment="Left" VerticalAlignment="Center"
-                                                Style="{StaticResource DangerBtn}"
-                                                Command="{Binding DataContext.DeleteCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                                CommandParameter="{Binding}" />
-                                    </DataTemplate>
-                                </DataGridTemplateColumn.CellTemplate>
-                            </DataGridTemplateColumn>
+                            <DataGridTextColumn Header="上次使用" Binding="{Binding LastUseText}" FontFamily="Consolas" Width="1.1*" MinWidth="70" ElementStyle="{StaticResource GridCellText}" />
                         </DataGrid.Columns>
                     </DataGrid>
 
@@ -890,6 +877,22 @@
                                             </DataTemplate>
                                         </ItemsControl.ItemTemplate>
                                     </ItemsControl>
+
+                                    <!-- 删除当前样品（仅样品台账详情显示；级联删除标准值与控制限；弹窗二次确认） -->
+                                    <Button Content="删除样品" HorizontalAlignment="Left" Margin="0,16,0,0"
+                                            Command="{Binding DeleteCommand}"
+                                            CommandParameter="{Binding SelectedRow}">
+                                        <Button.Style>
+                                            <Style TargetType="Button" BasedOn="{StaticResource DangerBtn}">
+                                                <Setter Property="Visibility" Value="Collapsed" />
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding Detail.Kind}" Value="Sct">
+                                                        <Setter Property="Visibility" Value="Visible" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Button.Style>
+                                    </Button>
                                 </StackPanel>
                             </StackPanel>
                         </ScrollViewer>

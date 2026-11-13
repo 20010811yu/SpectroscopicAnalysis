@@ -709,6 +709,11 @@ public sealed partial class SamplesViewModel : ObservableObject, IPageLifecycle
         {
             return "最大使用次数必须为不小于 1 的整数";
         }
+        // 合金约束：仅类型标准化样可关联合金（数据库触发器兜底，此处前置校验）
+        if (TypeDisplayToKey(RegSampleType) != SampleType.TypeStd && !string.IsNullOrWhiteSpace(RegAlloyType))
+        {
+            return "仅类型标准化样可关联合金，设置样/控制样请留空合金";
+        }
         return null;
     }
 

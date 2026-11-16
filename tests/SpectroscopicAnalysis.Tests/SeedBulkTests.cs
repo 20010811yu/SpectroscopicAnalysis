@@ -41,8 +41,8 @@ public sealed class SeedBulkTests
             Assert.True(Count("CorrectionCoefficient") >= 5000, $"Coeff={Count("CorrectionCoefficient")}");
             Assert.True(Count("SCT_OperationLog") >= 5000, $"Log={Count("SCT_OperationLog")}");
             Assert.True(Count("Production_Sample") >= 3000, $"Production={Count("Production_Sample")}");
-            // 状态两值化后：仅已完成样(40%)×1~2 条 + 失败回退样(10%)×1 条生成结果
-            Assert.True(Count("Analysis_Result") >= 2000, $"AnalysisResult={Count("Analysis_Result")}");
+            // 状态两值化后：仅已完成样(40%)×1~2 条生成结果；待分析样（含失败回退）不落结果
+            Assert.True(Count("Analysis_Result") >= 1800, $"AnalysisResult={Count("Analysis_Result")}");
             Assert.Equal(0L, CountWhere("Production_Sample", "Status NOT IN ('PendingAnalysis','Completed')"));
             Assert.Equal(0, CountWhere("SCT_Sample", "SampleType = 'Production'"));
 

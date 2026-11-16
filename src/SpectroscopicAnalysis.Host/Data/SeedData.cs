@@ -399,19 +399,17 @@ public sealed class SeedData
                 cmd.ExecuteNonQuery();
             }
 
-            // 分析结果：已完成样每样 1~2 条；纯待分析样不生成结果；失败回退样生成 1 条 Fail 结果
-            if (status != ProductionStatus.Completed && failureReason is null)
+            // 分析结果：仅已完成样生成（每样 1~2 条）；待分析样无结果——分析失败意味着本次测量未产生有效数据，同样不落结果
+            if (status != ProductionStatus.Completed)
             {
                 continue;
             }
-            var resultCount = status == ProductionStatus.Completed ? seq % 2 + 1 : 1;
+            var resultCount = seq % 2 + 1;
             for (var r = 0; r < resultCount; r++)
             {
                 var measured = 0.10 + seq % 80 / 100.0 + r * 0.01;
                 var corrected = measured * (1.0 + (seq % 15 - 7) / 200.0);
-                var resultStatus = failureReason is not null
-                    ? AnalysisResultStatus.Fail
-                    : seq % 9 == 0 ? AnalysisResultStatus.Warning : AnalysisResultStatus.Success;
+                var resultStatus = seq % 9 == 0 ? AnalysisResultStatus.Warning : AnalysisResultStatus.Success;
                 var isPass = resultStatus == AnalysisResultStatus.Success;
                 using var cmd = conn.CreateCommand();
                 cmd.Transaction = tx;
@@ -427,7 +425,7 @@ public sealed class SeedData
                 cmd.Parameters.AddWithValue("$coeff", seq % 125 + 1);
                 cmd.Parameters.AddWithValue("$pass", isPass ? 1 : 0);
                 cmd.Parameters.AddWithValue("$status", resultStatus);
-                cmd.Parameters.AddWithValue("$archive", failureReason is not null ? DBNull.Value : $"A-{seq % 40:00}-{r + 1}");
+                cmd.Parameters.AddWithValue("$archive", $"A-{seq % 40:00}-{r + 1}");
                 cmd.Parameters.AddWithValue("$time", created.AddMinutes(5 + r).ToString("yyyy-MM-dd HH:mm:ss"));
                 cmd.ExecuteNonQuery();
             }

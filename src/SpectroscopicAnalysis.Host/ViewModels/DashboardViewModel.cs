@@ -15,6 +15,8 @@ public sealed class ProductionSampleItem
     public required string SampleName { get; init; }
     public string? AlloyType { get; init; }
     public required string StatusText { get; init; }
+    /// <summary>失败原因（非空时状态列红色展示原因）。</summary>
+    public string? FailureReason { get; init; }
 }
 
 /// <summary>
@@ -265,10 +267,10 @@ public sealed partial class DashboardViewModel : ObservableObject, IPageLifecycl
         SampleId = r.SampleId,
         SampleName = r.SampleName,
         AlloyType = r.AlloyType,
-        StatusText = r.Status switch
-        {
-            ProductionStatus.Completed => "✓ 已完成",
-            _ => "● 待分析",
-        },
+        // 失败回退待分析的样品直接在状态列展示失败原因
+        StatusText = r.Status == ProductionStatus.Completed
+            ? "✓ 已完成"
+            : r.FailureReason is null ? "● 待分析" : $"✖ 分析失败：{r.FailureReason}",
+        FailureReason = r.FailureReason,
     };
 }

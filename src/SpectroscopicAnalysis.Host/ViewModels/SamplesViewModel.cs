@@ -1023,7 +1023,10 @@ public sealed partial class SamplesViewModel : ObservableObject, IPageLifecycle
         RackPosition = p.RackPosition,
         MethodText = p.AssociatedMethod ?? "—",
         Status = p.Status,
-        StatusText = p.Status == ProductionStatus.Completed ? "✓ 已完成" : "● 待分析",
+        // 失败回退待分析的样品直接在状态列展示失败原因（红色，见 XAML HasFailure 触发器）
+        StatusText = p.Status == ProductionStatus.Completed
+            ? "✓ 已完成"
+            : p.FailureReason is null ? "● 待分析" : $"✖ 分析失败：{p.FailureReason}",
         FailureReason = p.FailureReason,
         CreatedText = p.CreatedTime?.ToString("MM-dd HH:mm") ?? "—",
         Remark = p.Remark ?? "—",

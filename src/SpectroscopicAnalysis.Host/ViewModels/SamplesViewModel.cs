@@ -43,6 +43,10 @@ public sealed class ProductionRowItem
     public required string StatusText { get; init; }
     /// <summary>失败原因（非空时状态列以失败色提示）。</summary>
     public string? FailureReason { get; init; }
+
+    /// <summary>是否为分析失败回退样（视图按此切失败色徽章）。</summary>
+    public bool HasFailure => FailureReason is not null;
+
     public required string CreatedText { get; init; }
     public required string Remark { get; init; }
 }

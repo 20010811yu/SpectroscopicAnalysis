@@ -50,6 +50,7 @@ public sealed class AnalysisResultRowItem
 {
     public required string ResultIdText { get; init; }
     public required string SampleId { get; init; }
+    public required string SampleName { get; init; }
     public required string MeasuredText { get; init; }
     public required string CorrectedText { get; init; }
     public required string CoeffVersionText { get; init; }
@@ -416,6 +417,11 @@ public sealed partial class SamplesViewModel : ObservableObject, IPageLifecycle
             _ => string.Empty,
         };
         var kind = ((SampleDetailItem)Detail!).Kind;
+        var detailSampleName = row switch
+        {
+            ProductionRowItem p3 => p3.SampleName,
+            _ => string.Empty,
+        };
 
         try
         {
@@ -432,7 +438,7 @@ public sealed partial class SamplesViewModel : ObservableObject, IPageLifecycle
                 }).ToList())
                 : new List<CertifiedValueRowItem>();
             var results = kind == "Production"
-                ? await Task.Run(() => _production.GetResults(sampleId).Select(MapAnalysisRow).ToList())
+                ? await Task.Run(() => _production.GetResults(sampleId).Select(r => MapAnalysisRow(r, detailSampleName)).ToList())
                 : new List<AnalysisResultRowItem>();
             var logs = kind == "Sct"
                 ? await Task.Run(() => _logRepo.GetRecentBySampleId(sampleId, 10).Select(l => new DetailLogRowItem
@@ -992,7 +998,14 @@ public sealed partial class SamplesViewModel : ObservableObject, IPageLifecycle
     /// <summary>加载分析结果表（Analysis_Result；全量入缓存后统一分页/专属搜索）。</summary>
     private async Task LoadAnalysisResultsAsync()
     {
-        var rows = await Task.Run(() => _production.GetAllResults().Select(MapAnalysisRow).ToList());
+        var rows = await Task.Run(() =>
+        {
+            // 名称按 SampleID 关联生产样档案（一次后台查询内完成，避免逐行查库）
+            var names = _production.GetAll().ToDictionary(p => p.SampleId, p => p.SampleName);
+            return _production.GetAllResults()
+                .Select(r => MapAnalysisRow(r, names.GetValueOrDefault(r.SampleId, "—")))
+                .ToList();
+        });
         _ui.Invoke(() =>
         {
             _allAnalysisResults = rows;
@@ -1020,10 +1033,12 @@ public sealed partial class SamplesViewModel : ObservableObject, IPageLifecycle
         Remark = p.Remark ?? "—",
     };
 
-    private static AnalysisResultRowItem MapAnalysisRow(AnalysisResult r) => new()
+    /// <summary>分析结果行映射（sampleName 由调用方按表上下文解析：整表查生产样档案，详情传当前行名称）。</summary>
+    private static AnalysisResultRowItem MapAnalysisRow(AnalysisResult r, string sampleName) => new()
     {
         ResultIdText = $"#{r.ResultId}",
         SampleId = r.SampleId,
+        SampleName = sampleName,
         MeasuredText = r.MeasuredConc?.ToString("0.####") ?? "—",
         CorrectedText = r.CorrectedConc?.ToString("0.####") ?? "—",
         CoeffVersionText = r.CoeffVersion is { } v ? $"v{v}" : "—",

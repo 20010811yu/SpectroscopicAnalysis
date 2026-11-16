@@ -560,8 +560,7 @@
                         </DataGrid.Style>
                         <DataGrid.Columns>
                             <DataGridTextColumn Header="SampleID" Binding="{Binding SampleId}" FontFamily="Consolas" Width="1.2*" MinWidth="70" ElementStyle="{StaticResource GridCellText}" />
-                            <DataGridTextColumn Header="合金" Binding="{Binding AlloyType}" Width="0.8*" MinWidth="50" ElementStyle="{StaticResource GridCellText}" />
-                            <DataGridTextColumn Header="架位" Binding="{Binding RackPosition}" Width="0.8*" MinWidth="50" ElementStyle="{StaticResource GridCellText}" />
+                            <DataGridTextColumn Header="样品名称" Binding="{Binding SampleName}" Width="1.2*" MinWidth="70" ElementStyle="{StaticResource GridCellText}" />
                             <DataGridTextColumn Header="入库时间" Binding="{Binding CreatedText}" FontFamily="Consolas" Width="1*" MinWidth="70" ElementStyle="{StaticResource GridCellText}" />
                             <DataGridTemplateColumn Header="状态" Width="1*" MinWidth="70">
                                 <DataGridTemplateColumn.CellTemplate>
@@ -612,6 +611,7 @@
                         <DataGrid.Columns>
                             <DataGridTextColumn Header="结果ID" Binding="{Binding ResultIdText}" FontFamily="Consolas" Width="0.8*" MinWidth="55" ElementStyle="{StaticResource GridCellText}" />
                             <DataGridTextColumn Header="SampleID" Binding="{Binding SampleId}" FontFamily="Consolas" Width="1.2*" MinWidth="70" ElementStyle="{StaticResource GridCellText}" />
+                            <DataGridTextColumn Header="样品名称" Binding="{Binding SampleName}" Width="1.2*" MinWidth="70" ElementStyle="{StaticResource GridCellText}" />
                             <DataGridTextColumn Header="原始浓度" Binding="{Binding MeasuredText}" FontFamily="Consolas" Width="1*" MinWidth="60" ElementStyle="{StaticResource GridCellText}" />
                             <DataGridTextColumn Header="校正后浓度" Binding="{Binding CorrectedText}" FontFamily="Consolas" Width="1*" MinWidth="65" ElementStyle="{StaticResource GridCellText}" />
                             <DataGridTextColumn Header="系数版本" Binding="{Binding CoeffVersionText}" FontFamily="Consolas" Width="0.8*" MinWidth="55" ElementStyle="{StaticResource GridCellText}" />

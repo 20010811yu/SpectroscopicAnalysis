@@ -3,115 +3,124 @@ using SpectroscopicAnalysis.Host.ViewModels;
 
 namespace SpectroscopicAnalysis.Tests;
 
-/// <summary>主控台 ViewModel 测试：生产样表格加载/映射/日期过滤/游标分页（数据源 Production_Sample）。</summary>
+/// <summary>主控台 ViewModel 测试：运行日志加载/映射/日期过滤/分页（数据源 SCT_OperationLog）。</summary>
 public sealed class DashboardViewModelTests
 {
-    private static ProductionSample Make(string id, string status = ProductionStatus.Pending, DateTime? created = null) => new()
+    private static SctOperationLog MakeLog(int seq, string? date = null)
     {
-        SampleId = id,
-        SampleName = $"生产样 {id}",
-        AlloyType = "6xxx",
-        RackPosition = "D01",
-        Status = status,
-        CreatedTime = created ?? DateTime.Today, // 默认今日入库（与默认筛选日期一致）
-    };
+        // 同一天内按分钟区分时间（倒序断言确定性）；date 为空默认今天
+        var day = date ?? DateTime.Today.ToString("yyyy-MM-dd");
+        return new SctOperationLog
+        {
+            LogId = seq,
+            SampleId = $"P-{seq:000}",
+            OperationType = seq % 3 == 0 ? "HeightMeasure" : "Standardization",
+            TriggerReason = $"触发原因 {seq}",
+            OperationTime = $"{day} 08:{seq % 60:00}:{seq % 60:00}",
+            ResultStatus = seq % 7 == 0 ? AnalysisResultStatus.Warning : AnalysisResultStatus.Success,
+        };
+    }
 
-    private static DashboardViewModel CreateWith(params ProductionSample[] samples)
+    private static DashboardViewModel CreateWith(params SctOperationLog[] logs)
     {
-        var repo = new FakeProductionSampleRepository();
-        repo.Store.AddRange(samples);
+        var repo = new FakeSctOperationLogRepository();
+        repo.Store.AddRange(logs);
         return new DashboardViewModel(repo, new FakeUiDispatcher(), new FakeErrorCollector());
     }
 
     [Fact]
-    public async Task Load_生产样进入表格_状态映射正确()
+    public async Task Load_日志进入表格_映射正确()
     {
         var vm = CreateWith(
-            Make("P-001", ProductionStatus.Pending),
-            Make("P-002", ProductionStatus.Pending),
-            Make("P-003", ProductionStatus.Completed),
-            Make("P-004", ProductionStatus.Completed));
+            MakeLog(1),
+            MakeLog(2),
+            MakeLog(3));
 
         await vm.LoadCommand.ExecuteAsync(null);
 
-        Assert.Equal(4, vm.ProductionSamples.Count);
-        Assert.Equal("✓ 已完成", vm.ProductionSamples[0].StatusText); // 时间倒序：同入库时间按 SampleID 倒序
-        Assert.Equal("✓ 已完成", vm.ProductionSamples[1].StatusText);
-        Assert.Equal("● 待分析", vm.ProductionSamples[2].StatusText);
-        Assert.Equal("● 待分析", vm.ProductionSamples[3].StatusText);
-        Assert.Equal("生产样 P-004", vm.ProductionSamples[0].SampleName); // 名称列映射
-        Assert.True(vm.HasProduction);
+        Assert.Equal(3, vm.LogRows.Count);
+        Assert.True(vm.HasLogs);
     }
 
     [Fact]
-    public async Task Load_空库时无生产样品()
+    public async Task Load_空库时无日志()
     {
         var vm = CreateWith();
         await vm.LoadCommand.ExecuteAsync(null);
 
-        Assert.Empty(vm.ProductionSamples);
-        Assert.False(vm.HasProduction);
+        Assert.Empty(vm.LogRows);
+        Assert.False(vm.HasLogs);
+        Assert.Equal(1, vm.TotalPages);
     }
 
     [Fact]
     public async Task Load_导航入口与加载命令一致()
     {
-        var vm = CreateWith(Make("P-001"));
+        var vm = CreateWith(MakeLog(1));
 
         // OnNavigatedTo 为 fire-and-forget，与导航路径等价地直接 await 加载命令保证确定性
         await vm.LoadCommand.ExecuteAsync(null);
 
-        Assert.Single(vm.ProductionSamples);
+        Assert.Single(vm.LogRows);
     }
 
     [Fact]
-    public async Task Load_按日期过滤_仅显当日入库()
+    public async Task Load_按日期过滤_仅显当日日志()
     {
+        var today = DateTime.Today.ToString("yyyy-MM-dd");
+        var yesterday = DateTime.Today.AddDays(-1).ToString("yyyy-MM-dd");
         var vm = CreateWith(
-            Make("P-TODAY-01", created: DateTime.Today),
-            Make("P-YESTD-01", created: DateTime.Today.AddDays(-1)));
+            MakeLog(1, today),
+            MakeLog(2, yesterday));
 
         await vm.LoadCommand.ExecuteAsync(null);
 
-        Assert.Single(vm.ProductionSamples);                    // 默认筛选今天，昨日入库不显示
-        Assert.Equal("P-TODAY-01", vm.ProductionSamples[0].SampleId);
+        Assert.Single(vm.LogRows);                              // 默认筛选今天，昨日日志不显示
+        Assert.Equal("P-001", vm.LogRows[0].SampleIdText);
         Assert.Equal(1, vm.TotalCount);
         Assert.False(vm.HasNextPage);
 
-        // 切到昨日日期：回第 1 页并只显示昨日数据（日期变更自动重查为 fire-and-forget，等待其空闲）
+        // 切到昨日日期：回第 1 页并只显示昨日日志（日期变更自动重查为 fire-and-forget，等待其空闲）
         vm.SelectedDate = DateTime.Today.AddDays(-1);
         await WaitIdleAsync(vm);
 
-        Assert.Single(vm.ProductionSamples);
-        Assert.Equal("P-YESTD-01", vm.ProductionSamples[0].SampleId);
+        Assert.Single(vm.LogRows);
+        Assert.Equal("P-002", vm.LogRows[0].SampleIdText);
     }
 
     [Fact]
-    public async Task NextPage_游标翻页_取下一页数据()
+    public async Task NextPage_分页_取下一页数据()
     {
-        var repo = new FakeProductionSampleRepository();
+        var repo = new FakeSctOperationLogRepository();
+        var baseTime = DateTime.Today;
         for (var i = 1; i <= 45; i++)
         {
-            repo.Store.Add(Make($"P-{i:000}"));
+            // 每条错开 1 分钟，保证倒序唯一：时间倒序后第 i 条为 seq 45-(i-1)
+            var log = MakeLog(i);
+            log.OperationTime = baseTime.AddMinutes(i).ToString("yyyy-MM-dd HH:mm:ss");
+            repo.Store.Add(log);
         }
 
         var vm = new DashboardViewModel(repo, new FakeUiDispatcher(), new FakeErrorCollector());
         await vm.LoadCommand.ExecuteAsync(null);
 
-        Assert.Equal(10, vm.ProductionSamples.Count);           // 第 1 页 10 条
+        Assert.Equal(10, vm.LogRows.Count);                     // 第 1 页 10 条
         Assert.Equal(45, vm.TotalCount);
         Assert.Equal(5, vm.TotalPages);
         Assert.True(vm.HasNextPage);
-        Assert.Equal("P-045", vm.ProductionSamples[0].SampleId); // 时间倒序，最新在前
+        Assert.Equal("P-045", vm.LogRows[0].SampleIdText);      // 时间倒序，最新在前
     }
 
     [Fact]
-    public async Task NextPage_PrevPage_往返游标正确()
+    public async Task NextPage_PrevPage_往返翻页正确()
     {
-        var repo = new FakeProductionSampleRepository();
+        var repo = new FakeSctOperationLogRepository();
+        var baseTime = DateTime.Today;
         for (var i = 1; i <= 45; i++)
         {
-            repo.Store.Add(Make($"P-{i:000}"));
+            var log = MakeLog(i);
+            log.OperationTime = baseTime.AddMinutes(i).ToString("yyyy-MM-dd HH:mm:ss");
+            repo.Store.Add(log);
         }
 
         var vm = new DashboardViewModel(repo, new FakeUiDispatcher(), new FakeErrorCollector());
@@ -119,29 +128,28 @@ public sealed class DashboardViewModelTests
 
         await InvokePagingAsync(vm.NextPageCommand);
         Assert.Equal(2, vm.CurrentPage);
-        Assert.Equal(10, vm.ProductionSamples.Count);
-        Assert.Equal("P-035", vm.ProductionSamples[0].SampleId); // 第二页首行
+        Assert.Equal(10, vm.LogRows.Count);
+        Assert.Equal("P-035", vm.LogRows[0].SampleIdText);      // 第二页首行
         Assert.True(vm.HasPrevPage);
         Assert.True(vm.HasNextPage);
 
         await InvokePagingAsync(vm.NextPageCommand);
         Assert.Equal(3, vm.CurrentPage);
-        Assert.Equal(10, vm.ProductionSamples.Count);
-        Assert.Equal("P-025", vm.ProductionSamples[0].SampleId);
+        Assert.Equal("P-025", vm.LogRows[0].SampleIdText);
 
         await InvokePagingAsync(vm.NextPageCommand);
         await InvokePagingAsync(vm.NextPageCommand);
         Assert.Equal(5, vm.CurrentPage);
-        Assert.Equal(5, vm.ProductionSamples.Count);            // 末页剩余 5 条
+        Assert.Equal(5, vm.LogRows.Count);                      // 末页剩余 5 条
         Assert.False(vm.HasNextPage);
 
         await InvokePagingAsync(vm.PrevPageCommand);
         Assert.Equal(4, vm.CurrentPage);
-        Assert.Equal("P-015", vm.ProductionSamples[0].SampleId); // 反向游标回到第四页
+        Assert.Equal("P-015", vm.LogRows[0].SampleIdText);      // 反向回到第四页
 
         await InvokePagingAsync(vm.FirstPageCommand);
         Assert.Equal(1, vm.CurrentPage);
-        Assert.Equal("P-045", vm.ProductionSamples[0].SampleId);
+        Assert.Equal("P-045", vm.LogRows[0].SampleIdText);
         Assert.False(vm.HasPrevPage);
     }
 

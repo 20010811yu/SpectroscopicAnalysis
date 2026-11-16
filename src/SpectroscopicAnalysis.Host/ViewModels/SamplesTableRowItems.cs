@@ -53,4 +53,6 @@ public sealed class OperationLogRowItem
     public string TriggerReasonText { get; init; } = "—";
     public string OperationTimeText { get; init; } = string.Empty;
     public string ResultStatusText { get; init; } = string.Empty;
+    /// <summary>原始操作时间串（日期过滤/排序用；不绑定 UI）。</summary>
+    public string RawOperationTime { get; init; } = string.Empty;
 }

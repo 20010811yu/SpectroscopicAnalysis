@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Globalization;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using SpectroscopicAnalysis.Host.Data.Models;
@@ -8,43 +9,29 @@ using SpectroscopicAnalysis.Host.Ui;
 
 namespace SpectroscopicAnalysis.Host.ViewModels;
 
-/// <summary>生产样品行展示模型（主控台「生产样品（今日）」模块）。</summary>
-public sealed class ProductionSampleItem
-{
-    public required string SampleId { get; init; }
-    public required string SampleName { get; init; }
-    public string? AlloyType { get; init; }
-    public required string StatusText { get; init; }
-    /// <summary>失败原因（非空时状态列红色展示原因）。</summary>
-    public string? FailureReason { get; init; }
-}
-
 /// <summary>
-/// 主控台（生产监控）ViewModel：承载「生产样品（今日）」模块。
-/// 数据库走游标分页（keyset）：每次仅查询当前页数据（GetProductionPage），不做全量加载；
+/// 主控台（生产监控）ViewModel：承载「运行日志（按日期）」模块。
+/// 数据源为 SCT 操作日志（GetAll 全量 + 内存切片分页，SQL 已按操作时间倒序）；
 /// I/O 在后台线程，结果经 IUiDispatcher 回 UI 线程（开发规范第 4 节）。
 /// 其余面板随 D5+ 通信与 M2 引擎接入。
 /// </summary>
 public sealed partial class DashboardViewModel : ObservableObject, IPageLifecycle
 {
-    /// <summary>分页大小（生产样品表每页行数）。</summary>
+    /// <summary>分页大小（运行日志表每页行数）。</summary>
     public const int PageSize = 10;
 
-    private readonly IProductionSampleRepository _production;
+    private readonly ISctOperationLogRepository _logs;
     private readonly IUiDispatcher _ui;
     private readonly IErrorCollector _errors;
 
-    /// <summary>页游标栈：_pageCursors[i] = 进入第 i+1 页所用的 after 游标（第 1 页无游标）。</summary>
-    private readonly List<string> _pageCursors = new();
-
-    /// <summary>当前页行（仅当前页数据，非全量）。</summary>
-    private List<ProductionSampleItem> _pageRows = new();
+    /// <summary>全量日志（已按操作时间倒序；翻页仅做内存切片）。</summary>
+    private List<OperationLogRowItem> _allLogs = new();
 
     /// <summary>筛选日期（默认今天；变化后回到第 1 页重查）。</summary>
     [ObservableProperty]
     private DateTime? _selectedDate = DateTime.Today;
 
-    /// <summary>当前页码（从 1 起）。变化不直接查询——由翻页命令驱动（游标方向不同）。</summary>
+    /// <summary>当前页码（从 1 起）。变化由翻页命令驱动。</summary>
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(PageDisplay))]
     [NotifyPropertyChangedFor(nameof(HasPrevPage))]
@@ -74,19 +61,19 @@ public sealed partial class DashboardViewModel : ObservableObject, IPageLifecycl
     public bool HasNextPage => CurrentPage < TotalPages;
 
     [ObservableProperty]
-    private ObservableCollection<ProductionSampleItem> _productionSamples = new();
+    private ObservableCollection<OperationLogRowItem> _logRows = new();
 
-    /// <summary>是否存在生产样品记录（控制占位说明与表格的可见性）。</summary>
+    /// <summary>是否存在日志记录（控制占位说明与表格的可见性）。</summary>
     [ObservableProperty]
-    private bool _hasProduction;
+    private bool _hasLogs;
 
     /// <summary>正在加载标记（防重复加载）。</summary>
     [ObservableProperty]
     private bool _isLoading;
 
-    public DashboardViewModel(IProductionSampleRepository production, IUiDispatcher ui, IErrorCollector errors)
+    public DashboardViewModel(ISctOperationLogRepository logs, IUiDispatcher ui, IErrorCollector errors)
     {
-        _production = production;
+        _logs = logs;
         _ui = ui;
         _errors = errors;
     }
@@ -97,7 +84,7 @@ public sealed partial class DashboardViewModel : ObservableObject, IPageLifecycl
     /// <summary>日期变化：回第 1 页重查。</summary>
     partial void OnSelectedDateChanged(DateTime? value) => _ = ReloadFirstPageAsync();
 
-    /// <summary>加载当前页（I/O 在后台线程：先取总数定页数，再按游标取当页行）。</summary>
+    /// <summary>加载全量日志并按当前页切片（I/O 在后台线程）。</summary>
     [RelayCommand]
     private async Task LoadAsync()
     {
@@ -109,37 +96,28 @@ public sealed partial class DashboardViewModel : ObservableObject, IPageLifecycl
         IsLoading = true;
         try
         {
-            var date = SelectedDate;
-            var totalCount = await Task.Run(() => _production.Count(date));
-            var rows = await Task.Run(() => _production.GetPage(
-                date,
-                afterSampleId: _pageCursors.Count > 0 ? _pageCursors[^1] : null,
-                beforeSampleId: null,
-                pageSize: PageSize));
+            _allLogs = await Task.Run(() => _logs.GetAll()
+                .Select(MapLogRow)
+                .ToList());
 
-            // 越界收敛（总数变少时当前页可能超出末页）：回退到末页游标重查一次
-            var totalPages = Math.Max(1, (int)Math.Ceiling(totalCount / (double)PageSize));
-            if (CurrentPage > totalPages)
-            {
-                _pageCursors.Clear();
-                CurrentPage = totalPages;
-                rows = await Task.Run(() => _production.GetPage(date, null, null, PageSize));
-            }
-
-            var items = rows.Select(MapItem).ToList();
             _ui.Invoke(() =>
             {
-                _pageRows = items;
-                ProductionSamples = new ObservableCollection<ProductionSampleItem>(items);
-                TotalCount = totalCount;
-                TotalPages = totalPages;
-                HasProduction = totalCount > 0;
+                TotalCount = FilteredLogs().Count;
+                TotalPages = Math.Max(1, (int)Math.Ceiling(TotalCount / (double)PageSize));
+                // 越界收敛（总数变少时当前页可能超出末页）
+                if (CurrentPage > TotalPages)
+                {
+                    CurrentPage = TotalPages;
+                }
+
+                ShowPage(CurrentPage);
+                HasLogs = TotalCount > 0;
             });
         }
         catch (Exception ex)
         {
             // 加载失败经统一错误链上报（未捕获异常兜底码），不静默吞掉
-            _errors.Collect(ErrorCodes.UnhandledException, "生产样品加载失败", null, ex);
+            _errors.Collect(ErrorCodes.UnhandledException, "运行日志加载失败", null, ex);
         }
         finally
         {
@@ -147,97 +125,69 @@ public sealed partial class DashboardViewModel : ObservableObject, IPageLifecycl
         }
     }
 
-    /// <summary>回首页（已在第 1 页时禁用）：清空游标栈重查。</summary>
+    /// <summary>按筛选日期过滤日志（OperationTime 字符串解析比较日期）。</summary>
+    private List<OperationLogRowItem> FilteredLogs()
+    {
+        var date = SelectedDate?.Date;
+        if (date is null)
+        {
+            return _allLogs;
+        }
+
+        return _allLogs
+            .Where(l => DateTime.TryParse(l.RawOperationTime, CultureInfo.InvariantCulture, DateTimeStyles.None, out var t) && t.Date == date.Value)
+            .ToList();
+    }
+
+    /// <summary>内存切片显示指定页（FilteredLogs 已时间倒序）。</summary>
+    private void ShowPage(int page)
+    {
+        var rows = FilteredLogs()
+            .Skip((page - 1) * PageSize)
+            .Take(PageSize)
+            .ToList();
+        LogRows = new ObservableCollection<OperationLogRowItem>(rows);
+    }
+
+    /// <summary>回首页（已在第 1 页时禁用）。</summary>
     [RelayCommand(CanExecute = nameof(HasPrevPage))]
     private async Task FirstPage()
     {
-        _pageCursors.Clear();
         await GoToPageAsync(1);
     }
 
-    /// <summary>上一页（第 1 页时禁用）：以当前页首行 SampleID 为 before 游标反向查询。</summary>
+    /// <summary>上一页（第 1 页时禁用）。</summary>
     [RelayCommand(CanExecute = nameof(HasPrevPage))]
     private async Task PrevPage()
     {
-        if (_pageRows.Count == 0)
-        {
-            return;
-        }
-
-        var beforeId = _pageRows[0].SampleId;
-        if (_pageCursors.Count > 0)
-        {
-            _pageCursors.RemoveAt(_pageCursors.Count - 1);
-        }
-
-        await QueryAndShowAsync(beforeId, isForward: false);
+        await GoToPageAsync(CurrentPage - 1);
     }
 
-    /// <summary>下一页（末页时禁用）：以当前页末行 SampleID 为 after 游标查询。</summary>
+    /// <summary>下一页（末页时禁用）。</summary>
     [RelayCommand(CanExecute = nameof(HasNextPage))]
     private async Task NextPage()
     {
-        if (_pageRows.Count == 0)
-        {
-            return;
-        }
-
-        var afterId = _pageRows[^1].SampleId;
-        await QueryAndShowAsync(afterId, isForward: true);
+        await GoToPageAsync(CurrentPage + 1);
     }
 
     private async Task ReloadFirstPageAsync()
     {
-        _pageCursors.Clear();
         CurrentPage = 1;
         await LoadCommand.ExecuteAsync(null);
-    }
-
-    /// <summary>按游标方向查询并在 UI 侧更新页码/游标栈。</summary>
-    private async Task QueryAndShowAsync(string cursor, bool isForward)
-    {
-        var targetPage = isForward ? CurrentPage + 1 : CurrentPage - 1;
-        var date = SelectedDate;
-        try
-        {
-            var rows = await Task.Run(() => _production.GetPage(
-                date,
-                afterSampleId: isForward ? cursor : null,
-                beforeSampleId: isForward ? null : cursor,
-                pageSize: PageSize));
-            var items = rows.Select(MapItem).ToList();
-            _ui.Invoke(() =>
-            {
-                _pageRows = items;
-                ProductionSamples = new ObservableCollection<ProductionSampleItem>(items);
-                if (isForward)
-                {
-                    _pageCursors.Add(cursor);
-                }
-
-                CurrentPage = targetPage;
-            });
-        }
-        catch (Exception ex)
-        {
-            _errors.Collect(ErrorCodes.UnhandledException, "生产样品翻页失败", null, ex);
-        }
     }
 
     private async Task GoToPageAsync(int page)
     {
         CurrentPage = Math.Clamp(page, 1, TotalPages);
-        await LoadCommand.ExecuteAsync(null);
+        ShowPage(CurrentPage);
+        await Task.CompletedTask;
     }
 
     /// <summary>分页脚页码输入框（跳页用；解析失败忽略不清空，便于修正）。</summary>
     [ObservableProperty]
     private string _pageJumpInput = string.Empty;
 
-    /// <summary>
-    /// 页脚「跳转」：游标分页无法直接定位任意页，采用顺序推进——先回首页清空游标栈，
-    /// 再向目标页逐页翻（每页一次游标查询，受 HasNextPage 保护提前收敛）。
-    /// </summary>
+    /// <summary>页脚「跳转」：内存切片分页可直接定位任意页。</summary>
     [RelayCommand]
     private async Task JumpToPageAsync()
     {
@@ -246,30 +196,35 @@ public sealed partial class DashboardViewModel : ObservableObject, IPageLifecycl
             return;
         }
 
-        var target = Math.Clamp(page, 1, TotalPages);
         PageJumpInput = string.Empty;
-        if (target == CurrentPage)
-        {
-            return;
-        }
-
-        _pageCursors.Clear();
-        CurrentPage = 1;
-        await LoadCommand.ExecuteAsync(null);
-        while (CurrentPage < target && HasNextPage)
-        {
-            await NextPageCommand.ExecuteAsync(null);
-        }
+        await GoToPageAsync(Math.Clamp(page, 1, TotalPages));
     }
 
-    private static ProductionSampleItem MapItem(ProductionSample r) => new()
+    /// <summary>日志行映射（操作类型/结果状态中文映射；时间保留原始串供日期过滤与末列展示）。</summary>
+    private static OperationLogRowItem MapLogRow(SctOperationLog l)
     {
-        SampleId = r.SampleId,
-        SampleName = r.SampleName,
-        AlloyType = r.AlloyType,
-        StatusText = r.Status == ProductionStatus.Completed
-            ? "✓ 已完成"
-            : r.FailureReason is null ? "● 待分析" : "✖ 分析失败",
-        FailureReason = r.FailureReason,
-    };
+        var time = DateTime.TryParse(l.OperationTime, out var t) ? t : DateTime.MinValue;
+        return new OperationLogRowItem
+        {
+            LogId = l.LogId,
+            SampleIdText = l.SampleId ?? "—",
+            OperationTypeText = l.OperationType switch
+            {
+                "Standardization" => "标准化",
+                "ControlCheck" => "控制检查",
+                "HeightMeasure" => "测高",
+                _ => l.OperationType,
+            },
+            TriggerReasonText = l.TriggerReason ?? "—",
+            OperationTimeText = time.ToString("MM-dd HH:mm"),
+            ResultStatusText = l.ResultStatus switch
+            {
+                AnalysisResultStatus.Success => "● 成功",
+                AnalysisResultStatus.Warning => "▲ 预警",
+                AnalysisResultStatus.Fail => "✖ 失败",
+                _ => l.ResultStatus,
+            },
+            RawOperationTime = l.OperationTime,
+        };
+    }
 }

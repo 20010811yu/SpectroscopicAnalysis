@@ -43,14 +43,27 @@
                     <TextBlock Text="样品注册" Style="{StaticResource Text.CardTitle}" Margin="0,0,0,12" />
                     <Grid>
                         <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /><ColumnDefinition Width="24" />
-                            <ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="24" />
+                            <ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" />
                             <RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" />
                         </Grid.RowDefinitions>
                         <Grid.Resources>
+                            <!-- 表单输入统一尺寸：宽 280 高 32 靠左，覆盖 HandyControl 默认大尺寸，保证各类型输入框样式一致 -->
+                            <Style TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
+                                <Setter Property="Width" Value="280" />
+                                <Setter Property="Height" Value="32" />
+                                <Setter Property="HorizontalAlignment" Value="Left" />
+                                <Setter Property="VerticalAlignment" Value="Center" />
+                            </Style>
+                            <Style TargetType="ComboBox" BasedOn="{StaticResource {x:Type ComboBox}}">
+                                <Setter Property="Width" Value="280" />
+                                <Setter Property="Height" Value="32" />
+                                <Setter Property="HorizontalAlignment" Value="Left" />
+                                <Setter Property="VerticalAlignment" Value="Center" />
+                            </Style>
                             <!-- 按注册类型显隐的字段组：生产样仅分析方法组；设置样/控制样/类型标准样共用厚度组；关联合金仅类型标准样 -->
                             <Style x:Key="ProductionField" TargetType="FrameworkElement">
                                 <Setter Property="Visibility" Value="Collapsed" />

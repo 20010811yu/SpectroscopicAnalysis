@@ -18,6 +18,8 @@ public sealed class QueueTaskItem
     public required string TaskIdText { get; init; }
     public required string TaskTypeText { get; init; }
     public required string SampleIdText { get; init; }
+    /// <summary>样品名称（SCT/生产样档案查询；无档案时显示 —）。</summary>
+    public required string SampleNameText { get; init; }
     public required string ReasonText { get; init; }
     public required string EnqueueTimeText { get; init; }
     /// <summary>是否执行中（视图切绿色徽章）。</summary>
@@ -130,11 +132,24 @@ public sealed partial class DashboardViewModel : ObservableObject, IPageLifecycl
             _ => taskType,
         };
 
+        // SampleID → 样品名称映射（SCT 档案优先，生产样兜底；队列行展示用，每次刷新重建）
+        var nameMap = new Dictionary<string, string>();
+        foreach (var s in _samples.GetAll())
+        {
+            nameMap[s.SampleId] = s.SampleName;
+        }
+
+        foreach (var p in _production.GetAll())
+        {
+            nameMap[p.SampleId] = p.SampleName;
+        }
+
         var items = _engine.GetRecentTasks().Select(t => new QueueTaskItem
         {
             TaskIdText = $"#{t.TaskId}",
             TaskTypeText = TypeText(t.TaskType),
             SampleIdText = t.SampleId ?? "—",
+            SampleNameText = t.SampleId is not null && nameMap.TryGetValue(t.SampleId, out var name) && !string.IsNullOrWhiteSpace(name) ? name : "—",
             ReasonText = t.Reason ?? "—",
             EnqueueTimeText = t.Status == SctTaskStatus.Running ? string.Empty : t.EnqueueTime.ToString("MM-dd HH:mm"),
             IsRunning = t.Status == SctTaskStatus.Running,

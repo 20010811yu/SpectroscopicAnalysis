@@ -556,11 +556,17 @@ public sealed partial class SamplesViewModel : ObservableObject, IPageLifecycle
 
     // ==================== 样品注册（任务清单"入库初始化"） ====================
 
-    /// <summary>样品类型下拉选项（类型键：设置样/控制样/类型标准化样/生产样）。
+    /// <summary>样品类型下拉选项（类型键：生产样默认在前；设置样/控制样/类型标准化样）。
     /// 必须为实例属性供 XAML ItemsSource 绑定（静态字段不可绑定）。</summary>
     public IReadOnlyList<string> SampleTypeOptions { get; } = new[]
     {
-        SampleType.SettingUp, SampleType.Control, SampleType.TypeStd, SampleType.Production,
+        SampleType.Production, SampleType.SettingUp, SampleType.Control, SampleType.TypeStd,
+    };
+
+    /// <summary>分析方法下拉选项（生产样注册用；与种子数据方法清单一致）。</summary>
+    public IReadOnlyList<string> AnalysisMethodOptions { get; } = new[]
+    {
+        "GB/T 7999-A", "GB/T 7999-B", "ASTM E1251-A", "ASTM E1251-B",
     };
 
     [ObservableProperty]
@@ -573,7 +579,11 @@ public sealed partial class SamplesViewModel : ObservableObject, IPageLifecycle
     private string _regSampleName = string.Empty;
 
     [ObservableProperty]
-    private string _regSampleType = SampleType.SettingUp;
+    private string _regSampleType = SampleType.Production;
+
+    /// <summary>分析方法（生产样注册必选；其余类型不显示）。</summary>
+    [ObservableProperty]
+    private string? _regAnalysisMethod;
 
     [ObservableProperty]
     private string? _regAlloyType;
@@ -633,42 +643,62 @@ public sealed partial class SamplesViewModel : ObservableObject, IPageLifecycle
             return;
         }
 
-        var sample = BuildSampleFromForm();
+        var type = TypeDisplayToKey(RegSampleType);
+        var sample = type == SampleType.Production ? null : BuildSampleFromForm();
+        var productionSample = type == SampleType.Production ? BuildProductionSampleFromForm() : null;
         IsRegistering = true;
         RegisterError = null;
         try
         {
-            // 重复校验聚合（编号/架位一次后台查询完成，全部通过才入库）
+            // 重复校验（按类型查各自表：生产样查 Production_Sample，其余查 SCT_Sample 编号/架位）
             var dupError = await Task.Run(() =>
             {
                 var errors = new List<string>();
-                if (_samples.GetById(sample.SampleId) is not null)
+                if (productionSample is not null)
                 {
-                    errors.Add($"样品编号已存在：{sample.SampleId}");
+                    if (_production.GetAll().FirstOrDefault(p =>
+                            string.Equals(p.SampleId, productionSample.SampleId, StringComparison.Ordinal)) is not null)
+                    {
+                        errors.Add($"样品编号已存在：{productionSample.SampleId}");
+                    }
                 }
-                var occupant = _samples.GetAll().FirstOrDefault(s =>
-                    string.Equals(s.RackPosition?.Trim(), sample.RackPosition, StringComparison.Ordinal));
-                if (occupant is not null)
+                else if (sample is not null)
                 {
-                    errors.Add($"货架位置已占用：{sample.RackPosition}（现有样品 {occupant.SampleId}）");
+                    if (_samples.GetById(sample.SampleId) is not null)
+                    {
+                        errors.Add($"样品编号已存在：{sample.SampleId}");
+                    }
+                    var occupant = _samples.GetAll().FirstOrDefault(s =>
+                        string.Equals(s.RackPosition?.Trim(), sample.RackPosition, StringComparison.Ordinal));
+                    if (occupant is not null)
+                    {
+                        errors.Add($"货架位置已占用：{sample.RackPosition}（现有样品 {occupant.SampleId}）");
+                    }
                 }
                 return errors.Count > 0 ? string.Join("\n", errors) : null;
             });
             if (dupError is not null)
             {
                 RegisterError = dupError;
-                _errors.Collect(ErrorCodes.SampleRegisterRejected, dupError, sample.SampleId);
+                _errors.Collect(ErrorCodes.SampleRegisterRejected, dupError, RegSampleId.Trim());
                 return;
             }
 
             try
             {
-                await Task.Run(() => _samples.Insert(sample));
+                if (productionSample is not null)
+                {
+                    await Task.Run(() => _production.Insert(productionSample));
+                }
+                else
+                {
+                    await Task.Run(() => _samples.Insert(sample!));
+                }
             }
             catch (Microsoft.Data.Sqlite.SqliteException ex)
             {
                 RegisterError = $"入库失败：{ex.Message}";
-                _errors.Collect(ErrorCodes.SampleInsertFailed, "样品入库写库失败", sample.SampleId, ex);
+                _errors.Collect(ErrorCodes.SampleInsertFailed, "样品入库写库失败", RegSampleId.Trim(), ex);
                 return;
             }
             _ui.Invoke(() =>
@@ -676,7 +706,7 @@ public sealed partial class SamplesViewModel : ObservableObject, IPageLifecycle
                 ClearRegisterForm();
                 IsRegisterOpen = false;
             });
-            // 入库后刷新列表（await 确保刷新完成，调用方 RegisterAsync 本身异步）
+            // 入库后刷新当前激活表（生产样刷新生产样表，其余刷新台账表）
             await LoadCommand.ExecuteAsync(null);
         }
         finally
@@ -685,7 +715,7 @@ public sealed partial class SamplesViewModel : ObservableObject, IPageLifecycle
         }
     }
 
-    /// <summary>表单校验；返回错误消息，null 表示通过。</summary>
+    /// <summary>表单校验（按注册类型条件化）；返回错误消息，null 表示通过。</summary>
     private string? ValidateRegisterForm()
     {
         if (string.IsNullOrWhiteSpace(RegSampleId))
@@ -696,6 +726,19 @@ public sealed partial class SamplesViewModel : ObservableObject, IPageLifecycle
         {
             return "样品名称不能为空";
         }
+
+        var type = TypeDisplayToKey(RegSampleType);
+        if (type == SampleType.Production)
+        {
+            // 生产样：编号/名称 + 分析方法
+            if (string.IsNullOrWhiteSpace(RegAnalysisMethod))
+            {
+                return "请选择分析方法";
+            }
+            return null;
+        }
+
+        // 设置样/控制样/类型标准样：架位 + 厚度 + 使用次数
         if (string.IsNullOrWhiteSpace(RegRackPosition))
         {
             return "样品架位置不能为空";
@@ -716,13 +759,28 @@ public sealed partial class SamplesViewModel : ObservableObject, IPageLifecycle
         {
             return "最大使用次数必须为不小于 1 的整数";
         }
-        // 合金约束：仅类型标准化样可关联合金（数据库触发器兜底，此处前置校验）
-        if (TypeDisplayToKey(RegSampleType) != SampleType.TypeStd && !string.IsNullOrWhiteSpace(RegAlloyType))
+        // 合金约束：仅类型标准化样必填合金（数据库触发器兜底，此处前置校验）
+        if (type == SampleType.TypeStd && string.IsNullOrWhiteSpace(RegAlloyType))
+        {
+            return "类型标准化样必须填写关联合金";
+        }
+        if (type != SampleType.TypeStd && !string.IsNullOrWhiteSpace(RegAlloyType))
         {
             return "仅类型标准化样可关联合金，设置样/控制样请留空合金";
         }
         return null;
     }
+
+    /// <summary>生产样注册：按表单构造 ProductionSample（写 Production_Sample，无厚度/使用次数字段）。</summary>
+    private ProductionSample BuildProductionSampleFromForm() => new()
+    {
+        SampleId = RegSampleId.Trim(),
+        SampleName = RegSampleName.Trim(),
+        SampleType = SampleType.Production,
+        AssociatedMethod = RegAnalysisMethod!.Trim(), // 校验已确保非空
+        Status = ProductionStatus.Normal,
+        CreatedTime = DateTime.Now,
+    };
 
     private SctSample BuildSampleFromForm() => new()
     {
@@ -746,6 +804,7 @@ public sealed partial class SamplesViewModel : ObservableObject, IPageLifecycle
         RegSampleId = string.Empty;
         RegSampleName = string.Empty;
         RegSampleType = SampleTypeOptions[0];
+        RegAnalysisMethod = null;
         RegAlloyType = null;
         RegRackPosition = null;
         RegInitialThickness = string.Empty;

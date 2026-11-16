@@ -151,7 +151,7 @@ public sealed partial class DashboardViewModel : ObservableObject, IPageLifecycl
             SampleIdText = t.SampleId ?? "—",
             SampleNameText = t.SampleId is not null && nameMap.TryGetValue(t.SampleId, out var name) && !string.IsNullOrWhiteSpace(name) ? name : "—",
             ReasonText = t.Reason ?? "—",
-            EnqueueTimeText = t.Status == SctTaskStatus.Running ? string.Empty : t.EnqueueTime.ToString("MM-dd HH:mm"),
+            EnqueueTimeText = t.Status == SctTaskStatus.Running ? string.Empty : t.EnqueueTime.ToString("yyyy-MM-dd HH:mm:ss"),
             IsRunning = t.Status == SctTaskStatus.Running,
             StatusText = t.Status switch
             {
@@ -346,7 +346,7 @@ public sealed partial class DashboardViewModel : ObservableObject, IPageLifecycl
                 _ => l.OperationType,
             },
             TriggerReasonText = l.TriggerReason ?? "—",
-            OperationTimeText = time.ToString("MM-dd HH:mm"),
+            OperationTimeText = time.ToString("yyyy-MM-dd HH:mm:ss"),
             ResultStatusText = l.ResultStatus switch
             {
                 AnalysisResultStatus.Success => "● 成功",

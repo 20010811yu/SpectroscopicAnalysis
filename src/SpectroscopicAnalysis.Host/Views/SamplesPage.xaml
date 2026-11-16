@@ -23,19 +23,16 @@
                         Style="{StaticResource PrimaryBtn}" Padding="10,5" />
             </DockPanel>
 
-            <!-- 样品注册表单（先选类型再显字段：生产样默认；仅样品台账表且面板展开时显示） -->
+            <!-- 样品注册表单（先选类型再显字段：生产样默认；面板展开期间切表不收起） -->
             <Border Grid.Row="1" Margin="{DynamicResource Spacing.CardGap}">
                 <Border.Style>
                     <Style TargetType="Border" BasedOn="{StaticResource Card}">
                         <Setter Property="Visibility" Value="Collapsed" />
                         <Style.Triggers>
-                            <MultiDataTrigger>
-                                <MultiDataTrigger.Conditions>
-                                    <Condition Binding="{Binding IsRegisterOpen}" Value="True" />
-                                    <Condition Binding="{Binding IsSampleTable}" Value="True" />
-                                </MultiDataTrigger.Conditions>
+                            <!-- 仅由展开开关控制：切换数据表不收起注册面板 -->
+                            <DataTrigger Binding="{Binding IsRegisterOpen}" Value="True">
                                 <Setter Property="Visibility" Value="Visible" />
-                            </MultiDataTrigger>
+                            </DataTrigger>
                         </Style.Triggers>
                     </Style>
                 </Border.Style>

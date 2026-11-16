@@ -608,7 +608,7 @@ public sealed partial class SamplesViewModel : ObservableObject, IPageLifecycle
     [ObservableProperty]
     private bool _isRegistering;
 
-    /// <summary>切换注册表单显隐；展开时切回样品台账表（注册表单仅在该表显示）。</summary>
+    /// <summary>切换注册表单显隐；首次展开时切回样品台账表（便于直接注册 SCT 样），切表不收起面板。</summary>
     [RelayCommand]
     private void ToggleRegister()
     {

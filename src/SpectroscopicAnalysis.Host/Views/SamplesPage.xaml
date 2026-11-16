@@ -17,9 +17,9 @@
 
         <DockPanel Grid.Row="0" Margin="{DynamicResource Spacing.CardGap}">
                 <TextBlock Text="样品档案" Style="{StaticResource Text.PageTitle}" VerticalAlignment="Center" />
-                <Button Content="＋ 录入新标样" Command="{Binding ToggleRegisterCommand}"
+                <!-- 样品注册入口：固定右上角，不随数据表切换显隐；点击切回样品台账表并展开注册表单 -->
+                <Button Content="＋ 样品注册" Command="{Binding ToggleRegisterCommand}"
                         HorizontalAlignment="Right" VerticalAlignment="Center"
-                        Visibility="{Binding IsSampleTable, Converter={StaticResource BoolToVisibility}}"
                         Style="{StaticResource PrimaryBtn}" Padding="10,5" />
             </DockPanel>
 

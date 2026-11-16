@@ -598,9 +598,16 @@ public sealed partial class SamplesViewModel : ObservableObject, IPageLifecycle
     [ObservableProperty]
     private bool _isRegistering;
 
-    /// <summary>切换注册表单显隐。</summary>
+    /// <summary>切换注册表单显隐；展开时切回样品台账表（注册表单仅在该表显示）。</summary>
     [RelayCommand]
-    private void ToggleRegister() => IsRegisterOpen = !IsRegisterOpen;
+    private void ToggleRegister()
+    {
+        IsRegisterOpen = !IsRegisterOpen;
+        if (IsRegisterOpen && ActiveTable != TableSample)
+        {
+            ActiveTable = TableSample;
+        }
+    }
 
     /// <summary>取消注册：清空表单与错误并关闭面板。</summary>
     [RelayCommand]

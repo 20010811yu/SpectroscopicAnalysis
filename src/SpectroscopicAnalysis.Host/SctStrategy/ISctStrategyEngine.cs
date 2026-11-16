@@ -16,6 +16,9 @@ public interface ISctStrategyEngine
     /// <summary>当前排队任务快照（优先级序，同优先级 FIFO；与 TryDequeue 取序一致，供队列面板展示）。</summary>
     IReadOnlyList<SctTask> GetQueuedTasks();
 
+    /// <summary>最近任务快照（执行中 + 排队 + 已终结历史最新在前；供队列面板展示，任务不再凭空消失）。</summary>
+    IReadOnlyList<SctTask> GetRecentTasks();
+
     /// <summary>任务完成/失败回执（Workflow 执行后回调；失败不自动重试）。</summary>
     void CompleteTask(int taskId, bool success, string? error);
 

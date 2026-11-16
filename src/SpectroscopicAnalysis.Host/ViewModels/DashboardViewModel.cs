@@ -22,6 +22,8 @@ public sealed class QueueTaskItem
     public required string EnqueueTimeText { get; init; }
     /// <summary>是否执行中（视图切绿色徽章）。</summary>
     public bool IsRunning { get; init; }
+    /// <summary>任务状态文本（排队中/执行中/已完成/失败）。</summary>
+    public required string StatusText { get; init; }
 }
 
 /// <summary>
@@ -128,29 +130,24 @@ public sealed partial class DashboardViewModel : ObservableObject, IPageLifecycl
             _ => taskType,
         };
 
-        var items = new List<QueueTaskItem>();
-        var snapshot = _orchestrator.Snapshot;
-        if (snapshot is { IsRunning: true, CurrentTaskId: { } runningId })
-        {
-            items.Add(new QueueTaskItem
-            {
-                TaskIdText = $"#{runningId}",
-                TaskTypeText = TypeText(snapshot.CurrentTaskType),
-                SampleIdText = snapshot.CurrentSampleId ?? "—",
-                ReasonText = "执行中",
-                EnqueueTimeText = string.Empty,
-                IsRunning = true,
-            });
-        }
-        items.AddRange(_engine.GetQueuedTasks().Select(t => new QueueTaskItem
+        var items = _engine.GetRecentTasks().Select(t => new QueueTaskItem
         {
             TaskIdText = $"#{t.TaskId}",
             TaskTypeText = TypeText(t.TaskType),
             SampleIdText = t.SampleId ?? "—",
             ReasonText = t.Reason ?? "—",
-            EnqueueTimeText = t.EnqueueTime.ToString("HH:mm:ss"),
-            IsRunning = false,
-        }));
+            EnqueueTimeText = t.Status == SctTaskStatus.Running ? string.Empty : t.EnqueueTime.ToString("MM-dd HH:mm"),
+            IsRunning = t.Status == SctTaskStatus.Running,
+            StatusText = t.Status switch
+            {
+                SctTaskStatus.Queued => "排队中",
+                SctTaskStatus.Running => "执行中",
+                SctTaskStatus.Completed => "已完成",
+                SctTaskStatus.Failed => "失败",
+                SctTaskStatus.Cancelled => "已取消",
+                _ => t.Status.ToString(),
+            },
+        }).ToList();
 
         _ui.Invoke(() =>
         {

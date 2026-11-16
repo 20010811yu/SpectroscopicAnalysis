@@ -38,6 +38,9 @@ public sealed class SctStrategyEngine : ISctStrategyEngine
 
     private readonly object _gate = new();
     private readonly List<SctTask> _queue = [];
+
+    /// <summary>已终结任务历史（Completed/Failed/Cancelled，最新在前，上限 50 条）——队列面板展示用。</summary>
+    private readonly List<SctTask> _history = [];
     private SctTask? _running;
     private int _nextTaskId;
 
@@ -140,6 +143,17 @@ public sealed class SctStrategyEngine : ISctStrategyEngine
             .ToList();
 
     /// <inheritdoc />
+    public IReadOnlyList<SctTask> GetRecentTasks()
+    {
+        var running = _running is not null ? new[] { _running } : Array.Empty<SctTask>();
+        return running.Concat(_queue
+                .OrderBy(t => t.Priority)
+                .ThenBy(t => t.EnqueueTime))
+            .Concat(_history)
+            .ToList();
+    }
+
+    /// <inheritdoc />
     public void CompleteTask(int taskId, bool success, string? error)
     {
         lock (_gate)
@@ -150,6 +164,11 @@ public sealed class SctStrategyEngine : ISctStrategyEngine
             }
 
             _running.Status = success ? SctTaskStatus.Completed : SctTaskStatus.Failed;
+            _history.Insert(0, _running);
+            if (_history.Count > 50)
+            {
+                _history.RemoveAt(_history.Count - 1);
+            }
             _running = null;
 
             // 失败不自动重试（引擎设计 §6.2），错误经统一错误链上报

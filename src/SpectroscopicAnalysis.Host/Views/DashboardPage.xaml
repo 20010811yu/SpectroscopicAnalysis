@@ -127,6 +127,12 @@
                                         <Style TargetType="Border" BasedOn="{StaticResource Badge.Base}">
                                             <Setter Property="Background" Value="{DynamicResource Brush.Badge.Info.Bg}" />
                                             <Style.Triggers>
+                                                <DataTrigger Binding="{Binding StatusText}" Value="失败">
+                                                    <Setter Property="Background" Value="{DynamicResource Brush.Badge.Failed.Bg}" />
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding StatusText}" Value="已完成">
+                                                    <Setter Property="Background" Value="{DynamicResource Brush.Badge.Idle.Bg}" />
+                                                </DataTrigger>
                                                 <DataTrigger Binding="{Binding IsRunning}" Value="True">
                                                     <Setter Property="Background" Value="{DynamicResource Brush.Badge.Running.Bg}" />
                                                 </DataTrigger>
@@ -137,6 +143,9 @@
                                         <StackPanel.Resources>
                                             <Style TargetType="TextBlock" BasedOn="{StaticResource Text.Caption}">
                                                 <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding StatusText}" Value="失败">
+                                                        <Setter Property="Foreground" Value="{DynamicResource Brush.Status.Failed}" />
+                                                    </DataTrigger>
                                                     <DataTrigger Binding="{Binding IsRunning}" Value="True">
                                                         <Setter Property="Foreground" Value="{DynamicResource Brush.Status.Running}" />
                                                     </DataTrigger>
@@ -144,6 +153,7 @@
                                             </Style>
                                         </StackPanel.Resources>
                                         <TextBlock Text="{Binding TaskTypeText}" FontWeight="SemiBold" />
+                                        <TextBlock Text="{Binding StatusText}" Margin="10,0,0,0" FontWeight="SemiBold" />
                                         <TextBlock Text="{Binding SampleIdText}" FontFamily="Consolas" Margin="10,0,0,0" />
                                         <TextBlock Text="{Binding EnqueueTimeText}" FontFamily="Consolas" Margin="10,0,0,0" />
                                         <TextBlock Text="{Binding ReasonText}" Margin="10,0,0,0" />

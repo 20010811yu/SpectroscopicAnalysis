@@ -22,6 +22,8 @@ internal sealed class FakeSctStrategyEngine : ISctStrategyEngine
 
     public IReadOnlyList<SctTask> GetQueuedTasks() => Array.Empty<SctTask>();
 
+    public IReadOnlyList<SctTask> GetRecentTasks() => Array.Empty<SctTask>();
+
     public void CompleteTask(int taskId, bool success, string? error)
     {
     }

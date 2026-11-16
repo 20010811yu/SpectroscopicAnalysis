@@ -37,29 +37,29 @@ public sealed class ProductionSampleRepositoryIntegrationTests : IDisposable
             });
         }
 
-        // 第一页（今日）：20 条（昨日 5 条被日期过滤排除，今日共 40 条）
+        // 第一页（今日）：20 条（昨日 5 条被日期过滤排除，今日共 40 条）；时间倒序，同时间按 SampleID 倒序
         var page1 = _repo.GetPage(today, null, null, 20);
         Assert.Equal(20, page1.Count);
-        Assert.Equal("P-006", page1[0].SampleId);
-        Assert.Equal("P-025", page1[^1].SampleId);
+        Assert.Equal("P-045", page1[0].SampleId);
+        Assert.Equal("P-026", page1[^1].SampleId);
 
         // 下一页：after 游标
         var page2 = _repo.GetPage(today, page1[^1].SampleId, null, 20);
         Assert.Equal(20, page2.Count);
-        Assert.Equal("P-026", page2[0].SampleId);
-        Assert.Equal("P-045", page2[^1].SampleId);
+        Assert.Equal("P-025", page2[0].SampleId);
+        Assert.Equal("P-006", page2[^1].SampleId);
         Assert.Equal(40, _repo.Count(today));
 
-        // 上一页：before 游标，升序返回
+        // 上一页：before 游标，倒序返回（与正向页一致）
         var back = _repo.GetPage(today, null, page2[0].SampleId, 20);
         Assert.Equal(20, back.Count);
-        Assert.Equal("P-006", back[0].SampleId);
-        Assert.Equal("P-025", back[^1].SampleId);
+        Assert.Equal("P-045", back[0].SampleId);
+        Assert.Equal("P-026", back[^1].SampleId);
 
         // 昨日日期
         var yesterday = _repo.GetPage(today.AddDays(-1), null, null, 20);
         Assert.Equal(5, yesterday.Count);
-        Assert.Equal("P-001", yesterday[0].SampleId);
+        Assert.Equal("P-005", yesterday[0].SampleId);
         Assert.Equal(5, _repo.Count(today.AddDays(-1)));
     }
 

@@ -289,8 +289,8 @@
                             </DataGridTemplateColumn.CellTemplate>
                         </DataGridTemplateColumn>
                         <DataGridTextColumn Header="上次测高" Binding="{Binding LastHeightText}" FontFamily="Consolas" Width="1*" MinWidth="70" ElementStyle="{StaticResource GridCellText}" />
-                        <DataGridTextColumn Header="上次使用" Binding="{Binding LastUseText}" FontFamily="Consolas" Width="1*" MinWidth="70" ElementStyle="{StaticResource GridCellText}" />
                         <DataGridTextColumn Header="启用" Binding="{Binding ActiveText}" Width="0.7*" MinWidth="50" ElementStyle="{StaticResource GridCellText}" />
+                        <DataGridTextColumn Header="上次使用" Binding="{Binding LastUseText}" FontFamily="Consolas" Width="1*" MinWidth="70" ElementStyle="{StaticResource GridCellText}" />
                     </DataGrid.Columns>
                 </DataGrid>
 
@@ -338,7 +338,6 @@
                               ColumnHeaderStyle="{StaticResource GridColumnHeader}"
                               FontSize="{DynamicResource FontSize.Body}">
                         <DataGrid.Columns>
-                            <DataGridTextColumn Header="时间" Binding="{Binding TimeText}" FontFamily="Consolas" Width="1.3*" MinWidth="90" ElementStyle="{StaticResource GridCellText}" />
                             <DataGridTextColumn Header="样品" Binding="{Binding SampleIdText}" FontFamily="Consolas" Width="1*" MinWidth="65" ElementStyle="{StaticResource GridCellText}" />
                             <DataGridTextColumn Header="操作类型" Binding="{Binding OperationTypeText}" Width="0.9*" MinWidth="60" ElementStyle="{StaticResource GridCellText}" />
                             <DataGridTextColumn Header="触发原因" Binding="{Binding TriggerReasonText}" Width="1*" MinWidth="65" ElementStyle="{StaticResource GridCellText}" />
@@ -367,6 +366,7 @@
                                     </DataTemplate>
                                 </DataGridTemplateColumn.CellTemplate>
                             </DataGridTemplateColumn>
+                            <DataGridTextColumn Header="时间" Binding="{Binding TimeText}" FontFamily="Consolas" Width="1.3*" MinWidth="90" ElementStyle="{StaticResource GridCellText}" />
                         </DataGrid.Columns>
                     </DataGrid>
                     <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,8,0,0">

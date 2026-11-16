@@ -35,11 +35,11 @@ public sealed class DashboardViewModelTests
         await vm.LoadCommand.ExecuteAsync(null);
 
         Assert.Equal(4, vm.ProductionSamples.Count);
-        Assert.Equal("● 正常", vm.ProductionSamples[0].StatusText);
-        Assert.Equal("● 分析中", vm.ProductionSamples[1].StatusText);
-        Assert.Equal("✓ 已完成", vm.ProductionSamples[2].StatusText);
-        Assert.Equal("✖ 失败", vm.ProductionSamples[3].StatusText);
-        Assert.Equal("生产样 P-001", vm.ProductionSamples[0].SampleName); // 名称列映射
+        Assert.Equal("✖ 失败", vm.ProductionSamples[0].StatusText); // 时间倒序：同入库时间按 SampleID 倒序
+        Assert.Equal("✓ 已完成", vm.ProductionSamples[1].StatusText);
+        Assert.Equal("● 分析中", vm.ProductionSamples[2].StatusText);
+        Assert.Equal("● 正常", vm.ProductionSamples[3].StatusText);
+        Assert.Equal("生产样 P-004", vm.ProductionSamples[0].SampleName); // 名称列映射
         Assert.True(vm.HasProduction);
     }
 
@@ -102,7 +102,7 @@ public sealed class DashboardViewModelTests
         Assert.Equal(45, vm.TotalCount);
         Assert.Equal(5, vm.TotalPages);
         Assert.True(vm.HasNextPage);
-        Assert.Equal("P-001", vm.ProductionSamples[0].SampleId);
+        Assert.Equal("P-045", vm.ProductionSamples[0].SampleId); // 时间倒序，最新在前
     }
 
     [Fact]
@@ -120,14 +120,14 @@ public sealed class DashboardViewModelTests
         await InvokePagingAsync(vm.NextPageCommand);
         Assert.Equal(2, vm.CurrentPage);
         Assert.Equal(10, vm.ProductionSamples.Count);
-        Assert.Equal("P-011", vm.ProductionSamples[0].SampleId); // 第二页首行
+        Assert.Equal("P-035", vm.ProductionSamples[0].SampleId); // 第二页首行
         Assert.True(vm.HasPrevPage);
         Assert.True(vm.HasNextPage);
 
         await InvokePagingAsync(vm.NextPageCommand);
         Assert.Equal(3, vm.CurrentPage);
         Assert.Equal(10, vm.ProductionSamples.Count);
-        Assert.Equal("P-021", vm.ProductionSamples[0].SampleId);
+        Assert.Equal("P-025", vm.ProductionSamples[0].SampleId);
 
         await InvokePagingAsync(vm.NextPageCommand);
         await InvokePagingAsync(vm.NextPageCommand);
@@ -137,11 +137,11 @@ public sealed class DashboardViewModelTests
 
         await InvokePagingAsync(vm.PrevPageCommand);
         Assert.Equal(4, vm.CurrentPage);
-        Assert.Equal("P-031", vm.ProductionSamples[0].SampleId); // 反向游标回到第四页
+        Assert.Equal("P-015", vm.ProductionSamples[0].SampleId); // 反向游标回到第四页
 
         await InvokePagingAsync(vm.FirstPageCommand);
         Assert.Equal(1, vm.CurrentPage);
-        Assert.Equal("P-001", vm.ProductionSamples[0].SampleId);
+        Assert.Equal("P-045", vm.ProductionSamples[0].SampleId);
         Assert.False(vm.HasPrevPage);
     }
 

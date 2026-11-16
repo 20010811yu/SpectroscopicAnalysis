@@ -5,8 +5,8 @@ namespace SpectroscopicAnalysis.Host.Data.Repositories;
 /// <summary>生产样品档案仓储（Production_Sample + Analysis_Result；keyset 游标分页，每次仅取当页）。</summary>
 public interface IProductionSampleRepository
 {
-    /// <summary>生产样游标分页：按入库日期过滤，SampleID 升序，每次仅取 pageSize 条。
-    /// afterSampleId / beforeSampleId 二选一，均空取第一页。</summary>
+    /// <summary>生产样游标分页：按入库日期过滤，入库时间倒序（最新在前），每次仅取 pageSize 条。
+    /// afterSampleId / beforeSampleId 为游标行 SampleID（复合时间游标），二选一，均空取第一页。</summary>
     IReadOnlyList<ProductionSample> GetPage(DateTime? createdOn, string? afterSampleId, string? beforeSampleId, int pageSize);
 
     /// <summary>符合条件的生产样总数（分页页数计算）。</summary>

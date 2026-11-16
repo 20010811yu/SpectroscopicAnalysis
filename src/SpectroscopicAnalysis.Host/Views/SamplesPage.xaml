@@ -480,10 +480,10 @@
                             <DataGridTextColumn Header="元素" Binding="{Binding Element}" Width="0.8*" MinWidth="50" ElementStyle="{StaticResource GridCellText}" />
                             <DataGridTextColumn Header="斜率 a" Binding="{Binding SlopeText}" Width="1*" MinWidth="60" ElementStyle="{StaticResource GridCellText}" />
                             <DataGridTextColumn Header="截距 b" Binding="{Binding InterceptText}" Width="1*" MinWidth="60" ElementStyle="{StaticResource GridCellText}" />
-                            <DataGridTextColumn Header="生效时间" Binding="{Binding EffectiveTimeText}" Width="1.3*" MinWidth="80" ElementStyle="{StaticResource GridCellText}" />
-                            <DataGridTextColumn Header="来源" Binding="{Binding SourceSampleText}" FontFamily="Consolas" Width="1.1*" MinWidth="70" ElementStyle="{StaticResource GridCellText}" />
+                                                        <DataGridTextColumn Header="来源" Binding="{Binding SourceSampleText}" FontFamily="Consolas" Width="1.1*" MinWidth="70" ElementStyle="{StaticResource GridCellText}" />
                             <DataGridTextColumn Header="当前有效" Binding="{Binding CurrentText}" Width="1*" MinWidth="60" ElementStyle="{StaticResource GridCellText}" />
                             <DataGridTextColumn Header="版本" Binding="{Binding VersionText}" Width="0.6*" MinWidth="40" ElementStyle="{StaticResource GridCellText}" />
+<DataGridTextColumn Header="生效时间" Binding="{Binding EffectiveTimeText}" Width="1.3*" MinWidth="80" ElementStyle="{StaticResource GridCellText}" />
                             <DataGridTemplateColumn Header="操作" Width="88" MinWidth="88">
                                 <DataGridTemplateColumn.CellTemplate>
                                     <DataTemplate>
@@ -523,8 +523,8 @@
                             <DataGridTextColumn Header="样品" Binding="{Binding SampleIdText}" FontFamily="Consolas" Width="1.2*" MinWidth="70" ElementStyle="{StaticResource GridCellText}" />
                             <DataGridTextColumn Header="操作类型" Binding="{Binding OperationTypeText}" Width="1*" MinWidth="60" ElementStyle="{StaticResource GridCellText}" />
                             <DataGridTextColumn Header="触发原因" Binding="{Binding TriggerReasonText}" Width="1.5*" MinWidth="80" ElementStyle="{StaticResource GridCellText}" />
-                            <DataGridTextColumn Header="操作时间" Binding="{Binding OperationTimeText}" FontFamily="Consolas" Width="1.3*" MinWidth="80" ElementStyle="{StaticResource GridCellText}" />
-                            <DataGridTextColumn Header="结果状态" Binding="{Binding ResultStatusText}" Width="1*" MinWidth="60" ElementStyle="{StaticResource GridCellText}" />
+                                                        <DataGridTextColumn Header="结果状态" Binding="{Binding ResultStatusText}" Width="1*" MinWidth="60" ElementStyle="{StaticResource GridCellText}" />
+<DataGridTextColumn Header="操作时间" Binding="{Binding OperationTimeText}" FontFamily="Consolas" Width="1.3*" MinWidth="80" ElementStyle="{StaticResource GridCellText}" />
                             <DataGridTemplateColumn Header="操作" Width="88" MinWidth="88">
                                 <DataGridTemplateColumn.CellTemplate>
                                     <DataTemplate>
@@ -561,8 +561,7 @@
                         <DataGrid.Columns>
                             <DataGridTextColumn Header="SampleID" Binding="{Binding SampleId}" FontFamily="Consolas" Width="1.2*" MinWidth="70" ElementStyle="{StaticResource GridCellText}" />
                             <DataGridTextColumn Header="样品名称" Binding="{Binding SampleName}" Width="1.2*" MinWidth="70" ElementStyle="{StaticResource GridCellText}" />
-                            <DataGridTextColumn Header="入库时间" Binding="{Binding CreatedText}" FontFamily="Consolas" Width="1*" MinWidth="70" ElementStyle="{StaticResource GridCellText}" />
-                            <DataGridTemplateColumn Header="状态" Width="1*" MinWidth="70">
+                                                        <DataGridTemplateColumn Header="状态" Width="1*" MinWidth="70">
                                 <DataGridTemplateColumn.CellTemplate>
                                     <DataTemplate>
                                         <TextBlock Text="{Binding StatusText}">
@@ -585,6 +584,7 @@
                                     </DataTemplate>
                                 </DataGridTemplateColumn.CellTemplate>
                             </DataGridTemplateColumn>
+                            <DataGridTextColumn Header="入库时间" Binding="{Binding CreatedText}" FontFamily="Consolas" Width="1*" MinWidth="70" ElementStyle="{StaticResource GridCellText}" />
                         </DataGrid.Columns>
                     </DataGrid>
 
@@ -933,10 +933,10 @@
                                                             <Grid.ColumnDefinitions>
                                                                 <ColumnDefinition Width="*" /><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /><ColumnDefinition Width="*" />
                                                             </Grid.ColumnDefinitions>
-                                                            <TextBlock Grid.Column="0" Text="时间" Style="{StaticResource Table.Header}" Padding="0,4" />
-                                                            <TextBlock Grid.Column="1" Text="原始" Style="{StaticResource Table.Header}" Padding="0,4" />
-                                                            <TextBlock Grid.Column="2" Text="校正后" Style="{StaticResource Table.Header}" Padding="0,4" />
-                                                            <TextBlock Grid.Column="3" Text="判定" Style="{StaticResource Table.Header}" Padding="0,4" />
+                                                            <TextBlock Grid.Column="0" Text="原始" Style="{StaticResource Table.Header}" Padding="0,4" />
+                                                            <TextBlock Grid.Column="1" Text="校正后" Style="{StaticResource Table.Header}" Padding="0,4" />
+                                                            <TextBlock Grid.Column="2" Text="判定" Style="{StaticResource Table.Header}" Padding="0,4" />
+                                                            <TextBlock Grid.Column="3" Text="时间" Style="{StaticResource Table.Header}" Padding="0,4" />
                                                         </Grid>
                                                         <ItemsPresenter Grid.Row="1" />
                                                     </Grid>
@@ -949,10 +949,10 @@
                                                             <Grid.ColumnDefinitions>
                                                                 <ColumnDefinition Width="*" /><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /><ColumnDefinition Width="*" />
                                                             </Grid.ColumnDefinitions>
-                                                            <TextBlock Grid.Column="0" Text="{Binding TimeText}" Style="{StaticResource Text.Base}" Padding="0,4" FontFamily="Consolas" />
-                                                            <TextBlock Grid.Column="1" Text="{Binding MeasuredText}" Style="{StaticResource Text.Base}" Padding="0,4" FontFamily="Consolas" />
-                                                            <TextBlock Grid.Column="2" Text="{Binding CorrectedText}" Style="{StaticResource Text.Base}" Padding="0,4" FontFamily="Consolas" />
-                                                            <TextBlock Grid.Column="3" Text="{Binding PassText}" Style="{StaticResource Text.Base}" Padding="0,4" />
+                                                            <TextBlock Grid.Column="0" Text="{Binding MeasuredText}" Style="{StaticResource Text.Base}" Padding="0,4" FontFamily="Consolas" />
+                                                            <TextBlock Grid.Column="1" Text="{Binding CorrectedText}" Style="{StaticResource Text.Base}" Padding="0,4" FontFamily="Consolas" />
+                                                            <TextBlock Grid.Column="2" Text="{Binding PassText}" Style="{StaticResource Text.Base}" Padding="0,4" />
+                                                            <TextBlock Grid.Column="3" Text="{Binding TimeText}" Style="{StaticResource Text.Base}" Padding="0,4" FontFamily="Consolas" />
                                                         </Grid>
                                                     </Border>
                                                 </DataTemplate>
@@ -982,12 +982,12 @@
                                                     </Grid.RowDefinitions>
                                                     <Grid Grid.Row="0" Background="{DynamicResource Brush.Bg.Page}">
                                                         <Grid.ColumnDefinitions>
-                                                            <ColumnDefinition Width="1.3*" /><ColumnDefinition Width="0.8*" /><ColumnDefinition Width="1*" /><ColumnDefinition Width="0.8*" />
+                                                            <ColumnDefinition Width="0.8*" /><ColumnDefinition Width="1*" /><ColumnDefinition Width="0.8*" /><ColumnDefinition Width="1.3*" />
                                                         </Grid.ColumnDefinitions>
-                                                        <TextBlock Grid.Column="0" Text="时间" Style="{StaticResource Table.Header}" Padding="0,4" />
-                                                        <TextBlock Grid.Column="1" Text="操作类型" Style="{StaticResource Table.Header}" Padding="0,4" />
-                                                        <TextBlock Grid.Column="2" Text="触发原因" Style="{StaticResource Table.Header}" Padding="0,4" />
-                                                        <TextBlock Grid.Column="3" Text="结果状态" Style="{StaticResource Table.Header}" Padding="0,4" />
+                                                        <TextBlock Grid.Column="0" Text="操作类型" Style="{StaticResource Table.Header}" Padding="0,4" />
+                                                        <TextBlock Grid.Column="1" Text="触发原因" Style="{StaticResource Table.Header}" Padding="0,4" />
+                                                        <TextBlock Grid.Column="2" Text="结果状态" Style="{StaticResource Table.Header}" Padding="0,4" />
+                                                        <TextBlock Grid.Column="3" Text="时间" Style="{StaticResource Table.Header}" Padding="0,4" />
                                                     </Grid>
                                                     <ItemsPresenter Grid.Row="1" />
                                                 </Grid>
@@ -998,12 +998,11 @@
                                                 <Border BorderBrush="{DynamicResource Brush.Border.Default}" BorderThickness="0,0,0,1">
                                                     <Grid>
                                                         <Grid.ColumnDefinitions>
-                                                            <ColumnDefinition Width="1.3*" /><ColumnDefinition Width="0.8*" /><ColumnDefinition Width="1*" /><ColumnDefinition Width="0.8*" />
+                                                            <ColumnDefinition Width="0.8*" /><ColumnDefinition Width="1*" /><ColumnDefinition Width="0.8*" /><ColumnDefinition Width="1.3*" />
                                                         </Grid.ColumnDefinitions>
-                                                        <TextBlock Grid.Column="0" Text="{Binding OperationTimeText}" Style="{StaticResource Text.Base}" Padding="0,4" FontFamily="Consolas" />
-                                                        <TextBlock Grid.Column="1" Text="{Binding OperationTypeText}" Style="{StaticResource Text.Base}" Padding="0,4" />
-                                                        <TextBlock Grid.Column="2" Text="{Binding TriggerReasonText}" Style="{StaticResource Text.Base}" Padding="0,4" />
-                                                        <TextBlock Grid.Column="3" Text="{Binding ResultStatusText}" Padding="8,4">
+                                                                                                                <TextBlock Grid.Column="0" Text="{Binding OperationTypeText}" Style="{StaticResource Text.Base}" Padding="0,4" />
+                                                        <TextBlock Grid.Column="1" Text="{Binding TriggerReasonText}" Style="{StaticResource Text.Base}" Padding="0,4" />
+                                                        <TextBlock Grid.Column="2" Text="{Binding ResultStatusText}" Padding="8,4">
                                                             <TextBlock.Style>
                                                                 <Style TargetType="TextBlock" BasedOn="{StaticResource Text.Base}">
                                                                     <Style.Triggers>
@@ -1020,6 +1019,7 @@
                                                                 </Style>
                                                             </TextBlock.Style>
                                                         </TextBlock>
+                                                        <TextBlock Grid.Column="3" Text="{Binding OperationTimeText}" Style="{StaticResource Text.Base}" Padding="0,4" FontFamily="Consolas" />
                                                     </Grid>
                                                 </Border>
                                             </DataTemplate>

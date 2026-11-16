@@ -14,25 +14,40 @@ public sealed class ProductionSampleRepository : IProductionSampleRepository
 
     public ProductionSampleRepository(Db db) => _db = db;
 
-    /// <summary>生产样游标分页：日期区间 + SampleID 游标，每次仅取 pageSize 条。</summary>
+    /// <summary>生产样游标分页：按入库时间倒序（最新在前），(CreatedTime, SampleID) 复合游标防重漏；
+    /// afterSampleId/beforeSampleId 传行内 SampleID，方法内部换算其时间作游标，每次仅取 pageSize 条。</summary>
     public IReadOnlyList<ProductionSample> GetPage(DateTime? createdOn, string? afterSampleId, string? beforeSampleId, int pageSize)
     {
         var list = new List<ProductionSample>();
         using var conn = _db.Open();
+        // 游标行的时间（复合排序键的一部分）；游标行不存在时取 NULL（等价于从头/尾开始）
+        DateTime? anchorTime = null;
+        var anchorId = afterSampleId ?? beforeSampleId;
+        if (anchorId is not null)
+        {
+            using var anchorCmd = conn.CreateCommand();
+            anchorCmd.CommandText = "SELECT CreatedTime FROM Production_Sample WHERE SampleID = $id";
+            anchorCmd.Parameters.AddWithValue("$id", anchorId);
+            anchorTime = anchorCmd.ExecuteScalar() is string raw ? DateTime.Parse(raw) : null;
+        }
+
         using var cmd = conn.CreateCommand();
-        // 向后翻：SampleID > 游标升序；向前翻：SampleID < 游标降序取后再反转为升序返回
+        // 向后翻（after）：取游标之前（更旧）的 pageSize 条；向前翻（before）：取游标之后（更新）的最后一页
         var backward = beforeSampleId is not null;
+        var anchor = FormatTime(anchorTime);
         cmd.CommandText = $"""
             SELECT {SelectColumns} FROM Production_Sample
             WHERE ($day IS NULL OR (CreatedTime >= $day AND CreatedTime < $dayNext))
-              AND ($after IS NULL OR SampleID > $after)
-              AND ($before IS NULL OR SampleID < $before)
-            ORDER BY SampleID {(backward ? "DESC" : "ASC")}
+              AND ($after IS NULL OR (CreatedTime < $afterTime OR (CreatedTime = $afterTime AND SampleID < $after)))
+              AND ($before IS NULL OR (CreatedTime > $beforeTime OR (CreatedTime = $beforeTime AND SampleID > $before)))
+            ORDER BY CreatedTime {(backward ? "ASC" : "DESC")}, SampleID {(backward ? "ASC" : "DESC")}
             LIMIT $limit
             """;
         BindDate(cmd, createdOn);
         cmd.Parameters.AddWithValue("$after", (object?)afterSampleId ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("$afterTime", (object?)(afterSampleId is null ? null : anchor) ?? DBNull.Value);
         cmd.Parameters.AddWithValue("$before", (object?)beforeSampleId ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("$beforeTime", (object?)(beforeSampleId is null ? null : anchor) ?? DBNull.Value);
         cmd.Parameters.AddWithValue("$limit", pageSize);
         using var reader = cmd.ExecuteReader();
         while (reader.Read())

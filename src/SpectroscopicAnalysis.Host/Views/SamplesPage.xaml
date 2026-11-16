@@ -581,39 +581,21 @@
                                                     </Style.Triggers>
                                                 </Style>
                                             </Border.Style>
-                                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                                <Ellipse Width="6" Height="6" VerticalAlignment="Center">
-                                                    <Ellipse.Style>
-                                                        <Style TargetType="Ellipse">
-                                                            <!-- 默认待分析黄点；本地值会压掉触发器，默认色必须走 Setter -->
-                                                            <Setter Property="Fill" Value="{DynamicResource Brush.Status.Warning}" />
-                                                            <Style.Triggers>
-                                                                <DataTrigger Binding="{Binding Status}" Value="Completed">
-                                                                    <Setter Property="Fill" Value="{DynamicResource Brush.Status.Running}" />
-                                                                </DataTrigger>
-                                                                <DataTrigger Binding="{Binding HasFailure}" Value="True">
-                                                                    <Setter Property="Fill" Value="{DynamicResource Brush.Status.Failed}" />
-                                                                </DataTrigger>
-                                                            </Style.Triggers>
-                                                        </Style>
-                                                    </Ellipse.Style>
-                                                </Ellipse>
-                                                <TextBlock Text="{Binding StatusText}" Margin="5,0,0,0">
-                                                    <TextBlock.Style>
-                                                        <Style TargetType="TextBlock" BasedOn="{StaticResource Text.Caption}">
-                                                            <Setter Property="Foreground" Value="{DynamicResource Brush.Badge.Warning.Fg}" />
-                                                            <Style.Triggers>
-                                                                <DataTrigger Binding="{Binding Status}" Value="Completed">
-                                                                    <Setter Property="Foreground" Value="{DynamicResource Brush.Status.Running}" />
-                                                                </DataTrigger>
-                                                                <DataTrigger Binding="{Binding HasFailure}" Value="True">
-                                                                    <Setter Property="Foreground" Value="{DynamicResource Brush.Status.Failed}" />
-                                                                </DataTrigger>
-                                                            </Style.Triggers>
-                                                        </Style>
-                                                    </TextBlock.Style>
-                                                </TextBlock>
-                                            </StackPanel>
+                                            <TextBlock Text="{Binding StatusText}">
+                                                <TextBlock.Style>
+                                                    <Style TargetType="TextBlock" BasedOn="{StaticResource Text.Caption}">
+                                                        <Setter Property="Foreground" Value="{DynamicResource Brush.Badge.Warning.Fg}" />
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding Status}" Value="Completed">
+                                                                <Setter Property="Foreground" Value="{DynamicResource Brush.Status.Running}" />
+                                                            </DataTrigger>
+                                                            <DataTrigger Binding="{Binding HasFailure}" Value="True">
+                                                                <Setter Property="Foreground" Value="{DynamicResource Brush.Status.Failed}" />
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </TextBlock.Style>
+                                            </TextBlock>
                                         </Border>
                                     </DataTemplate>
                                 </DataGridTemplateColumn.CellTemplate>

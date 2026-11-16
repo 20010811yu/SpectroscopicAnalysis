@@ -49,6 +49,8 @@ public sealed class OperationLogRowItem
 {
     public long LogId { get; init; }
     public string SampleIdText { get; init; } = "—";
+    /// <summary>原始 SampleID（类型筛选关联用；不绑定 UI）。</summary>
+    public string RawSampleId { get; init; } = string.Empty;
     public string OperationTypeText { get; init; } = string.Empty;
     public string TriggerReasonText { get; init; } = "—";
     public string OperationTimeText { get; init; } = string.Empty;

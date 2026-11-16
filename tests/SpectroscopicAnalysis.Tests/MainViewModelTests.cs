@@ -9,7 +9,7 @@ namespace SpectroscopicAnalysis.Tests;
 public sealed class MainViewModelTests
 {
     private static MainViewModel CreateMain() => new(
-        new DashboardViewModel(new FakeSctOperationLogRepository(), new FakeUiDispatcher(), new FakeErrorCollector()),
+        new DashboardViewModel(new FakeSctOperationLogRepository(), new FakeSampleRepository(), new FakeProductionSampleRepository(), new FakeUiDispatcher(), new FakeErrorCollector()),
         new SamplesViewModel(new FakeSampleRepository(), new FakeProductionSampleRepository(), new FakeCertifiedValueRepository(), new FakeControlLimitRepository(),
             new FakeCoefficientRepository(), new FakeOperationLogRepository(),
             new FakeUiDispatcher(), new FakeDialogService(), new FakeErrorCollector()),

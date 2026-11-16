@@ -25,7 +25,8 @@ public sealed class DashboardViewModelTests
     {
         var repo = new FakeSctOperationLogRepository();
         repo.Store.AddRange(logs);
-        return new DashboardViewModel(repo, new FakeUiDispatcher(), new FakeErrorCollector());
+        return new DashboardViewModel(repo, new FakeSampleRepository(), new FakeProductionSampleRepository(),
+            new FakeUiDispatcher(), new FakeErrorCollector());
     }
 
     [Fact]
@@ -101,7 +102,8 @@ public sealed class DashboardViewModelTests
             repo.Store.Add(log);
         }
 
-        var vm = new DashboardViewModel(repo, new FakeUiDispatcher(), new FakeErrorCollector());
+        var vm = new DashboardViewModel(repo, new FakeSampleRepository(), new FakeProductionSampleRepository(),
+            new FakeUiDispatcher(), new FakeErrorCollector());
         await vm.LoadCommand.ExecuteAsync(null);
 
         Assert.Equal(10, vm.LogRows.Count);                     // 第 1 页 10 条
@@ -123,7 +125,8 @@ public sealed class DashboardViewModelTests
             repo.Store.Add(log);
         }
 
-        var vm = new DashboardViewModel(repo, new FakeUiDispatcher(), new FakeErrorCollector());
+        var vm = new DashboardViewModel(repo, new FakeSampleRepository(), new FakeProductionSampleRepository(),
+            new FakeUiDispatcher(), new FakeErrorCollector());
         await vm.LoadCommand.ExecuteAsync(null);
 
         await InvokePagingAsync(vm.NextPageCommand);

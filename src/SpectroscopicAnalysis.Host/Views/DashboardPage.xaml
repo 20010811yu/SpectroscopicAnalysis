@@ -146,16 +146,84 @@
             <!-- 运行日志（按日期筛选）：SCT 操作日志，时间列末列、按操作时间倒序，无记录时隐藏表格只留占位说明 -->
             <Border Style="{StaticResource Card}" Margin="{DynamicResource Spacing.CardGap}">
                 <StackPanel>
-                    <DockPanel Margin="0,0,0,8">
-                        <TextBlock Text="运行日志（按日期）" Style="{StaticResource Text.CardTitle}" VerticalAlignment="Center" />
+                    <DockPanel Margin="0,0,0,8" LastChildFill="False">
                         <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
                             <TextBlock Text="操作日期" Style="{StaticResource Text.Caption}" VerticalAlignment="Center" Margin="0,0,8,0" />
                             <DatePicker SelectedDate="{Binding SelectedDate}" MinWidth="140" />
                         </StackPanel>
+                        <TextBlock Text="运行日志（按日期）" Style="{StaticResource Text.CardTitle}" VerticalAlignment="Center" />
                     </DockPanel>
+                    <!-- 类型筛选：按样品类型过滤日志（无样品归属的日志仅在"全部"下显示） -->
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                        <Button Content="全部" Command="{Binding SetFilterCommand}" CommandParameter="All" Margin="0,0,8,0">
+                            <Button.Style>
+                                <Style TargetType="Button" BasedOn="{StaticResource ModeBtn}">
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding FilterKey}" Value="All">
+                                            <Setter Property="Background" Value="{DynamicResource Brush.Primary}" />
+                                            <Setter Property="Foreground" Value="White" />
+                                            <Setter Property="FontWeight" Value="SemiBold" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Button.Style>
+                        </Button>
+                        <Button Content="设置样" Command="{Binding SetFilterCommand}" CommandParameter="SettingUp" Margin="0,0,8,0">
+                            <Button.Style>
+                                <Style TargetType="Button" BasedOn="{StaticResource ModeBtn}">
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding FilterKey}" Value="SettingUp">
+                                            <Setter Property="Background" Value="{DynamicResource Brush.Primary}" />
+                                            <Setter Property="Foreground" Value="White" />
+                                            <Setter Property="FontWeight" Value="SemiBold" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Button.Style>
+                        </Button>
+                        <Button Content="控制样" Command="{Binding SetFilterCommand}" CommandParameter="Control" Margin="0,0,8,0">
+                            <Button.Style>
+                                <Style TargetType="Button" BasedOn="{StaticResource ModeBtn}">
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding FilterKey}" Value="Control">
+                                            <Setter Property="Background" Value="{DynamicResource Brush.Primary}" />
+                                            <Setter Property="Foreground" Value="White" />
+                                            <Setter Property="FontWeight" Value="SemiBold" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Button.Style>
+                        </Button>
+                        <Button Content="类型标准化样" Command="{Binding SetFilterCommand}" CommandParameter="TypeStd" Margin="0,0,8,0">
+                            <Button.Style>
+                                <Style TargetType="Button" BasedOn="{StaticResource ModeBtn}">
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding FilterKey}" Value="TypeStd">
+                                            <Setter Property="Background" Value="{DynamicResource Brush.Primary}" />
+                                            <Setter Property="Foreground" Value="White" />
+                                            <Setter Property="FontWeight" Value="SemiBold" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Button.Style>
+                        </Button>
+                        <Button Content="生产样" Command="{Binding SetFilterCommand}" CommandParameter="Production" Margin="0">
+                            <Button.Style>
+                                <Style TargetType="Button" BasedOn="{StaticResource ModeBtn}">
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding FilterKey}" Value="Production">
+                                            <Setter Property="Background" Value="{DynamicResource Brush.Primary}" />
+                                            <Setter Property="Foreground" Value="White" />
+                                            <Setter Property="FontWeight" Value="SemiBold" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Button.Style>
+                        </Button>
+                    </StackPanel>
                     <TextBlock Text="所选日期暂无运行日志记录" Style="{StaticResource Text.Caption}"
                                Visibility="{Binding HasLogs, Converter={StaticResource BoolToVisibility.Inverse}}" Margin="0,0,0,8" />
-                    <DataGrid ItemsSource="{Binding LogRows}" AutoGenerateColumns="False"
+                    <DataGrid ItemsSource="{Binding LogRows}" Height="484" AutoGenerateColumns="False"
                               IsReadOnly="True" CanUserAddRows="False" CanUserSortColumns="False"
                               PreviewMouseWheel="ProductionGrid_PreviewMouseWheel"
                               HeadersVisibility="Column" GridLinesVisibility="Horizontal"
@@ -176,14 +244,14 @@
                     <!-- 分页脚（内存切片分页，每页 10 条；右下角） -->
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,8,0,0"
                                 Visibility="{Binding HasLogs, Converter={StaticResource BoolToVisibility}}">
-                        <Button Content="首页" Command="{Binding FirstPageCommand}" Style="{StaticResource PrimaryBtn}" />
-                        <Button Content="上一页" Command="{Binding PrevPageCommand}" Style="{StaticResource PrimaryBtn}" Margin="4,0,0,0" />
+                        <Button Content="首页" Command="{Binding FirstPageCommand}" Style="{StaticResource PrimaryBtn}" Margin="0,0,8,0" />
+                        <Button Content="上一页" Command="{Binding PrevPageCommand}" Style="{StaticResource PrimaryBtn}" Margin="8,0,0,0" />
                         <TextBlock Text="{Binding PageDisplay}" VerticalAlignment="Center" Margin="8,0"
                                    Style="{StaticResource Text.Caption}" />
                         <TextBox Width="48" Height="26" Text="{Binding PageJumpInput, UpdateSourceTrigger=PropertyChanged}"
                                  VerticalContentAlignment="Center" TextAlignment="Center" Margin="4,0,0,0" />
-                        <Button Content="跳转" Command="{Binding JumpToPageCommand}" Style="{StaticResource PrimaryBtn}" Margin="4,0,0,0" />
-                        <Button Content="下一页" Command="{Binding NextPageCommand}" Style="{StaticResource PrimaryBtn}" Margin="0,0,0,0" />
+                        <Button Content="跳转" Command="{Binding JumpToPageCommand}" Style="{StaticResource PrimaryBtn}" Margin="8,0,0,0" />
+                        <Button Content="下一页" Command="{Binding NextPageCommand}" Style="{StaticResource PrimaryBtn}" Margin="8,0,0,0" />
                         <TextBlock Text="{Binding TotalCount, StringFormat='共 {0} 条'}" Style="{StaticResource Text.Caption}" VerticalAlignment="Center" Margin="8,0,0,0" />
                     </StackPanel>
                 </StackPanel>

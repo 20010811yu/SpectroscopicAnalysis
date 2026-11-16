@@ -21,8 +21,13 @@ public sealed partial class DashboardViewModel : ObservableObject, IPageLifecycl
     public const int PageSize = 10;
 
     private readonly ISctOperationLogRepository _logs;
+    private readonly ISctSampleRepository _samples;
+    private readonly IProductionSampleRepository _production;
     private readonly IUiDispatcher _ui;
     private readonly IErrorCollector _errors;
+
+    /// <summary>SampleID → 样品类型键映射（类型筛选用；SCT 四类取自 SCT_Sample，生产样取自 Production_Sample）。</summary>
+    private Dictionary<string, string> _sampleTypeMap = new();
 
     /// <summary>全量日志（已按操作时间倒序；翻页仅做内存切片）。</summary>
     private List<OperationLogRowItem> _allLogs = new();
@@ -71,18 +76,35 @@ public sealed partial class DashboardViewModel : ObservableObject, IPageLifecycl
     [ObservableProperty]
     private bool _isLoading;
 
-    public DashboardViewModel(ISctOperationLogRepository logs, IUiDispatcher ui, IErrorCollector errors)
+    public DashboardViewModel(ISctOperationLogRepository logs, ISctSampleRepository samples,
+        IProductionSampleRepository production, IUiDispatcher ui, IErrorCollector errors)
     {
         _logs = logs;
+        _samples = samples;
+        _production = production;
         _ui = ui;
         _errors = errors;
     }
+
+    /// <summary>类型筛选键（All/SettingUp/Control/TypeStd/Production；变化后回第 1 页重切）。</summary>
+    [ObservableProperty]
+    private string _filterKey = "All";
 
     /// <summary>导航进入时加载（导航路径为 fire-and-forget；测试可 await LoadCommand.ExecuteAsync 保证确定性）。</summary>
     public void OnNavigatedTo() => LoadCommand.Execute(null);
 
     /// <summary>日期变化：回第 1 页重查。</summary>
     partial void OnSelectedDateChanged(DateTime? value) => _ = ReloadFirstPageAsync();
+
+    /// <summary>类型变化：回第 1 页重切（内存过滤，不重查库）。</summary>
+    partial void OnFilterKeyChanged(string value) => _ = ReloadFirstPageAsync();
+
+    /// <summary>类型筛选按钮命令（参数为类型键）。</summary>
+    [RelayCommand]
+    private void SetFilter(string key)
+    {
+        FilterKey = key;
+    }
 
     /// <summary>加载全量日志并按当前页切片（I/O 在后台线程）。</summary>
     [RelayCommand]
@@ -99,6 +121,19 @@ public sealed partial class DashboardViewModel : ObservableObject, IPageLifecycl
             _allLogs = await Task.Run(() => _logs.GetAll()
                 .Select(MapLogRow)
                 .ToList());
+            _sampleTypeMap = await Task.Run(() =>
+            {
+                var map = new Dictionary<string, string>();
+                foreach (var s in _samples.GetAll())
+                {
+                    map[s.SampleId] = s.SampleType;
+                }
+                foreach (var p in _production.GetAll())
+                {
+                    map[p.SampleId] = SampleType.Production;
+                }
+                return map;
+            });
 
             _ui.Invoke(() =>
             {
@@ -134,9 +169,13 @@ public sealed partial class DashboardViewModel : ObservableObject, IPageLifecycl
             return _allLogs;
         }
 
-        return _allLogs
-            .Where(l => DateTime.TryParse(l.RawOperationTime, CultureInfo.InvariantCulture, DateTimeStyles.None, out var t) && t.Date == date.Value)
-            .ToList();
+        var rows = _allLogs
+            .Where(l => DateTime.TryParse(l.RawOperationTime, CultureInfo.InvariantCulture, DateTimeStyles.None, out var t) && t.Date == date.Value);
+        if (FilterKey != "All")
+        {
+            rows = rows.Where(l => _sampleTypeMap.TryGetValue(l.RawSampleId, out var type) && type == FilterKey);
+        }
+        return rows.ToList();
     }
 
     /// <summary>内存切片显示指定页（FilteredLogs 已时间倒序）。</summary>
@@ -208,6 +247,7 @@ public sealed partial class DashboardViewModel : ObservableObject, IPageLifecycl
         {
             LogId = l.LogId,
             SampleIdText = l.SampleId ?? "—",
+            RawSampleId = l.SampleId ?? string.Empty,
             OperationTypeText = l.OperationType switch
             {
                 "Standardization" => "标准化",

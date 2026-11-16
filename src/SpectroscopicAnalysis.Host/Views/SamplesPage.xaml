@@ -42,16 +42,9 @@
                 <StackPanel>
                     <TextBlock Text="样品注册" Style="{StaticResource Text.CardTitle}" Margin="0,0,0,12" />
                     <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="24" />
-                            <ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" />
-                        </Grid.ColumnDefinitions>
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" />
-                            <RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" />
-                        </Grid.RowDefinitions>
                         <Grid.Resources>
-                            <!-- 表单输入统一尺寸：宽 280 高 32 靠左，覆盖 HandyControl 默认大尺寸，保证各类型输入框样式一致 -->
+                            <!-- 表单输入统一尺寸：宽 280 高 32（BasedOn 全局默认样式， HandyControl 外观一致）；
+                                 显隐只挂在行容器上，输入控件不再叠加显隐样式，避免覆盖默认外观导致样式不一 -->
                             <Style TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
                                 <Setter Property="Width" Value="280" />
                                 <Setter Property="Height" Value="32" />
@@ -64,8 +57,8 @@
                                 <Setter Property="HorizontalAlignment" Value="Left" />
                                 <Setter Property="VerticalAlignment" Value="Center" />
                             </Style>
-                            <!-- 按注册类型显隐的字段组：生产样仅分析方法组；设置样/控制样/类型标准样共用厚度组；关联合金仅类型标准样 -->
-                            <Style x:Key="ProductionField" TargetType="FrameworkElement">
+                            <!-- 行级显隐：生产样仅分析方法组；设置样/控制样/类型标准样共用架位/厚度组；关联合金仅类型标准样 -->
+                            <Style x:Key="ProductionRow" TargetType="FrameworkElement">
                                 <Setter Property="Visibility" Value="Collapsed" />
                                 <Style.Triggers>
                                     <DataTrigger Binding="{Binding RegSampleType}" Value="Production">
@@ -73,7 +66,7 @@
                                     </DataTrigger>
                                 </Style.Triggers>
                             </Style>
-                            <Style x:Key="StdField" TargetType="FrameworkElement">
+                            <Style x:Key="StdRow" TargetType="FrameworkElement">
                                 <Setter Property="Visibility" Value="Collapsed" />
                                 <Style.Triggers>
                                     <DataTrigger Binding="{Binding RegSampleType}" Value="SettingUp">
@@ -87,38 +80,7 @@
                                     </DataTrigger>
                                 </Style.Triggers>
                             </Style>
-                            <Style x:Key="TypeStdField" TargetType="FrameworkElement" BasedOn="{StaticResource StdField}">
-                                <Setter Property="Visibility" Value="Collapsed" />
-                                <Style.Triggers>
-                                    <DataTrigger Binding="{Binding RegSampleType}" Value="TypeStd">
-                                        <Setter Property="Visibility" Value="Visible" />
-                                    </DataTrigger>
-                                </Style.Triggers>
-                            </Style>
-                            <!-- 标签版：继承 Text.Caption 字号/颜色 + 同样的类型显隐触发器 -->
-                            <Style x:Key="ProductionFieldCaption" TargetType="TextBlock" BasedOn="{StaticResource Text.Caption}">
-                                <Setter Property="Visibility" Value="Collapsed" />
-                                <Style.Triggers>
-                                    <DataTrigger Binding="{Binding RegSampleType}" Value="Production">
-                                        <Setter Property="Visibility" Value="Visible" />
-                                    </DataTrigger>
-                                </Style.Triggers>
-                            </Style>
-                            <Style x:Key="StdFieldCaption" TargetType="TextBlock" BasedOn="{StaticResource Text.Caption}">
-                                <Setter Property="Visibility" Value="Collapsed" />
-                                <Style.Triggers>
-                                    <DataTrigger Binding="{Binding RegSampleType}" Value="SettingUp">
-                                        <Setter Property="Visibility" Value="Visible" />
-                                    </DataTrigger>
-                                    <DataTrigger Binding="{Binding RegSampleType}" Value="Control">
-                                        <Setter Property="Visibility" Value="Visible" />
-                                    </DataTrigger>
-                                    <DataTrigger Binding="{Binding RegSampleType}" Value="TypeStd">
-                                        <Setter Property="Visibility" Value="Visible" />
-                                    </DataTrigger>
-                                </Style.Triggers>
-                            </Style>
-                            <Style x:Key="TypeStdFieldCaption" TargetType="TextBlock" BasedOn="{StaticResource Text.Caption}">
+                            <Style x:Key="TypeStdRow" TargetType="FrameworkElement">
                                 <Setter Property="Visibility" Value="Collapsed" />
                                 <Style.Triggers>
                                     <DataTrigger Binding="{Binding RegSampleType}" Value="TypeStd">
@@ -129,35 +91,41 @@
                         </Grid.Resources>
 
                         <!-- 第一步：类型选择 -->
-                        <TextBlock Grid.Row="0" Grid.Column="0" Text="样品类型*" Style="{StaticResource Text.Caption}" VerticalAlignment="Center" Margin="0,0,12,0" />
-                        <ComboBox Grid.Row="0" Grid.Column="1" ItemsSource="{Binding SampleTypeOptions}" SelectedItem="{Binding RegSampleType}" Margin="0,0,0,8" />
-
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                            <TextBlock Text="样品类型*" Style="{StaticResource Text.Caption}" Width="110" VerticalAlignment="Center" />
+                            <ComboBox ItemsSource="{Binding SampleTypeOptions}" SelectedItem="{Binding RegSampleType}" />
+                        </StackPanel>
                         <!-- 公共字段：编号/名称 -->
-                        <TextBlock Grid.Row="1" Grid.Column="0" Text="样品编号*" Style="{StaticResource Text.Caption}" VerticalAlignment="Center" Margin="0,0,12,0" />
-                        <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding RegSampleId, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,8" />
-                        <TextBlock Grid.Row="1" Grid.Column="3" Text="样品名称*" Style="{StaticResource Text.Caption}" VerticalAlignment="Center" Margin="0,0,12,0" />
-                        <TextBox Grid.Row="1" Grid.Column="4" Text="{Binding RegSampleName, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,8" />
-
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                            <TextBlock Text="样品编号*" Style="{StaticResource Text.Caption}" Width="110" VerticalAlignment="Center" />
+                            <TextBox Text="{Binding RegSampleId, UpdateSourceTrigger=PropertyChanged}" />
+                            <TextBlock Text="样品名称*" Style="{StaticResource Text.Caption}" Width="110" VerticalAlignment="Center" Margin="24,0,0,0" />
+                            <TextBox Text="{Binding RegSampleName, UpdateSourceTrigger=PropertyChanged}" />
+                        </StackPanel>
                         <!-- 生产样：分析方法下拉 -->
-                        <TextBlock Grid.Row="2" Grid.Column="0" Text="分析方法*" Style="{StaticResource ProductionFieldCaption}" VerticalAlignment="Center" Margin="0,0,12,0" />
-                        <ComboBox Grid.Row="2" Grid.Column="1" ItemsSource="{Binding AnalysisMethodOptions}" SelectedItem="{Binding RegAnalysisMethod}"
-                                  Style="{StaticResource ProductionField}" Margin="0,0,0,8" />
-
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,8" Style="{StaticResource ProductionRow}">
+                            <TextBlock Text="分析方法*" Style="{StaticResource Text.Caption}" Width="110" VerticalAlignment="Center" />
+                            <ComboBox ItemsSource="{Binding AnalysisMethodOptions}" SelectedItem="{Binding RegAnalysisMethod}" />
+                        </StackPanel>
                         <!-- 设置样/控制样/类型标准样：架位 + 最大使用次数 -->
-                        <TextBlock Grid.Row="3" Grid.Column="0" Text="样品架位置*" Style="{StaticResource StdFieldCaption}" VerticalAlignment="Center" Margin="0,0,12,0" />
-                        <TextBox Grid.Row="3" Grid.Column="1" Text="{Binding RegRackPosition, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource StdField}" Margin="0,0,0,8" />
-                        <TextBlock Grid.Row="3" Grid.Column="3" Text="最大使用次数*" Style="{StaticResource StdFieldCaption}" VerticalAlignment="Center" Margin="0,0,12,0" />
-                        <TextBox Grid.Row="3" Grid.Column="4" Text="{Binding RegMaxUsageCount, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource StdField}" Margin="0,0,0,8" />
-
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,8" Style="{StaticResource StdRow}">
+                            <TextBlock Text="样品架位置*" Style="{StaticResource Text.Caption}" Width="110" VerticalAlignment="Center" />
+                            <TextBox Text="{Binding RegRackPosition, UpdateSourceTrigger=PropertyChanged}" />
+                            <TextBlock Text="最大使用次数*" Style="{StaticResource Text.Caption}" Width="110" VerticalAlignment="Center" Margin="24,0,0,0" />
+                            <TextBox Text="{Binding RegMaxUsageCount, UpdateSourceTrigger=PropertyChanged}" />
+                        </StackPanel>
                         <!-- 设置样/控制样/类型标准样：初始/最小厚度 -->
-                        <TextBlock Grid.Row="4" Grid.Column="0" Text="初始厚度 (mm)*" Style="{StaticResource StdFieldCaption}" VerticalAlignment="Center" Margin="0,0,12,0" />
-                        <TextBox Grid.Row="4" Grid.Column="1" Text="{Binding RegInitialThickness, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource StdField}" Margin="0,0,0,8" />
-                        <TextBlock Grid.Row="4" Grid.Column="3" Text="最小厚度 (mm)*" Style="{StaticResource StdFieldCaption}" VerticalAlignment="Center" Margin="0,0,12,0" />
-                        <TextBox Grid.Row="4" Grid.Column="4" Text="{Binding RegMinThickness, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource StdField}" Margin="0,0,0,8" />
-
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,8" Style="{StaticResource StdRow}">
+                            <TextBlock Text="初始厚度 (mm)*" Style="{StaticResource Text.Caption}" Width="110" VerticalAlignment="Center" />
+                            <TextBox Text="{Binding RegInitialThickness, UpdateSourceTrigger=PropertyChanged}" />
+                            <TextBlock Text="最小厚度 (mm)*" Style="{StaticResource Text.Caption}" Width="110" VerticalAlignment="Center" Margin="24,0,0,0" />
+                            <TextBox Text="{Binding RegMinThickness, UpdateSourceTrigger=PropertyChanged}" />
+                        </StackPanel>
                         <!-- 仅类型标准样：关联合金 -->
-                        <TextBlock Grid.Row="5" Grid.Column="0" Text="关联合金*" Style="{StaticResource TypeStdFieldCaption}" VerticalAlignment="Center" Margin="0,0,12,0" />
-                        <TextBox Grid.Row="5" Grid.Column="1" Text="{Binding RegAlloyType, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource TypeStdField}" Margin="0,0,0,8" />
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,8" Style="{StaticResource TypeStdRow}">
+                            <TextBlock Text="关联合金*" Style="{StaticResource Text.Caption}" Width="110" VerticalAlignment="Center" />
+                            <TextBox Text="{Binding RegAlloyType, UpdateSourceTrigger=PropertyChanged}" />
+                        </StackPanel>
                     </Grid>
 
                     <TextBlock Text="{Binding RegisterError}" TextWrapping="Wrap" Margin="0,4,0,8"

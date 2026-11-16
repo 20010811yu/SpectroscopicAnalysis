@@ -243,7 +243,7 @@
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="DataGridRow">
-                    <Border Background="{TemplateBinding Background}" BorderThickness="0" SnapsToDevicePixels="True">
+                    <Border x:Name="DGR_Border" Background="{TemplateBinding Background}" BorderThickness="0" SnapsToDevicePixels="True">
                         <SelectiveScrollingGrid>
                             <SelectiveScrollingGrid.ColumnDefinitions>
                                 <ColumnDefinition Width="Auto" />
@@ -260,6 +260,12 @@
                             <!-- 不放 DataGridRowHeader/DetailsPresenter：行头未使用且默认模板带边框，会在第一列左侧残留竖向分割线 -->
                         </SelectiveScrollingGrid>
                     </Border>
+                    <ControlTemplate.Triggers>
+                        <!-- 高亮写在这里而非 Style.Triggers：DataGrid 生成行容器时会把 RowBackground 以本地值写进行元素，样式触发器优先级低于本地值会被压掉 -->
+                        <Trigger Property="IsSelected" Value="True">
+                            <Setter TargetName="DGR_Border" Property="Background" Value="{DynamicResource Brush.Bg.Row.Selected}" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
                 </ControlTemplate>
             </Setter.Value>
         </Setter>

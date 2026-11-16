@@ -119,49 +119,63 @@
                     </DockPanel>
                     <TextBlock Text="队列为空（注册样品或手动触发后将加入队列）" Style="{StaticResource Text.Caption}"
                                Visibility="{Binding HasQueueItems, Converter={StaticResource BoolToVisibility.Inverse}}" Margin="0,0,0,4" />
-                    <ItemsControl ItemsSource="{Binding QueueItems}" Visibility="{Binding HasQueueItems, Converter={StaticResource BoolToVisibility}}">
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate>
-                                <Border HorizontalAlignment="Left" Margin="0,0,0,6" Padding="12,6">
-                                    <Border.Style>
-                                        <Style TargetType="Border" BasedOn="{StaticResource Badge.Base}">
-                                            <Setter Property="Background" Value="{DynamicResource Brush.Badge.Info.Bg}" />
-                                            <Style.Triggers>
-                                                <DataTrigger Binding="{Binding StatusText}" Value="失败">
-                                                    <Setter Property="Background" Value="{DynamicResource Brush.Badge.Failed.Bg}" />
-                                                </DataTrigger>
-                                                <DataTrigger Binding="{Binding StatusText}" Value="已完成">
-                                                    <Setter Property="Background" Value="{DynamicResource Brush.Badge.Idle.Bg}" />
-                                                </DataTrigger>
-                                                <DataTrigger Binding="{Binding IsRunning}" Value="True">
-                                                    <Setter Property="Background" Value="{DynamicResource Brush.Badge.Running.Bg}" />
-                                                </DataTrigger>
-                                            </Style.Triggers>
-                                        </Style>
-                                    </Border.Style>
-                                    <StackPanel Orientation="Horizontal" TextElement.Foreground="{DynamicResource Brush.Badge.Info.Fg}">
-                                        <StackPanel.Resources>
-                                            <Style TargetType="TextBlock" BasedOn="{StaticResource Text.Caption}">
-                                                <Style.Triggers>
-                                                    <DataTrigger Binding="{Binding StatusText}" Value="失败">
-                                                        <Setter Property="Foreground" Value="{DynamicResource Brush.Status.Failed}" />
-                                                    </DataTrigger>
-                                                    <DataTrigger Binding="{Binding IsRunning}" Value="True">
-                                                        <Setter Property="Foreground" Value="{DynamicResource Brush.Status.Running}" />
-                                                    </DataTrigger>
-                                                </Style.Triggers>
-                                            </Style>
-                                        </StackPanel.Resources>
-                                        <TextBlock Text="{Binding TaskTypeText}" FontWeight="SemiBold" />
-                                        <TextBlock Text="{Binding StatusText}" Margin="10,0,0,0" FontWeight="SemiBold" />
-                                        <TextBlock Text="{Binding SampleIdText}" FontFamily="Consolas" Margin="10,0,0,0" />
-                                        <TextBlock Text="{Binding EnqueueTimeText}" FontFamily="Consolas" Margin="10,0,0,0" />
-                                        <TextBlock Text="{Binding ReasonText}" Margin="10,0,0,0" />
-                                    </StackPanel>
-                                </Border>
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
+                    <!-- 表格化任务队列：复用统一表格样式（GridRow/GridCell/GridCellText），状态列徽章 -->
+                    <DataGrid ItemsSource="{Binding QueueItems}" Visibility="{Binding HasQueueItems, Converter={StaticResource BoolToVisibility}}"
+                              AutoGenerateColumns="False" IsReadOnly="True"
+                              CanUserAddRows="False" CanUserSortColumns="False"
+                              CanUserResizeColumns="True" CanUserResizeRows="False"
+                              HeadersVisibility="Column" GridLinesVisibility="Horizontal"
+                              BorderThickness="0" Background="Transparent"
+                              RowBackground="Transparent" AlternatingRowBackground="Transparent"
+                              RowStyle="{StaticResource GridRow}" CellStyle="{StaticResource GridCell}"
+                              ColumnHeaderStyle="{StaticResource GridColumnHeader}"
+                              FontSize="{DynamicResource FontSize.Body}">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="任务类型" Binding="{Binding TaskTypeText}" Width="1.1*" MinWidth="60" ElementStyle="{StaticResource GridCellText}" />
+                            <DataGridTemplateColumn Header="状态" Width="0.8*" MinWidth="60">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <Border CornerRadius="10" Padding="8,2" Margin="0,2"
+                                                HorizontalAlignment="Left" VerticalAlignment="Center">
+                                            <Border.Style>
+                                                <Style TargetType="Border" BasedOn="{StaticResource Badge.Base}">
+                                                    <Setter Property="Background" Value="{DynamicResource Brush.Badge.Info.Bg}" />
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding StatusText}" Value="失败">
+                                                            <Setter Property="Background" Value="{DynamicResource Brush.Badge.Failed.Bg}" />
+                                                        </DataTrigger>
+                                                        <DataTrigger Binding="{Binding StatusText}" Value="已完成">
+                                                            <Setter Property="Background" Value="{DynamicResource Brush.Badge.Idle.Bg}" />
+                                                        </DataTrigger>
+                                                        <DataTrigger Binding="{Binding IsRunning}" Value="True">
+                                                            <Setter Property="Background" Value="{DynamicResource Brush.Badge.Running.Bg}" />
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Border.Style>
+                                            <TextBlock Text="{Binding StatusText}">
+                                                <TextBlock.Style>
+                                                    <Style TargetType="TextBlock" BasedOn="{StaticResource Text.Caption}">
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding StatusText}" Value="失败">
+                                                                <Setter Property="Foreground" Value="{DynamicResource Brush.Status.Failed}" />
+                                                            </DataTrigger>
+                                                            <DataTrigger Binding="{Binding IsRunning}" Value="True">
+                                                                <Setter Property="Foreground" Value="{DynamicResource Brush.Status.Running}" />
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </TextBlock.Style>
+                                            </TextBlock>
+                                        </Border>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                            <DataGridTextColumn Header="样品编号" Binding="{Binding SampleIdText}" FontFamily="Consolas" Width="1.0*" MinWidth="60" ElementStyle="{StaticResource GridCellText}" />
+                            <DataGridTextColumn Header="时间" Binding="{Binding EnqueueTimeText}" FontFamily="Consolas" Width="0.9*" MinWidth="70" ElementStyle="{StaticResource GridCellText}" />
+                            <DataGridTextColumn Header="触发方式" Binding="{Binding ReasonText}" Width="1.3*" MinWidth="80" ElementStyle="{StaticResource GridCellText}" />
+                        </DataGrid.Columns>
+                    </DataGrid>
                 </StackPanel>
             </Border>
 

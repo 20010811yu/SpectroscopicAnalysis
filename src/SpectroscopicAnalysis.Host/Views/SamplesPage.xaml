@@ -700,6 +700,10 @@
                                                         <DataTrigger Binding="{Binding Detail.Kind}" Value="Sct">
                                                             <Setter Property="Visibility" Value="Visible" />
                                                         </DataTrigger>
+                                                        <!-- 生产样详情同样提供删除：级联删除档案+分析结果 -->
+                                                        <DataTrigger Binding="{Binding Detail.Kind}" Value="Production">
+                                                            <Setter Property="Visibility" Value="Visible" />
+                                                        </DataTrigger>
                                                     </Style.Triggers>
                                                 </Style>
                                             </Button.Style>

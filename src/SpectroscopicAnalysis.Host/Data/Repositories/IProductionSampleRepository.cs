@@ -26,4 +26,7 @@ public interface IProductionSampleRepository
 
     /// <summary>按样品查询分析结果（时间倒序）。</summary>
     IReadOnlyList<AnalysisResult> GetResults(string sampleId);
+
+    /// <summary>事务级联删除：生产样档案 + 其全部分析结果。</summary>
+    void DeleteWithResults(string sampleId);
 }

@@ -1360,37 +1360,67 @@ public sealed partial class SamplesViewModel : ObservableObject, IPageLifecycle
 
     // ==================== 样品删除（弹窗确认，危险操作） ====================
 
-    /// <summary>删除：先弹窗确认（不动行数据），确认后事务级联删除（样品+标准值+控制限；操作日志保留）。
-    /// 参数取 object：SelectedRow 为样品台账/生产样档案两表共享，生产样行时按钮隐藏但 CanExecute 仍会求值，
+    /// <summary>删除：先弹窗确认（不动行数据），确认后按行类型事务级联删除——
+    /// SCT 样删 样品+标准值+控制限（操作日志保留）；生产样删 档案+全部分析结果。
+    /// 参数取 object：SelectedRow 为样品台账/生产样档案两表共享，两类型都会走到按钮 CanExecute，
     /// 强类型 RelayCommand&lt;T&gt; 对类型不符的参数会抛 ArgumentException（进程崩溃），故此处宽容判型。</summary>
     [RelayCommand]
     private async Task DeleteAsync(object? parameter)
     {
-        if (parameter is not SampleRowItem row || IsLoading)
+        if (parameter is not (SampleRowItem or ProductionRowItem) || IsLoading)
         {
             return;
         }
 
         DeleteError = null;
-        if (!_dialogs.Confirm("删除样品", $"确认删除样品「{row.SampleId} {row.SampleName}」？\n将级联删除其标准值与控制限（操作日志保留）。"))
+        if (parameter is SampleRowItem row)
+        {
+            if (!_dialogs.Confirm("删除样品", $"确认删除样品「{row.SampleId} {row.SampleName}」？\n将级联删除其标准值与控制限（操作日志保留）。"))
+            {
+                return;
+            }
+
+            var snapshot = row;
+            try
+            {
+                await Task.Run(() => _samples.DeleteWithChildren(snapshot.SampleId));
+                _ui.Invoke(() =>
+                {
+                    _allSctRows = _allSctRows.Where(r => !ReferenceEquals(r, snapshot)).ToList();
+                    ApplyFilter(FilterKey);
+                });
+            }
+            catch (Microsoft.Data.Sqlite.SqliteException ex)
+            {
+                DeleteError = $"删除失败：{ex.Message}";
+                _errors.Collect(ErrorCodes.SampleDeleteFailed, "样品删除失败", snapshot.SampleId, ex);
+            }
+            return;
+        }
+
+        // 生产样：事务级联删除 档案 + 全部分析结果
+        var production = (ProductionRowItem)parameter;
+        if (!_dialogs.Confirm("删除生产样品", $"确认删除生产样品「{production.SampleId} {production.SampleName}」？\n将级联删除其全部分析结果。"))
         {
             return;
         }
 
-        var snapshot = row;
         try
         {
-            await Task.Run(() => _samples.DeleteWithChildren(snapshot.SampleId));
+            await Task.Run(() => _production.DeleteWithResults(production.SampleId));
             _ui.Invoke(() =>
             {
-                _allSctRows = _allSctRows.Where(r => !ReferenceEquals(r, snapshot)).ToList();
-                ApplyFilter(FilterKey);
+                _allProduction = _allProduction.Where(r => !ReferenceEquals(r, production)).ToList();
+                _allAnalysisResults = _allAnalysisResults
+                    .Where(r => !string.Equals(r.SampleId, production.SampleId, StringComparison.Ordinal))
+                    .ToList();
+                RefreshView();
             });
         }
         catch (Microsoft.Data.Sqlite.SqliteException ex)
         {
             DeleteError = $"删除失败：{ex.Message}";
-            _errors.Collect(ErrorCodes.SampleDeleteFailed, "样品删除失败", snapshot.SampleId, ex);
+            _errors.Collect(ErrorCodes.SampleDeleteFailed, "生产样品删除失败", production.SampleId, ex);
         }
     }
 

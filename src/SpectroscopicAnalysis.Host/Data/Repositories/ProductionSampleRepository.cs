@@ -154,6 +154,22 @@ public sealed class ProductionSampleRepository : IProductionSampleRepository
         return list;
     }
 
+    /// <summary>事务级联删除：先删分析结果再删档案，任一失败整体回滚。</summary>
+    public void DeleteWithResults(string sampleId)
+    {
+        using var conn = _db.Open();
+        using var tx = conn.BeginTransaction();
+        foreach (var table in new[] { "Analysis_Result", "Production_Sample" })
+        {
+            using var cmd = conn.CreateCommand();
+            cmd.Transaction = tx;
+            cmd.CommandText = $"DELETE FROM {table} WHERE SampleID = $id";
+            cmd.Parameters.AddWithValue("$id", sampleId);
+            cmd.ExecuteNonQuery();
+        }
+        tx.Commit();
+    }
+
     private static AnalysisResult MapResult(SqliteDataReader r) => new()
     {
         ResultId = r.GetInt64(0),

@@ -64,4 +64,10 @@ internal sealed class FakeProductionSampleRepository : IProductionSampleReposito
 
     public IReadOnlyList<AnalysisResult> GetAllResults() =>
         Results.OrderByDescending(r => r.OperationTime).ThenByDescending(r => r.ResultId).ToList();
+
+    public void DeleteWithResults(string sampleId)
+    {
+        Store.RemoveAll(s => s.SampleId == sampleId);
+        Results.RemoveAll(r => r.SampleId == sampleId);
+    }
 }

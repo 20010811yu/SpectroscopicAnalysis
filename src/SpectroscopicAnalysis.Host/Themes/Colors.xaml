@@ -11,6 +11,9 @@
     <Color x:Key="Color.Danger">#DC2626</Color>
     <Color x:Key="Color.Bg.Disabled">#D8DBE0</Color>
 
+    <!-- 表格行选中底色（主色浅色调，仅作选中反馈） -->
+    <Color x:Key="Color.Bg.Row.Selected">#DBEAFE</Color>
+
     <!-- 3.2 文字层级 -->
     <Color x:Key="Color.Text.Primary">#1F2937</Color>
     <Color x:Key="Color.Text.Secondary">#6B7280</Color>

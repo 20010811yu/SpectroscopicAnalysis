@@ -8,6 +8,7 @@ using SpectroscopicAnalysis.Host.LoggingAlarm;
 using SpectroscopicAnalysis.Host.Ui;
 
 using SpectroscopicAnalysis.Host.SctStrategy;
+using SpectroscopicAnalysis.Host.Workflow;
 
 namespace SpectroscopicAnalysis.Host.ViewModels;
 
@@ -19,6 +20,8 @@ public sealed class QueueTaskItem
     public required string SampleIdText { get; init; }
     public required string ReasonText { get; init; }
     public required string EnqueueTimeText { get; init; }
+    /// <summary>是否执行中（视图切绿色徽章）。</summary>
+    public bool IsRunning { get; init; }
 }
 
 /// <summary>
@@ -36,6 +39,7 @@ public sealed partial class DashboardViewModel : ObservableObject, IPageLifecycl
     private readonly ISctSampleRepository _samples;
     private readonly IProductionSampleRepository _production;
     private readonly ISctStrategyEngine _engine;
+    private readonly IWorkflowOrchestrator _orchestrator;
     private readonly IUiDispatcher _ui;
     private readonly IErrorCollector _errors;
 
@@ -90,14 +94,18 @@ public sealed partial class DashboardViewModel : ObservableObject, IPageLifecycl
     private bool _isLoading;
 
     public DashboardViewModel(ISctOperationLogRepository logs, ISctSampleRepository samples,
-        IProductionSampleRepository production, ISctStrategyEngine engine, IUiDispatcher ui, IErrorCollector errors)
+        IProductionSampleRepository production, ISctStrategyEngine engine, IWorkflowOrchestrator orchestrator,
+        IUiDispatcher ui, IErrorCollector errors)
     {
         _logs = logs;
         _samples = samples;
         _production = production;
         _engine = engine;
+        _orchestrator = orchestrator;
         _ui = ui;
         _errors = errors;
+        // 编排器取走任务/状态变化时同步刷新队列卡（否则注册后任务瞬间被主循环出队，面板看似"没刷新"）
+        _orchestrator.StateChanged += (_, _) => RefreshQueue();
     }
 
     [ObservableProperty]
@@ -106,26 +114,44 @@ public sealed partial class DashboardViewModel : ObservableObject, IPageLifecycl
     /// <summary>队列是否有待执行任务（控制空态说明与列表的可见性）。</summary>
     public bool HasQueueItems => QueueItems.Count > 0;
 
-    /// <summary>刷新任务队列快照（引擎内存队列，直读；导航与日志刷新时同步）。</summary>
+    /// <summary>刷新任务队列快照：执行中任务（编排器 Snapshot）置顶 + 引擎排队任务；StateChanged/导航时同步。</summary>
     private void RefreshQueue()
     {
-        var items = _engine.GetQueuedTasks().Select(t => new QueueTaskItem
+        string TypeText(string taskType) => taskType switch
+        {
+            SctTaskType.Standardize => "标准化",
+            SctTaskType.ControlCheck => "控制检查",
+            SctTaskType.TypeStandardize => "类型标准化",
+            SctTaskType.HeightMeasure => "测高",
+            SctTaskType.Production => "生产样分析",
+            SctTaskType.Archive => "归档",
+            _ => taskType,
+        };
+
+        var items = new List<QueueTaskItem>();
+        var snapshot = _orchestrator.Snapshot;
+        if (snapshot is { IsRunning: true, CurrentTaskId: { } runningId })
+        {
+            items.Add(new QueueTaskItem
+            {
+                TaskIdText = $"#{runningId}",
+                TaskTypeText = TypeText(snapshot.CurrentTaskType),
+                SampleIdText = snapshot.CurrentSampleId ?? "—",
+                ReasonText = "执行中",
+                EnqueueTimeText = string.Empty,
+                IsRunning = true,
+            });
+        }
+        items.AddRange(_engine.GetQueuedTasks().Select(t => new QueueTaskItem
         {
             TaskIdText = $"#{t.TaskId}",
-            TaskTypeText = t.TaskType switch
-            {
-                SctTaskType.Standardize => "标准化",
-                SctTaskType.ControlCheck => "控制检查",
-                SctTaskType.TypeStandardize => "类型标准化",
-                SctTaskType.HeightMeasure => "测高",
-                SctTaskType.Production => "生产样分析",
-                SctTaskType.Archive => "归档",
-                _ => t.TaskType,
-            },
+            TaskTypeText = TypeText(t.TaskType),
             SampleIdText = t.SampleId ?? "—",
             ReasonText = t.Reason ?? "—",
             EnqueueTimeText = t.EnqueueTime.ToString("HH:mm:ss"),
-        }).ToList();
+            IsRunning = false,
+        }));
+
         _ui.Invoke(() =>
         {
             QueueItems = new ObservableCollection<QueueTaskItem>(items);

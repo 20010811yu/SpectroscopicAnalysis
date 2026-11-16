@@ -122,17 +122,31 @@
                     <ItemsControl ItemsSource="{Binding QueueItems}" Visibility="{Binding HasQueueItems, Converter={StaticResource BoolToVisibility}}">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
-                                <Border Style="{StaticResource Badge.Base}" Background="{DynamicResource Brush.Badge.Info.Bg}"
-                                        HorizontalAlignment="Left" Margin="0,0,0,6" Padding="12,6">
-                                    <StackPanel Orientation="Horizontal">
-                                        <TextBlock Text="{Binding TaskTypeText}" Style="{StaticResource Text.Caption}"
-                                                   Foreground="{DynamicResource Brush.Badge.Info.Fg}" FontWeight="SemiBold" />
-                                        <TextBlock Text="{Binding SampleIdText}" Style="{StaticResource Text.Caption}"
-                                                   Foreground="{DynamicResource Brush.Badge.Info.Fg}" FontFamily="Consolas" Margin="10,0,0,0" />
-                                        <TextBlock Text="{Binding EnqueueTimeText}" Style="{StaticResource Text.Caption}"
-                                                   Foreground="{DynamicResource Brush.Badge.Info.Fg}" FontFamily="Consolas" Margin="10,0,0,0" />
-                                        <TextBlock Text="{Binding ReasonText}" Style="{StaticResource Text.Caption}"
-                                                   Foreground="{DynamicResource Brush.Badge.Info.Fg}" Margin="10,0,0,0" />
+                                <Border HorizontalAlignment="Left" Margin="0,0,0,6" Padding="12,6">
+                                    <Border.Style>
+                                        <Style TargetType="Border" BasedOn="{StaticResource Badge.Base}">
+                                            <Setter Property="Background" Value="{DynamicResource Brush.Badge.Info.Bg}" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsRunning}" Value="True">
+                                                    <Setter Property="Background" Value="{DynamicResource Brush.Badge.Running.Bg}" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Border.Style>
+                                    <StackPanel Orientation="Horizontal" TextElement.Foreground="{DynamicResource Brush.Badge.Info.Fg}">
+                                        <StackPanel.Resources>
+                                            <Style TargetType="TextBlock" BasedOn="{StaticResource Text.Caption}">
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding IsRunning}" Value="True">
+                                                        <Setter Property="Foreground" Value="{DynamicResource Brush.Status.Running}" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </StackPanel.Resources>
+                                        <TextBlock Text="{Binding TaskTypeText}" FontWeight="SemiBold" />
+                                        <TextBlock Text="{Binding SampleIdText}" FontFamily="Consolas" Margin="10,0,0,0" />
+                                        <TextBlock Text="{Binding EnqueueTimeText}" FontFamily="Consolas" Margin="10,0,0,0" />
+                                        <TextBlock Text="{Binding ReasonText}" Margin="10,0,0,0" />
                                     </StackPanel>
                                 </Border>
                             </DataTemplate>

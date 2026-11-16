@@ -96,6 +96,8 @@ public sealed class SampleDetailItem
     public required string LastHeightText { get; init; }
     public required string CreatedText { get; init; }
     public required string RemarkText { get; init; }
+    /// <summary>失败原因（生产样分析失败回退待分析时展示；其余为空串即隐藏）。</summary>
+    public required string FailureReasonText { get; init; }
 }
 
 /// <summary>
@@ -510,6 +512,7 @@ public sealed partial class SamplesViewModel : ObservableObject, IPageLifecycle
         LastHeightText = s.LastHeightText,
         CreatedText = "—",
         RemarkText = "—",
+        FailureReasonText = string.Empty,
     };
 
     private static SampleDetailItem MapProductionDetail(ProductionRowItem p) => new()
@@ -529,6 +532,7 @@ public sealed partial class SamplesViewModel : ObservableObject, IPageLifecycle
         LastHeightText = "—",
         CreatedText = p.CreatedText,
         RemarkText = p.Remark,
+        FailureReasonText = p.FailureReason ?? string.Empty,
     };
 
     /// <summary>分页/筛选/删除导致行集合整体替换后，按 SampleID 重选保持详情面板；
@@ -1023,10 +1027,9 @@ public sealed partial class SamplesViewModel : ObservableObject, IPageLifecycle
         RackPosition = p.RackPosition,
         MethodText = p.AssociatedMethod ?? "—",
         Status = p.Status,
-        // 失败回退待分析的样品直接在状态列展示失败原因（红色，见 XAML HasFailure 触发器）
         StatusText = p.Status == ProductionStatus.Completed
             ? "✓ 已完成"
-            : p.FailureReason is null ? "● 待分析" : $"✖ 分析失败：{p.FailureReason}",
+            : p.FailureReason is null ? "● 待分析" : "✖ 分析失败",
         FailureReason = p.FailureReason,
         CreatedText = p.CreatedTime?.ToString("MM-dd HH:mm") ?? "—",
         Remark = p.Remark ?? "—",

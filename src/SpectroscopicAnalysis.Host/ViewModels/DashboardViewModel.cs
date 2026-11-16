@@ -267,10 +267,9 @@ public sealed partial class DashboardViewModel : ObservableObject, IPageLifecycl
         SampleId = r.SampleId,
         SampleName = r.SampleName,
         AlloyType = r.AlloyType,
-        // 失败回退待分析的样品直接在状态列展示失败原因
         StatusText = r.Status == ProductionStatus.Completed
             ? "✓ 已完成"
-            : r.FailureReason is null ? "● 待分析" : $"✖ 分析失败：{r.FailureReason}",
+            : r.FailureReason is null ? "● 待分析" : "✖ 分析失败",
         FailureReason = r.FailureReason,
     };
 }

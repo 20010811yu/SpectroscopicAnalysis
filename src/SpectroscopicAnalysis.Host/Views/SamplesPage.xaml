@@ -567,13 +567,14 @@
                                         <TextBlock Text="{Binding StatusText}" ToolTipService.ToolTip="{Binding FailureReason}">
                                             <TextBlock.Style>
                                                 <Style TargetType="TextBlock" BasedOn="{StaticResource GridCellText}">
+                                                    <Setter Property="Foreground" Value="{DynamicResource Brush.Status.Warning}" />
                                                     <Style.Triggers>
-                                                        <!-- 待分析（含带失败原因回退待分析的样品，红色提示，悬停看原因） -->
+                                                        <!-- 状态三色：待分析=黄、已完成=绿、分析失败=红 -->
+                                                        <DataTrigger Binding="{Binding Status}" Value="Completed">
+                                                            <Setter Property="Foreground" Value="{DynamicResource Brush.Status.Running}" />
+                                                        </DataTrigger>
                                                         <DataTrigger Binding="{Binding HasFailure}" Value="True">
                                                             <Setter Property="Foreground" Value="{DynamicResource Brush.Status.Failed}" />
-                                                        </DataTrigger>
-                                                        <DataTrigger Binding="{Binding Status}" Value="Completed">
-                                                            <Setter Property="Foreground" Value="{DynamicResource Brush.Status.Idle}" />
                                                         </DataTrigger>
                                                     </Style.Triggers>
                                                 </Style>
@@ -845,6 +846,36 @@
                                         <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding Detail.RackPositionText}" Style="{StaticResource SctOnlyValue}" FontFamily="Consolas" />
                                         <TextBlock Grid.Row="3" Grid.Column="0" Text="关联方法" Style="{StaticResource Text.Caption}" Margin="0,4" />
                                         <TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding Detail.MethodText}" Style="{StaticResource DetailValue}" />
+
+                                        <!-- 失败原因（生产样分析失败时显示，红色；空值隐藏） -->
+                                        <TextBlock Grid.Row="4" Grid.Column="0" Text="失败原因">
+                                            <TextBlock.Style>
+                                                <Style TargetType="TextBlock" BasedOn="{StaticResource Text.Caption}">
+                                                    <Setter Property="Margin" Value="0,4" />
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding Detail.FailureReasonText}" Value="">
+                                                            <Setter Property="Visibility" Value="Collapsed" />
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </TextBlock.Style>
+                                        </TextBlock>
+                                        <TextBlock Grid.Row="4" Grid.Column="1" Text="{Binding Detail.FailureReasonText}">
+                                            <TextBlock.Style>
+                                                <Style TargetType="TextBlock" BasedOn="{StaticResource Text.Base}">
+                                                    <Setter Property="Margin" Value="12,4,0,4" />
+                                                    <Setter Property="TextWrapping" Value="Wrap" />
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding Detail.FailureReasonText}" Value="">
+                                                            <Setter Property="Visibility" Value="Collapsed" />
+                                                        </DataTrigger>
+                                                        <DataTrigger Binding="{Binding Detail.Kind}" Value="Production">
+                                                            <Setter Property="Foreground" Value="{DynamicResource Brush.Status.Failed}" />
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </TextBlock.Style>
+                                        </TextBlock>
                                         <TextBlock Grid.Row="4" Grid.Column="0" Text="当前/初始厚度" Style="{StaticResource SctOnlyCaption}" />
                                         <TextBlock Grid.Row="4" Grid.Column="1" Text="{Binding Detail.ThicknessText}" Style="{StaticResource SctOnlyValue}" FontFamily="Consolas" />
                                         <TextBlock Grid.Row="5" Grid.Column="0" Text="最小厚度" Style="{StaticResource SctOnlyCaption}" />

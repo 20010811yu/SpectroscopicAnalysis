@@ -820,25 +820,43 @@
                                                 <Setter Property="Margin" Value="12,4,0,4" />
                                                 <Setter Property="TextWrapping" Value="Wrap" />
                                             </Style>
+                                            <!-- 仅 SCT 样显示的字段（厚度/使用次数等，生产样表无此内容；生产样隐藏避免"—"占位） -->
+                                            <Style x:Key="SctOnlyCaption" TargetType="TextBlock" BasedOn="{StaticResource Text.Caption}">
+                                                <Setter Property="Margin" Value="0,4" />
+                                                <Setter Property="Visibility" Value="Visible" />
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding Detail.Kind}" Value="Production">
+                                                        <Setter Property="Visibility" Value="Collapsed" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                            <Style x:Key="SctOnlyValue" TargetType="TextBlock" BasedOn="{StaticResource DetailValue}">
+                                                <Setter Property="Visibility" Value="Visible" />
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding Detail.Kind}" Value="Production">
+                                                        <Setter Property="Visibility" Value="Collapsed" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
                                         </Grid.Resources>
                                         <TextBlock Grid.Row="0" Grid.Column="0" Text="类型" Style="{StaticResource Text.Caption}" Margin="0,4" />
                                         <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding Detail.TypeDisplay}" Style="{StaticResource DetailValue}" />
-                                        <TextBlock Grid.Row="1" Grid.Column="0" Text="关联合金" Style="{StaticResource Text.Caption}" Margin="0,4" />
-                                        <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding Detail.AlloyTypeText}" Style="{StaticResource DetailValue}" />
-                                        <TextBlock Grid.Row="2" Grid.Column="0" Text="架位" Style="{StaticResource Text.Caption}" Margin="0,4" />
-                                        <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding Detail.RackPositionText}" Style="{StaticResource DetailValue}" FontFamily="Consolas" />
+                                        <TextBlock Grid.Row="1" Grid.Column="0" Text="关联合金" Style="{StaticResource SctOnlyCaption}" />
+                                        <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding Detail.AlloyTypeText}" Style="{StaticResource SctOnlyValue}" />
+                                        <TextBlock Grid.Row="2" Grid.Column="0" Text="架位" Style="{StaticResource SctOnlyCaption}" />
+                                        <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding Detail.RackPositionText}" Style="{StaticResource SctOnlyValue}" FontFamily="Consolas" />
                                         <TextBlock Grid.Row="3" Grid.Column="0" Text="关联方法" Style="{StaticResource Text.Caption}" Margin="0,4" />
                                         <TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding Detail.MethodText}" Style="{StaticResource DetailValue}" />
-                                        <TextBlock Grid.Row="4" Grid.Column="0" Text="当前/初始厚度" Style="{StaticResource Text.Caption}" Margin="0,4" />
-                                        <TextBlock Grid.Row="4" Grid.Column="1" Text="{Binding Detail.ThicknessText}" Style="{StaticResource DetailValue}" FontFamily="Consolas" />
-                                        <TextBlock Grid.Row="5" Grid.Column="0" Text="最小厚度" Style="{StaticResource Text.Caption}" Margin="0,4" />
-                                        <TextBlock Grid.Row="5" Grid.Column="1" Text="{Binding Detail.MinThicknessText}" Style="{StaticResource DetailValue}" FontFamily="Consolas" />
-                                        <TextBlock Grid.Row="6" Grid.Column="0" Text="使用次数" Style="{StaticResource Text.Caption}" Margin="0,4" />
-                                        <TextBlock Grid.Row="6" Grid.Column="1" Text="{Binding Detail.UsageText}" Style="{StaticResource DetailValue}" FontFamily="Consolas" />
-                                        <TextBlock Grid.Row="7" Grid.Column="0" Text="上次使用" Style="{StaticResource Text.Caption}" Margin="0,4" />
-                                        <TextBlock Grid.Row="7" Grid.Column="1" Text="{Binding Detail.LastUseText}" Style="{StaticResource DetailValue}" FontFamily="Consolas" />
-                                        <TextBlock Grid.Row="8" Grid.Column="0" Text="上次测高" Style="{StaticResource Text.Caption}" Margin="0,4" />
-                                        <TextBlock Grid.Row="8" Grid.Column="1" Text="{Binding Detail.LastHeightText}" Style="{StaticResource DetailValue}" FontFamily="Consolas" />
+                                        <TextBlock Grid.Row="4" Grid.Column="0" Text="当前/初始厚度" Style="{StaticResource SctOnlyCaption}" />
+                                        <TextBlock Grid.Row="4" Grid.Column="1" Text="{Binding Detail.ThicknessText}" Style="{StaticResource SctOnlyValue}" FontFamily="Consolas" />
+                                        <TextBlock Grid.Row="5" Grid.Column="0" Text="最小厚度" Style="{StaticResource SctOnlyCaption}" />
+                                        <TextBlock Grid.Row="5" Grid.Column="1" Text="{Binding Detail.MinThicknessText}" Style="{StaticResource SctOnlyValue}" FontFamily="Consolas" />
+                                        <TextBlock Grid.Row="6" Grid.Column="0" Text="使用次数" Style="{StaticResource SctOnlyCaption}" />
+                                        <TextBlock Grid.Row="6" Grid.Column="1" Text="{Binding Detail.UsageText}" Style="{StaticResource SctOnlyValue}" FontFamily="Consolas" />
+                                        <TextBlock Grid.Row="7" Grid.Column="0" Text="上次使用" Style="{StaticResource SctOnlyCaption}" />
+                                        <TextBlock Grid.Row="7" Grid.Column="1" Text="{Binding Detail.LastUseText}" Style="{StaticResource SctOnlyValue}" FontFamily="Consolas" />
+                                        <TextBlock Grid.Row="8" Grid.Column="0" Text="上次测高" Style="{StaticResource SctOnlyCaption}" />
+                                        <TextBlock Grid.Row="8" Grid.Column="1" Text="{Binding Detail.LastHeightText}" Style="{StaticResource SctOnlyValue}" FontFamily="Consolas" />
                                     </Grid>
 
                                     <!-- SCT 样：标准值子表 -->

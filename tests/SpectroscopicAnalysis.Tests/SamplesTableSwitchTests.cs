@@ -22,6 +22,7 @@ public sealed class SamplesTableSwitchTests
             limits ?? new FakeControlLimitRepository(),
             coeffs ?? new FakeCoefficientRepository(),
             logs ?? new FakeOperationLogRepository(),
+            new FakeSctStrategyEngine(),
             new FakeUiDispatcher(), dialogs ?? new FakeDialogService(), new FakeErrorCollector());
     }
 

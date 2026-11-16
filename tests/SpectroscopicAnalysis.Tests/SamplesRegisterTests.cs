@@ -1,4 +1,5 @@
 using SpectroscopicAnalysis.Host.Data.Models;
+using SpectroscopicAnalysis.Host.SctStrategy;
 using SpectroscopicAnalysis.Host.ViewModels;
 using SpectroscopicAnalysis.Tests;
 using SpectroscopicAnalysis.Tests.Data;
@@ -9,10 +10,10 @@ namespace SpectroscopicAnalysis.Tests;
 public sealed class SamplesRegisterTests
 {
     /// <summary>填入合法表单值。</summary>
-    private static SamplesViewModel CreateValidForm(FakeSampleRepository repo)
+    private static SamplesViewModel CreateValidForm(FakeSampleRepository repo, FakeSctStrategyEngine? engine = null)
     {
         var vm = new SamplesViewModel(repo, new FakeProductionSampleRepository(), new FakeCertifiedValueRepository(), new FakeControlLimitRepository(),
-            new FakeCoefficientRepository(), new FakeOperationLogRepository(),
+            new FakeCoefficientRepository(), new FakeOperationLogRepository(), engine ?? new FakeSctStrategyEngine(),
             new FakeUiDispatcher(), new FakeDialogService(), new FakeErrorCollector());
         vm.RegSampleId = "REG-001";
         vm.RegSampleName = "注册测试样品";
@@ -251,4 +252,31 @@ public sealed class SamplesRegisterTests
         MaxUsageCount = 50,
         Status = SampleStatus.Normal,
     };
+
+    [Fact]
+    public async Task 注册完成_自动加入任务队列_任务类型按样品类型映射()
+    {
+        var engine = new FakeSctStrategyEngine();
+        var repo = new FakeSampleRepository();
+        var vm = CreateValidForm(repo, engine);   // 设置样
+        await vm.RegisterCommand.ExecuteAsync(null);
+
+        var prodRepo = new FakeProductionSampleRepository();
+        var prodEngine = new FakeSctStrategyEngine();
+        var prodVm = new SamplesViewModel(new FakeSampleRepository(), prodRepo, new FakeCertifiedValueRepository(), new FakeControlLimitRepository(),
+            new FakeCoefficientRepository(), new FakeOperationLogRepository(), prodEngine,
+            new FakeUiDispatcher(), new FakeDialogService(), new FakeErrorCollector())
+        {
+            RegSampleId = "PRD-REG-001",
+            RegSampleName = "注册生产样",
+            RegSampleType = SampleType.Production,
+            RegAnalysisMethod = "GB/T 7999-A",
+        };
+        await prodVm.RegisterCommand.ExecuteAsync(null);
+
+        Assert.Single(engine.Submitted);
+        Assert.Equal((SctTaskType.Standardize, "REG-001"), (engine.Submitted[0].TaskType, engine.Submitted[0].SampleId));
+        Assert.Single(prodEngine.Submitted);
+        Assert.Equal((SctTaskType.Production, "PRD-REG-001"), (prodEngine.Submitted[0].TaskType, prodEngine.Submitted[0].SampleId));
+   }
 }

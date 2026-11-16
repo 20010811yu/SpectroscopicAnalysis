@@ -133,6 +133,13 @@ public sealed class SctStrategyEngine : ISctStrategyEngine
     }
 
     /// <inheritdoc />
+    public IReadOnlyList<SctTask> GetQueuedTasks() =>
+        _queue
+            .OrderBy(t => t.Priority)
+            .ThenBy(t => t.EnqueueTime)
+            .ToList();
+
+    /// <inheritdoc />
     public void CompleteTask(int taskId, bool success, string? error)
     {
         lock (_gate)

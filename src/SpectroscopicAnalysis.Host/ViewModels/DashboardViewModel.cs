@@ -7,7 +7,19 @@ using SpectroscopicAnalysis.Host.Data.Repositories;
 using SpectroscopicAnalysis.Host.LoggingAlarm;
 using SpectroscopicAnalysis.Host.Ui;
 
+using SpectroscopicAnalysis.Host.SctStrategy;
+
 namespace SpectroscopicAnalysis.Host.ViewModels;
+
+/// <summary>任务队列行展示模型（主控台「任务队列」模块，来源策略引擎队列快照）。</summary>
+public sealed class QueueTaskItem
+{
+    public required string TaskIdText { get; init; }
+    public required string TaskTypeText { get; init; }
+    public required string SampleIdText { get; init; }
+    public required string ReasonText { get; init; }
+    public required string EnqueueTimeText { get; init; }
+}
 
 /// <summary>
 /// 主控台（生产监控）ViewModel：承载「运行日志（按日期）」模块。
@@ -23,6 +35,7 @@ public sealed partial class DashboardViewModel : ObservableObject, IPageLifecycl
     private readonly ISctOperationLogRepository _logs;
     private readonly ISctSampleRepository _samples;
     private readonly IProductionSampleRepository _production;
+    private readonly ISctStrategyEngine _engine;
     private readonly IUiDispatcher _ui;
     private readonly IErrorCollector _errors;
 
@@ -77,13 +90,47 @@ public sealed partial class DashboardViewModel : ObservableObject, IPageLifecycl
     private bool _isLoading;
 
     public DashboardViewModel(ISctOperationLogRepository logs, ISctSampleRepository samples,
-        IProductionSampleRepository production, IUiDispatcher ui, IErrorCollector errors)
+        IProductionSampleRepository production, ISctStrategyEngine engine, IUiDispatcher ui, IErrorCollector errors)
     {
         _logs = logs;
         _samples = samples;
         _production = production;
+        _engine = engine;
         _ui = ui;
         _errors = errors;
+    }
+
+    [ObservableProperty]
+    private ObservableCollection<QueueTaskItem> _queueItems = new();
+
+    /// <summary>队列是否有待执行任务（控制空态说明与列表的可见性）。</summary>
+    public bool HasQueueItems => QueueItems.Count > 0;
+
+    /// <summary>刷新任务队列快照（引擎内存队列，直读；导航与日志刷新时同步）。</summary>
+    private void RefreshQueue()
+    {
+        var items = _engine.GetQueuedTasks().Select(t => new QueueTaskItem
+        {
+            TaskIdText = $"#{t.TaskId}",
+            TaskTypeText = t.TaskType switch
+            {
+                SctTaskType.Standardize => "标准化",
+                SctTaskType.ControlCheck => "控制检查",
+                SctTaskType.TypeStandardize => "类型标准化",
+                SctTaskType.HeightMeasure => "测高",
+                SctTaskType.Production => "生产样分析",
+                SctTaskType.Archive => "归档",
+                _ => t.TaskType,
+            },
+            SampleIdText = t.SampleId ?? "—",
+            ReasonText = t.Reason ?? "—",
+            EnqueueTimeText = t.EnqueueTime.ToString("HH:mm:ss"),
+        }).ToList();
+        _ui.Invoke(() =>
+        {
+            QueueItems = new ObservableCollection<QueueTaskItem>(items);
+            OnPropertyChanged(nameof(HasQueueItems));
+        });
     }
 
     /// <summary>类型筛选键（All/SettingUp/Control/TypeStd/Production；变化后回第 1 页重切）。</summary>
@@ -91,7 +138,11 @@ public sealed partial class DashboardViewModel : ObservableObject, IPageLifecycl
     private string _filterKey = "All";
 
     /// <summary>导航进入时加载（导航路径为 fire-and-forget；测试可 await LoadCommand.ExecuteAsync 保证确定性）。</summary>
-    public void OnNavigatedTo() => LoadCommand.Execute(null);
+    public void OnNavigatedTo()
+    {
+        RefreshQueue();
+        LoadCommand.Execute(null);
+    }
 
     /// <summary>日期变化：回第 1 页重查。</summary>
     partial void OnSelectedDateChanged(DateTime? value) => _ = ReloadFirstPageAsync();
@@ -134,6 +185,7 @@ public sealed partial class DashboardViewModel : ObservableObject, IPageLifecycl
                 }
                 return map;
             });
+            RefreshQueue();
 
             _ui.Invoke(() =>
             {

@@ -13,6 +13,9 @@ public interface ISctStrategyEngine
     /// <summary>尝试出队下一个可执行任务（优先级序，同优先级 FIFO；同时仅一个任务 Running）。</summary>
     bool TryDequeue(out SctTask task);
 
+    /// <summary>当前排队任务快照（优先级序，同优先级 FIFO；与 TryDequeue 取序一致，供队列面板展示）。</summary>
+    IReadOnlyList<SctTask> GetQueuedTasks();
+
     /// <summary>任务完成/失败回执（Workflow 执行后回调；失败不自动重试）。</summary>
     void CompleteTask(int taskId, bool success, string? error);
 

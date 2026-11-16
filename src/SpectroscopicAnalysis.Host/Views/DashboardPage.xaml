@@ -109,37 +109,35 @@
                 </Border>
             </Grid>
 
-            <!-- 任务队列卡（静态两行示例） -->
+            <!-- 任务队列卡：策略引擎队列真实快照（优先级序，同优先级 FIFO） -->
             <Border Style="{StaticResource Card}" Margin="{DynamicResource Spacing.CardGap}">
                 <StackPanel>
-                    <TextBlock Text="任务队列" Style="{StaticResource Text.CardTitle}" Margin="0,0,0,8" />
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto" MinWidth="60" />
-                            <ColumnDefinition Width="*" MinWidth="100" />
-                            <ColumnDefinition Width="*" MinWidth="90" />
-                            <ColumnDefinition Width="*" MinWidth="80" />
-                            <ColumnDefinition Width="*" MinWidth="100" />
-                        </Grid.ColumnDefinitions>
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" />
-                        </Grid.RowDefinitions>
-                        <TextBlock Grid.Row="0" Grid.Column="0" Text="#" Style="{StaticResource Table.Header}" />
-                        <TextBlock Grid.Row="0" Grid.Column="1" Text="SampleID" Style="{StaticResource Table.Header}" />
-                        <TextBlock Grid.Row="0" Grid.Column="2" Text="样品名称" Style="{StaticResource Table.Header}" />
-                        <TextBlock Grid.Row="0" Grid.Column="3" Text="类型" Style="{StaticResource Table.Header}" />
-                        <TextBlock Grid.Row="0" Grid.Column="4" Text="状态" Style="{StaticResource Table.Header}" />
-                        <TextBlock Grid.Row="1" Grid.Column="0" Text="10086" Style="{StaticResource Text.Mono}" Margin="0,6" />
-                        <TextBlock Grid.Row="1" Grid.Column="1" Text="P-20261110-07" Style="{StaticResource Text.Mono}" Margin="0,6" />
-                        <TextBlock Grid.Row="1" Grid.Column="2" Text="6061 生产样" Style="{StaticResource Text.Body}" Margin="0,6" />
-                        <TextBlock Grid.Row="1" Grid.Column="3" Text="生产样品" Style="{StaticResource Text.Body}" Margin="0,6" />
-                        <TextBlock Grid.Row="1" Grid.Column="4" Text="● 激发中" Style="{StaticResource Text.Caption}" Foreground="{DynamicResource Brush.Status.Running}" Margin="0,6" />
-                        <TextBlock Grid.Row="2" Grid.Column="0" Text="10089" Style="{StaticResource Text.Mono}" Margin="0,6" />
-                        <TextBlock Grid.Row="2" Grid.Column="1" Text="CTL-002" Style="{StaticResource Text.Mono}" Margin="0,6" />
-                        <TextBlock Grid.Row="2" Grid.Column="2" Text="控制样（中）" Style="{StaticResource Text.Body}" Margin="0,6" />
-                        <TextBlock Grid.Row="2" Grid.Column="3" Text="控制样" Style="{StaticResource Text.Body}" Margin="0,6" />
-                        <TextBlock Grid.Row="2" Grid.Column="4" Text="◆ 定时插入" Style="{StaticResource Text.Caption}" Foreground="{DynamicResource Brush.Primary}" Margin="0,6" />
-                    </Grid>
+                    <DockPanel Margin="0,0,0,8" LastChildFill="False">
+                        <TextBlock DockPanel.Dock="Left" Text="任务队列" Style="{StaticResource Text.CardTitle}" VerticalAlignment="Center" />
+                        <TextBlock DockPanel.Dock="Right" Text="{Binding QueueItems.Count, StringFormat='排队 {0} 个任务'}"
+                                   Style="{StaticResource Text.Caption}" VerticalAlignment="Center" />
+                    </DockPanel>
+                    <TextBlock Text="队列为空（注册样品或手动触发后将加入队列）" Style="{StaticResource Text.Caption}"
+                               Visibility="{Binding HasQueueItems, Converter={StaticResource BoolToVisibility.Inverse}}" Margin="0,0,0,4" />
+                    <ItemsControl ItemsSource="{Binding QueueItems}" Visibility="{Binding HasQueueItems, Converter={StaticResource BoolToVisibility}}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border Style="{StaticResource Badge.Base}" Background="{DynamicResource Brush.Badge.Info.Bg}"
+                                        HorizontalAlignment="Left" Margin="0,0,0,6" Padding="12,6">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="{Binding TaskTypeText}" Style="{StaticResource Text.Caption}"
+                                                   Foreground="{DynamicResource Brush.Badge.Info.Fg}" FontWeight="SemiBold" />
+                                        <TextBlock Text="{Binding SampleIdText}" Style="{StaticResource Text.Caption}"
+                                                   Foreground="{DynamicResource Brush.Badge.Info.Fg}" FontFamily="Consolas" Margin="10,0,0,0" />
+                                        <TextBlock Text="{Binding EnqueueTimeText}" Style="{StaticResource Text.Caption}"
+                                                   Foreground="{DynamicResource Brush.Badge.Info.Fg}" FontFamily="Consolas" Margin="10,0,0,0" />
+                                        <TextBlock Text="{Binding ReasonText}" Style="{StaticResource Text.Caption}"
+                                                   Foreground="{DynamicResource Brush.Badge.Info.Fg}" Margin="10,0,0,0" />
+                                    </StackPanel>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
                 </StackPanel>
             </Border>
 

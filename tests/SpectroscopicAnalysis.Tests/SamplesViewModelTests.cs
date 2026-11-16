@@ -188,7 +188,7 @@ public sealed class SamplesViewModelTests
             repo.Store.Add(s);
         }
         return new SamplesViewModel(repo, new FakeProductionSampleRepository(), new FakeCertifiedValueRepository(), new FakeControlLimitRepository(),
-            new FakeCoefficientRepository(), new FakeOperationLogRepository(),
+            new FakeCoefficientRepository(), new FakeOperationLogRepository(), new FakeSctStrategyEngine(),
             new FakeUiDispatcher(), dialogs, new FakeErrorCollector());
     }
 

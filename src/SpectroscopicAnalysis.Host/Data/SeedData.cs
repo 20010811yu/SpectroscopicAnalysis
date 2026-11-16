@@ -375,22 +375,17 @@ public sealed class SeedData
 
         for (var seq = 1; seq <= SeedTargetCount; seq++)
         {
-            // 状态轮转：10 个一组 [正常×6, 分析中, 完成×2, 失败]
-            var status = (seq % 10) switch
-            {
-                7 => ProductionStatus.Analyzing,
-                8 or 9 => ProductionStatus.Completed,
-                0 => ProductionStatus.Failed,
-                _ => ProductionStatus.Normal,
-            };
+            // 状态轮转：10 个一组 [待分析×5, 已完成×5]；每组第 10 个为"分析失败回退待分析"样（记录失败原因）
+            var status = seq % 10 <= 5 ? ProductionStatus.Pending : ProductionStatus.Completed;
+            var failureReason = seq % 10 == 0 ? "激发异常，光谱强度不稳定，需重新分析" : null;
             var created = baseTime.AddDays(-(seq % 30)).AddMinutes(seq % 1440); // 近 30 天多日期分布
             using (var cmd = conn.CreateCommand())
             {
                 cmd.Transaction = tx;
                 cmd.CommandText = """
                     INSERT OR IGNORE INTO Production_Sample (SampleID, SampleName, SampleType, AlloyType,
-                        RackPosition, AssociatedMethod, Status, CreatedTime, Remark)
-                    VALUES ($id, $name, 'Production', $alloy, $rack, $method, $status, $created, $remark)
+                        RackPosition, AssociatedMethod, Status, CreatedTime, Remark, FailureReason)
+                    VALUES ($id, $name, 'Production', $alloy, $rack, $method, $status, $created, $remark, $failure)
                     """;
                 cmd.Parameters.AddWithValue("$id", $"PRD-G{seq:000}");
                 cmd.Parameters.AddWithValue("$name", $"生产样 G-{seq:000}");
@@ -399,22 +394,24 @@ public sealed class SeedData
                 cmd.Parameters.AddWithValue("$method", methods[seq % methods.Length]);
                 cmd.Parameters.AddWithValue("$status", status);
                 cmd.Parameters.AddWithValue("$created", created.ToString("yyyy-MM-dd HH:mm:ss"));
+                cmd.Parameters.AddWithValue("$failure", (object?)failureReason ?? DBNull.Value);
                 cmd.Parameters.AddWithValue("$remark", seq % 20 == 0 ? "加急样品" : "常规生产分析");
                 cmd.ExecuteNonQuery();
             }
 
-            // 分析结果：每样 1~2 条（约 4500 行）
-            var resultCount = seq % 2 + 1;
+            // 分析结果：已完成样每样 1~2 条；纯待分析样不生成结果；失败回退样生成 1 条 Fail 结果
+            if (status != ProductionStatus.Completed && failureReason is null)
+            {
+                continue;
+            }
+            var resultCount = status == ProductionStatus.Completed ? seq % 2 + 1 : 1;
             for (var r = 0; r < resultCount; r++)
             {
                 var measured = 0.10 + seq % 80 / 100.0 + r * 0.01;
                 var corrected = measured * (1.0 + (seq % 15 - 7) / 200.0);
-                var resultStatus = status switch
-                {
-                    ProductionStatus.Failed => AnalysisResultStatus.Fail,
-                    ProductionStatus.Completed or ProductionStatus.Analyzing => seq % 9 == 0 ? AnalysisResultStatus.Warning : AnalysisResultStatus.Success,
-                    _ => AnalysisResultStatus.Success,
-                };
+                var resultStatus = failureReason is not null
+                    ? AnalysisResultStatus.Fail
+                    : seq % 9 == 0 ? AnalysisResultStatus.Warning : AnalysisResultStatus.Success;
                 var isPass = resultStatus == AnalysisResultStatus.Success;
                 using var cmd = conn.CreateCommand();
                 cmd.Transaction = tx;
@@ -430,7 +427,7 @@ public sealed class SeedData
                 cmd.Parameters.AddWithValue("$coeff", seq % 125 + 1);
                 cmd.Parameters.AddWithValue("$pass", isPass ? 1 : 0);
                 cmd.Parameters.AddWithValue("$status", resultStatus);
-                cmd.Parameters.AddWithValue("$archive", status == ProductionStatus.Analyzing ? DBNull.Value : $"A-{seq % 40:00}-{r + 1}");
+                cmd.Parameters.AddWithValue("$archive", failureReason is not null ? DBNull.Value : $"A-{seq % 40:00}-{r + 1}");
                 cmd.Parameters.AddWithValue("$time", created.AddMinutes(5 + r).ToString("yyyy-MM-dd HH:mm:ss"));
                 cmd.ExecuteNonQuery();
             }

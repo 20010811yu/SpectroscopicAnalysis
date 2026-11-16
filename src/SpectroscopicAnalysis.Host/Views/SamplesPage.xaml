@@ -564,18 +564,16 @@
                                                         <DataGridTemplateColumn Header="状态" Width="1*" MinWidth="70">
                                 <DataGridTemplateColumn.CellTemplate>
                                     <DataTemplate>
-                                        <TextBlock Text="{Binding StatusText}">
+                                        <TextBlock Text="{Binding StatusText}" ToolTipService.ToolTip="{Binding FailureReason}">
                                             <TextBlock.Style>
                                                 <Style TargetType="TextBlock" BasedOn="{StaticResource GridCellText}">
                                                     <Style.Triggers>
-                                                        <DataTrigger Binding="{Binding Status}" Value="Analyzing">
-                                                            <Setter Property="Foreground" Value="{DynamicResource Brush.Status.Running}" />
+                                                        <!-- 待分析（含带失败原因回退待分析的样品，红色提示，悬停看原因） -->
+                                                        <DataTrigger Binding="{Binding HasFailure}" Value="True">
+                                                            <Setter Property="Foreground" Value="{DynamicResource Brush.Status.Failed}" />
                                                         </DataTrigger>
                                                         <DataTrigger Binding="{Binding Status}" Value="Completed">
                                                             <Setter Property="Foreground" Value="{DynamicResource Brush.Status.Idle}" />
-                                                        </DataTrigger>
-                                                        <DataTrigger Binding="{Binding Status}" Value="Failed">
-                                                            <Setter Property="Foreground" Value="{DynamicResource Brush.Status.Failed}" />
                                                         </DataTrigger>
                                                     </Style.Triggers>
                                                 </Style>

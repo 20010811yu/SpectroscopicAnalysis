@@ -103,9 +103,10 @@ public sealed class DbInitializer
             AlloyType        TEXT,
             RackPosition     TEXT,
             AssociatedMethod TEXT,
-            Status           TEXT NOT NULL DEFAULT 'Normal' CHECK (Status IN ('Normal','Analyzing','Completed','Failed')),
+            Status           TEXT NOT NULL DEFAULT 'PendingAnalysis' CHECK (Status IN ('PendingAnalysis','Completed')),
             CreatedTime      TEXT NOT NULL DEFAULT (datetime('now','localtime')),
-            Remark           TEXT
+            Remark           TEXT,
+            FailureReason    TEXT
         );
         """,
         // 分析结果表（生产样分析归档：原始/校正后双存 + 系数版本可追溯）
@@ -187,6 +188,9 @@ public sealed class DbInitializer
         }
         // 存量库迁移：建表脚本对旧库不生效（IF NOT EXISTS），缺失列按表逐个补齐
         AddColumnIfMissing(conn, tx, "SCT_Sample", "AssociatedMethod", "TEXT");
+        // 生产样状态机改版（Normal/Analyzing/Failed → PendingAnalysis，失败改记 FailureReason）：
+        // 旧表 Status 带 4 值 CHECK 约束无法直接改，需重建表迁移（幂等：仅旧约束存在时执行）
+        MigrateProductionStatusCheck(conn, tx);
         // 控制限仅允许关联控制样：清理存量库中挂在非 Control 样上的控制限（幂等）
         using (var clean = conn.CreateCommand())
         {
@@ -325,6 +329,61 @@ public sealed class DbInitializer
         purge.Transaction = tx;
         purge.CommandText = "DELETE FROM SCT_Sample WHERE SampleType = 'Production'";
         purge.ExecuteNonQuery();
+    }
+
+    /// <summary>生产样状态机改版迁移（幂等）：旧表 Status 带 4 值 CHECK（Normal/Analyzing/Completed/Failed）时
+    /// 重建表——新表 CHECK 仅允许 PendingAnalysis/Completed，旧状态值归一化为 PendingAnalysis，并补 FailureReason 列。</summary>
+    private static void MigrateProductionStatusCheck(DbConnection conn, DbTransaction tx)
+    {
+        var needsRebuild = false;
+        using (var cmd = conn.CreateCommand())
+        {
+            cmd.Transaction = tx;
+            cmd.CommandText = "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'Production_Sample';";
+            var ddl = cmd.ExecuteScalar() as string ?? string.Empty;
+            needsRebuild = ddl.Contains("'Normal'", StringComparison.Ordinal);
+        }
+
+        if (!needsRebuild)
+        {
+            return;
+        }
+
+        var statements = new[]
+        {
+            """
+            CREATE TABLE Production_Sample_new (
+                SampleID         TEXT PRIMARY KEY,
+                SampleName       TEXT NOT NULL,
+                SampleType       TEXT NOT NULL DEFAULT 'Production' CHECK (SampleType = 'Production'),
+                AlloyType        TEXT,
+                RackPosition     TEXT,
+                AssociatedMethod TEXT,
+                Status           TEXT NOT NULL DEFAULT 'PendingAnalysis' CHECK (Status IN ('PendingAnalysis','Completed')),
+                CreatedTime      TEXT NOT NULL DEFAULT (datetime('now','localtime')),
+                Remark           TEXT,
+                FailureReason    TEXT
+            );
+            """,
+            """
+            INSERT INTO Production_Sample_new (SampleID, SampleName, SampleType, AlloyType, RackPosition,
+                AssociatedMethod, Status, CreatedTime, Remark, FailureReason)
+            SELECT SampleID, SampleName, SampleType, AlloyType, RackPosition, AssociatedMethod,
+                CASE WHEN Status = 'Completed' THEN 'Completed' ELSE 'PendingAnalysis' END,
+                CreatedTime, Remark,
+                CASE WHEN Status = 'Failed' THEN '历史分析失败，原因未记录' ELSE NULL END
+            FROM Production_Sample;
+            """,
+            "DROP TABLE Production_Sample;",
+            "ALTER TABLE Production_Sample_new RENAME TO Production_Sample;",
+        };
+        foreach (var sql in statements)
+        {
+            using var cmd = conn.CreateCommand();
+            cmd.Transaction = tx;
+            cmd.CommandText = sql;
+            cmd.ExecuteNonQuery();
+        }
     }
 
     /// <summary>列不存在时 ALTER TABLE 补列（幂等；SQLite 仅支持 ADD COLUMN）。</summary>

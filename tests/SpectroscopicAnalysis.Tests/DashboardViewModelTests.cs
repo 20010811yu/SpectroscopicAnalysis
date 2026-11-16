@@ -6,7 +6,7 @@ namespace SpectroscopicAnalysis.Tests;
 /// <summary>主控台 ViewModel 测试：生产样表格加载/映射/日期过滤/游标分页（数据源 Production_Sample）。</summary>
 public sealed class DashboardViewModelTests
 {
-    private static ProductionSample Make(string id, string status = ProductionStatus.Normal, DateTime? created = null) => new()
+    private static ProductionSample Make(string id, string status = ProductionStatus.Pending, DateTime? created = null) => new()
     {
         SampleId = id,
         SampleName = $"生产样 {id}",
@@ -27,18 +27,18 @@ public sealed class DashboardViewModelTests
     public async Task Load_生产样进入表格_状态映射正确()
     {
         var vm = CreateWith(
-            Make("P-001", ProductionStatus.Normal),
-            Make("P-002", ProductionStatus.Analyzing),
+            Make("P-001", ProductionStatus.Pending),
+            Make("P-002", ProductionStatus.Pending),
             Make("P-003", ProductionStatus.Completed),
-            Make("P-004", ProductionStatus.Failed));
+            Make("P-004", ProductionStatus.Completed));
 
         await vm.LoadCommand.ExecuteAsync(null);
 
         Assert.Equal(4, vm.ProductionSamples.Count);
-        Assert.Equal("✖ 失败", vm.ProductionSamples[0].StatusText); // 时间倒序：同入库时间按 SampleID 倒序
+        Assert.Equal("✓ 已完成", vm.ProductionSamples[0].StatusText); // 时间倒序：同入库时间按 SampleID 倒序
         Assert.Equal("✓ 已完成", vm.ProductionSamples[1].StatusText);
-        Assert.Equal("● 分析中", vm.ProductionSamples[2].StatusText);
-        Assert.Equal("● 正常", vm.ProductionSamples[3].StatusText);
+        Assert.Equal("● 待分析", vm.ProductionSamples[2].StatusText);
+        Assert.Equal("● 待分析", vm.ProductionSamples[3].StatusText);
         Assert.Equal("生产样 P-004", vm.ProductionSamples[0].SampleName); // 名称列映射
         Assert.True(vm.HasProduction);
     }

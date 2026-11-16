@@ -164,7 +164,7 @@ public sealed class SamplesTableSwitchTests
     {
         var production = new FakeProductionSampleRepository();
         production.Store.Add(new ProductionSample { SampleId = "PRD-G001", SampleName = "生产样 G-001", AlloyType = "1xxx", RackPosition = "D11", AssociatedMethod = "GB/T 7999-A", Status = ProductionStatus.Completed, CreatedTime = DateTime.Today, Remark = "常规生产分析" });
-        production.Store.Add(new ProductionSample { SampleId = "PRD-G002", SampleName = "生产样 G-002", AlloyType = "6xxx", Status = ProductionStatus.Analyzing, CreatedTime = DateTime.Today });
+        production.Store.Add(new ProductionSample { SampleId = "PRD-G002", SampleName = "生产样 G-002", AlloyType = "6xxx", Status = ProductionStatus.Pending, CreatedTime = DateTime.Today });
         production.InsertResult(new AnalysisResult { SampleId = "PRD-G001", MeasuredConc = 0.12, CorrectedConc = 0.119, CoeffVersion = 7, IsPass = true, ResultStatus = AnalysisResultStatus.Success, ArchivePosition = "A-01-1", OperationTime = DateTime.Today });
 
         var vm = Create(production: production);
@@ -202,7 +202,7 @@ public sealed class SamplesTableSwitchTests
     {
         var production = new FakeProductionSampleRepository();
         production.Store.Add(new ProductionSample { SampleId = "PRD-G001", SampleName = "生产样 G-001", AlloyType = "1xxx", Status = ProductionStatus.Completed, CreatedTime = DateTime.Today });
-        production.Store.Add(new ProductionSample { SampleId = "PRD-G002", SampleName = "生产样 G-002", AlloyType = "6xxx", Status = ProductionStatus.Analyzing, CreatedTime = DateTime.Today });
+        production.Store.Add(new ProductionSample { SampleId = "PRD-G002", SampleName = "生产样 G-002", AlloyType = "6xxx", Status = ProductionStatus.Pending, CreatedTime = DateTime.Today });
 
         var vm = Create(production: production);
 

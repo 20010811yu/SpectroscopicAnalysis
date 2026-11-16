@@ -41,6 +41,8 @@ public sealed class ProductionRowItem
     /// <summary>原始状态枚举串（视图 DataTrigger 切换徽章颜色）。</summary>
     public required string Status { get; init; }
     public required string StatusText { get; init; }
+    /// <summary>失败原因（非空时状态列以失败色提示）。</summary>
+    public string? FailureReason { get; init; }
     public required string CreatedText { get; init; }
     public required string Remark { get; init; }
 }
@@ -784,7 +786,7 @@ public sealed partial class SamplesViewModel : ObservableObject, IPageLifecycle
         SampleName = RegSampleName.Trim(),
         SampleType = SampleType.Production,
         AssociatedMethod = RegAnalysisMethod!.Trim(), // 校验已确保非空
-        Status = ProductionStatus.Normal,
+        Status = ProductionStatus.Pending,
         CreatedTime = DateTime.Now,
     };
 
@@ -1021,14 +1023,8 @@ public sealed partial class SamplesViewModel : ObservableObject, IPageLifecycle
         RackPosition = p.RackPosition,
         MethodText = p.AssociatedMethod ?? "—",
         Status = p.Status,
-        StatusText = p.Status switch
-        {
-            ProductionStatus.Normal => "● 正常",
-            ProductionStatus.Analyzing => "● 分析中",
-            ProductionStatus.Completed => "✓ 已完成",
-            ProductionStatus.Failed => "✖ 失败",
-            _ => p.Status,
-        },
+        StatusText = p.Status == ProductionStatus.Completed ? "✓ 已完成" : "● 待分析",
+        FailureReason = p.FailureReason,
         CreatedText = p.CreatedTime?.ToString("MM-dd HH:mm") ?? "—",
         Remark = p.Remark ?? "—",
     };

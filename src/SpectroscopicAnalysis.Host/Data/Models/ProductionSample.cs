@@ -1,12 +1,11 @@
 namespace SpectroscopicAnalysis.Host.Data.Models;
 
-/// <summary>生产样品分析状态（Production_Sample 专用状态机，与 SCT 样品状态互不影响）。</summary>
+/// <summary>生产样品分析状态（Production_Sample 专用状态机，与 SCT 样品状态互不影响）。
+/// 仅两种：注册后待分析 → 分析完成置已完成；分析失败不作为独立状态，状态回待分析并记录 FailureReason。</summary>
 public static class ProductionStatus
 {
-    public const string Normal = "Normal";
-    public const string Analyzing = "Analyzing";
+    public const string Pending = "PendingAnalysis";
     public const string Completed = "Completed";
-    public const string Failed = "Failed";
 }
 
 /// <summary>分析结果状态（Analysis_Result；与 SCT 操作日志结果状态一致）。</summary>
@@ -26,9 +25,11 @@ public sealed class ProductionSample
     public string? AlloyType { get; set; }
     public string? RackPosition { get; set; }
     public string? AssociatedMethod { get; set; }
-    public string Status { get; set; } = ProductionStatus.Normal;
+    public string Status { get; set; } = ProductionStatus.Pending;
     public DateTime? CreatedTime { get; set; }
     public string? Remark { get; set; }
+    /// <summary>失败原因（分析失败时记录，状态回待分析；正常为 NULL）。</summary>
+    public string? FailureReason { get; set; }
 }
 
 /// <summary>分析结果（表 Analysis_Result，每个生产样 1 条或多条；原始/校正后双存，系数版本可追溯）。</summary>

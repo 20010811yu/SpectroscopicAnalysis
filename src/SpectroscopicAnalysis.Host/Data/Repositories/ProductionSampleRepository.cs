@@ -8,7 +8,7 @@ namespace SpectroscopicAnalysis.Host.Data.Repositories;
 public sealed class ProductionSampleRepository : IProductionSampleRepository
 {
     private const string SelectColumns =
-        "SampleID, SampleName, SampleType, AlloyType, RackPosition, AssociatedMethod, Status, CreatedTime, Remark";
+        "SampleID, SampleName, SampleType, AlloyType, RackPosition, AssociatedMethod, Status, CreatedTime, Remark, FailureReason";
 
     private readonly Db _db;
 
@@ -119,9 +119,9 @@ public sealed class ProductionSampleRepository : IProductionSampleRepository
         using var cmd = conn.CreateCommand();
         cmd.CommandText = """
             INSERT OR IGNORE INTO Production_Sample (SampleID, SampleName, SampleType, AlloyType, RackPosition,
-                AssociatedMethod, Status, CreatedTime, Remark)
+                AssociatedMethod, Status, CreatedTime, Remark, FailureReason)
             VALUES ($id, $name, $type, $alloy, $rack, $method, $status,
-                COALESCE($created, datetime('now','localtime')), $remark)
+                COALESCE($created, datetime('now','localtime')), $remark, $failure)
             """;
         Fill(cmd, sample);
         cmd.ExecuteNonQuery();
@@ -216,6 +216,7 @@ public sealed class ProductionSampleRepository : IProductionSampleRepository
         cmd.Parameters.AddWithValue("$status", sample.Status);
         cmd.Parameters.AddWithValue("$created", (object?)FormatTime(sample.CreatedTime) ?? DBNull.Value);
         cmd.Parameters.AddWithValue("$remark", (object?)sample.Remark ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("$failure", (object?)sample.FailureReason ?? DBNull.Value);
     }
 
     private static ProductionSample Map(SqliteDataReader r) => new()
@@ -229,6 +230,7 @@ public sealed class ProductionSampleRepository : IProductionSampleRepository
         Status = r.GetString(6),
         CreatedTime = ParseTime(r, 7),
         Remark = r.IsDBNull(8) ? null : r.GetString(8),
+        FailureReason = r.IsDBNull(9) ? null : r.GetString(9),
     };
 
     private static string? FormatTime(DateTime? time) =>

@@ -32,7 +32,7 @@ public sealed class ProductionSampleRepositoryIntegrationTests : IDisposable
                 SampleId = $"P-{i:000}",
                 SampleName = $"生产样 {i}",
                 AlloyType = "6xxx",
-                Status = ProductionStatus.Normal,
+                Status = ProductionStatus.Pending,
                 CreatedTime = i <= 5 ? today.AddDays(-1) : today, // 前 5 条昨日入库
             });
         }

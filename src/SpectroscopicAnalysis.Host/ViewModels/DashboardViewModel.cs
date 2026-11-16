@@ -267,11 +267,8 @@ public sealed partial class DashboardViewModel : ObservableObject, IPageLifecycl
         AlloyType = r.AlloyType,
         StatusText = r.Status switch
         {
-            ProductionStatus.Normal => "● 正常",
-            ProductionStatus.Analyzing => "● 分析中",
             ProductionStatus.Completed => "✓ 已完成",
-            ProductionStatus.Failed => "✖ 失败",
-            _ => r.Status,
+            _ => "● 待分析",
         },
     };
 }

@@ -41,8 +41,8 @@
                 </Border.Style>
                 <StackPanel>
                     <TextBlock Text="样品注册" Style="{StaticResource Text.CardTitle}" Margin="0,0,0,12" />
-                    <Grid>
-                        <Grid.Resources>
+                    <StackPanel>
+                        <StackPanel.Resources>
                             <!-- 表单输入统一尺寸：宽 280 高 32（BasedOn 全局默认样式， HandyControl 外观一致）；
                                  显隐只挂在行容器上，输入控件不再叠加显隐样式，避免覆盖默认外观导致样式不一 -->
                             <Style TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
@@ -88,7 +88,7 @@
                                     </DataTrigger>
                                 </Style.Triggers>
                             </Style>
-                        </Grid.Resources>
+                        </StackPanel.Resources>
 
                         <!-- 第一步：类型选择 -->
                         <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
@@ -126,7 +126,7 @@
                             <TextBlock Text="关联合金*" Style="{StaticResource Text.Caption}" Width="110" VerticalAlignment="Center" />
                             <TextBox Text="{Binding RegAlloyType, UpdateSourceTrigger=PropertyChanged}" />
                         </StackPanel>
-                    </Grid>
+                    </StackPanel>
 
                     <TextBlock Text="{Binding RegisterError}" TextWrapping="Wrap" Margin="0,4,0,8"
                                Foreground="{DynamicResource Brush.Status.Failed}">

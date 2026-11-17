@@ -227,10 +227,17 @@ public class EzCad2Launcher : BackgroundService
         _watcherThread.Start();
         watcherDone.Wait();
 
-        // 等待窗口期结束（启动期足够 EzCad2 完成闪屏与主窗口创建；后台线程不阻塞上位机）
+        // 等待窗口就绪：找到主窗口后再短留 2 秒（让工程文件加载完）即提前结束，避免钩子长期与
+        // EzCad2 的重复显示窗口行为互相争抢（显示→隐藏→显示……造成任务栏图标持续闪烁）
         var deadline = Environment.TickCount64 + timeoutMs;
+        var minWaitUntil = Environment.TickCount64 + 2000;
         while (Environment.TickCount64 < deadline && !stoppingToken.IsCancellationRequested)
         {
+            if (_mainWindowHandle != IntPtr.Zero && IsWindow(_mainWindowHandle) && Environment.TickCount64 >= minWaitUntil)
+            {
+                break;
+            }
+
             Thread.Sleep(100);
         }
 
@@ -263,7 +270,7 @@ public class EzCad2Launcher : BackgroundService
 
         if (!_hideWindow)
         {
-            // 调试期配置：窗口正常显示，不做最小化/隐藏处理
+            // 调试期配置：窗口正常显示，钩子只记录主窗口句柄，绝不隐藏（否则与程序反复显示窗口形成闪烁循环）
             return;
         }
 

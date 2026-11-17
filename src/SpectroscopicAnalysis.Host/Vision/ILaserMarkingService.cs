@@ -8,4 +8,7 @@ public interface ILaserMarkingService
 {
     /// <summary>读取打标文本内容（来源：配置路径的文本文件）。</summary>
     string ReadMarkingContent();
+
+    /// <summary>将打标文本内容写回配置路径的文本文件。返回是否写入成功。</summary>
+    bool WriteMarkingContent(string content);
 }

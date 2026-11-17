@@ -42,4 +42,24 @@ public class LaserMarkingService : ILaserMarkingService
             return string.Empty;
         }
     }
+
+    /// <inheritdoc/>
+    public bool WriteMarkingContent(string content)
+    {
+        try
+        {
+            // 原子写入：先写临时文件再替换，避免写一半被 EzCad2 读取到残缺内容
+            var tempPath = _contentFilePath + ".tmp";
+            File.WriteAllText(tempPath, content);
+            File.Move(tempPath, _contentFilePath, overwrite: true);
+            _logger.LogInformation("打标文本已写回：{ContentFilePath}", _contentFilePath);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            // 携带登记错误码走统一错误链（9003），不吞异常；返回失败由页面提示
+            _errorCollector.Collect(ErrorCodes.EzCad2LaunchFailed, $"写回打标文本文件失败：{_contentFilePath}", exception: ex);
+            return false;
+        }
+    }
 }

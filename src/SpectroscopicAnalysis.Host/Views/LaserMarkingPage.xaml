@@ -28,6 +28,8 @@
                 </Grid.RowDefinitions>
 
                 <TextBlock Grid.Row="0" Text="打标文本内容" Style="{StaticResource Text.CardTitle}" Margin="0,0,0,8" />
+                <TextBlock Grid.Row="0" Text="{Binding SaveStatus}" Style="{StaticResource Text.Caption}"
+                           HorizontalAlignment="Right" VerticalAlignment="Top" />
                 <TextBox Grid.Row="1"
                          Text="{Binding MarkingContent, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                          AcceptsReturn="True" TextWrapping="Wrap"

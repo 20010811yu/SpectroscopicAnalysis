@@ -95,7 +95,10 @@ public class EzCad2Launcher : BackgroundService
         _logger.LogInformation("EzCad2 已启动并隐藏任务栏图标");
     }
 
-    /// <summary>配置路径优先，为空或不存在时回退到当前用户桌面。</summary>
+    /// <summary>
+    /// 配置路径优先，为空或不存在时回退到当前用户桌面；
+    /// 桌面上常见的是快捷方式（.lnk），需解析其目标 exe 实际路径。
+    /// </summary>
     private string? ResolveExePath()
     {
         if (!string.IsNullOrWhiteSpace(_options.ExecutablePath) && File.Exists(_options.ExecutablePath))
@@ -104,8 +107,43 @@ public class EzCad2Launcher : BackgroundService
         }
 
         var desktop = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
-        var candidate = Path.Combine(desktop, "EzCad2.exe");
-        return File.Exists(candidate) ? candidate : null;
+        var exe = Path.Combine(desktop, "EzCad2.exe");
+        if (File.Exists(exe))
+        {
+            return exe;
+        }
+
+        var shortcut = Path.Combine(desktop, "EzCad2.exe.lnk");
+        return File.Exists(shortcut) ? ResolveShortcutTarget(shortcut) : null;
+    }
+
+    /// <summary>解析 .lnk 快捷方式的目标 exe 路径（WScript.Shell COM；解析失败返回 null）。</summary>
+    private string? ResolveShortcutTarget(string shortcutPath)
+    {
+        try
+        {
+            var shellType = Type.GetTypeFromProgID("WScript.Shell");
+            if (shellType == null)
+            {
+                return null;
+            }
+
+            dynamic shell = Activator.CreateInstance(shellType)!;
+            try
+            {
+                var target = (string)shell.CreateShortcut(shortcutPath).TargetPath;
+                return File.Exists(target) ? target : null;
+            }
+            finally
+            {
+                Marshal.ReleaseComObject(shell);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "解析 EzCad2 快捷方式失败：{ShortcutPath}", shortcutPath);
+            return null;
+        }
     }
 
     /// <summary>追加 WS_EX_TOOLWINDOW 扩展样式：窗口不出现在任务栏（不改变最小化状态与可见性）。</summary>

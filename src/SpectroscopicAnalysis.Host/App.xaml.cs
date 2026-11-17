@@ -21,8 +21,33 @@ public partial class App
 {
     private readonly IHost _host;
 
-    /// <summary>单实例互斥体：禁止多个上位机实例并存（多实例会互相争抢联动关闭/重启 EzCad2 等外部资源）。</summary>
-    private Mutex? _singleInstanceMutex;
+    /// <summary>
+    /// 判断是否已有「可用」的上位机实例在运行：同名进程存在且拥有可见主窗口。
+    /// 按窗口判断而非互斥体——强杀残留的僵尸进程（无窗口）不应阻止新实例启动。
+    /// </summary>
+    private static bool HasVisibleRunningInstance()
+    {
+        var currentId = Environment.ProcessId;
+        var exeName = Environment.ProcessPath is { } path ? System.IO.Path.GetFileNameWithoutExtension(path) : null;
+
+        foreach (var process in System.Diagnostics.Process.GetProcesses())
+        {
+            if (process.Id == currentId)
+            {
+                continue;
+            }
+
+            var nameMatches = exeName != null
+                ? string.Equals(process.ProcessName, exeName, StringComparison.OrdinalIgnoreCase)
+                : process.ProcessName.Contains("SpectroscopicAnalysis", StringComparison.OrdinalIgnoreCase);
+            if (nameMatches && process.MainWindowHandle != IntPtr.Zero)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
 
     public App()
     {
@@ -92,9 +117,8 @@ public partial class App
     {
         base.OnStartup(e);
 
-        // 单实例保护：已存在实例时提示并退出（互斥体持有至进程退出自动释放）
-        _singleInstanceMutex = new Mutex(true, @"Global\SpectroscopicAnalysisHost", out var createdNew);
-        if (!createdNew)
+        // 单实例保护：按「可见窗口」判断已有实例（僵尸进程无窗口不算），有实例时提示并退出
+        if (HasVisibleRunningInstance())
         {
             MessageBox.Show("上位机已在运行中，请勿重复启动。", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
             Log.Information("检测到已有上位机实例运行，本次启动退出");

@@ -9,6 +9,16 @@ using SpectroscopicAnalysis.Host.LoggingAlarm;
 namespace SpectroscopicAnalysis.Host.Vision;
 
 /// <summary>
+/// EzCad2 控制抽象：运行时切换打标工程文件（关闭当前实例并以指定 .ezd 重新隐藏式拉起）。
+/// UI 层经本接口操作（MVVM 分层，不直接依赖 BackgroundService 实现）。
+/// </summary>
+public interface IEzCad2Controller
+{
+    /// <summary>切换打标工程文件。返回 null 表示成功；否则为失败原因描述。</summary>
+    Task<string?> SwitchEzdFileAsync(string ezdPath, CancellationToken cancellationToken = default);
+}
+
+/// <summary>
 /// EzCad2 激光打标软件启动配置（appsettings.json「EzCad2」节）。
 /// </summary>
 public class EzCad2Options
@@ -32,11 +42,14 @@ public class EzCad2Options
 /// 失败仅记录错误（9003），不阻断上位机启动（打标软件为辅助外部程序）。
 /// 上位机退出时联动关闭 EzCad2：先尝试优雅关闭（WM_CLOSE），超时后强制结束进程。
 /// </summary>
-public class EzCad2Launcher : BackgroundService
+public class EzCad2Launcher : BackgroundService, IEzCad2Controller
 {
     private readonly EzCad2Options _options;
     private readonly ILogger<EzCad2Launcher> _logger;
     private readonly IErrorCollector _errorCollector;
+
+    /// <summary>启动/切换/联动关闭互斥锁：避免并发重启 EzCad2 造成进程与句柄状态混乱。</summary>
+    private readonly SemaphoreSlim _launchLock = new(1, 1);
 
     /// <summary>本服务拉起的 EzCad2 进程；退出时联动关闭（不 Dispose，进程对象由服务持有至 StopAsync）。</summary>
     private Process? _launchedProcess;
@@ -59,7 +72,7 @@ public class EzCad2Launcher : BackgroundService
     {
         try
         {
-            await Task.Run(() => Launch(stoppingToken), stoppingToken);
+            await Task.Run(() => Launch(stoppingToken, _options.EzdFilePath), stoppingToken);
 
             // 常驻隐藏守护：EzCad2 会自行重新显示最小化形态的迷你条窗（屏幕底部约 160x28），反复重绘造成闪烁；
             // 上位机运行期间持续轮询，发现可见主窗口立即隐藏（150ms 轮询，开销可忽略）
@@ -154,7 +167,36 @@ public class EzCad2Launcher : BackgroundService
         await base.StopAsync(cancellationToken);
     }
 
-    private void Launch(CancellationToken stoppingToken)
+    /// <summary>
+    /// 运行时切换打标工程文件：关闭当前 EzCad2 实例并以指定 .ezd 重新隐藏式拉起（含选中/守护等既有流程）。
+    /// 供打标方式下拉框切换调用（文本打印 2.ezd / 条码打印 1.ezd）。
+    /// </summary>
+    public async Task<string?> SwitchEzdFileAsync(string ezdPath, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(ezdPath) || !File.Exists(ezdPath))
+        {
+            return $"工程文件不存在：{ezdPath}";
+        }
+
+        await _launchLock.WaitAsync(cancellationToken);
+        try
+        {
+            await Task.Run(() => Launch(cancellationToken, ezdPath), cancellationToken);
+            _logger.LogInformation("已切换 EzCad2 工程文件：{EzdPath}", ezdPath);
+            return null;
+        }
+        catch (Exception ex)
+        {
+            _errorCollector.Collect(ErrorCodes.EzCad2LaunchFailed, $"切换 EzCad2 工程文件失败：{ezdPath}", exception: ex);
+            return $"切换失败：{ex.Message}";
+        }
+        finally
+        {
+            _launchLock.Release();
+        }
+    }
+
+    private void Launch(CancellationToken stoppingToken, string ezdFilePath)
     {
         var exePath = ResolveExePath();
         if (string.IsNullOrEmpty(exePath))
@@ -163,8 +205,8 @@ public class EzCad2Launcher : BackgroundService
             return;
         }
 
-        // 启动参数：可配置的 .ezd 工程文件（EzCad2 接收文件路径作为命令行参数直接打开）
-        var arguments = ResolveEzdArgument();
+        // 启动参数：指定的 .ezd 工程文件（EzCad2 接收文件路径作为命令行参数直接打开）
+        var arguments = ResolveEzdArgument(ezdFilePath);
         // 已有 EzCad2 在后台运行时先关闭（确保以最新配置/工程文件重新拉起），再重新启动
         ShutdownExistingProcesses();
 
@@ -352,23 +394,23 @@ public class EzCad2Launcher : BackgroundService
     }
 
     /// <summary>
-    /// 构造启动参数：配置的 .ezd 文件存在时作为参数传入（含引号防路径空格）；
+    /// 构造启动参数：指定的 .ezd 文件存在时作为参数传入（含引号防路径空格）；
     /// 文件不存在仅记录警告，仍正常启动软件（不阻断打标软件可用性）。
     /// </summary>
-    private string ResolveEzdArgument()
+    private string ResolveEzdArgument(string ezdFilePath)
     {
-        if (string.IsNullOrWhiteSpace(_options.EzdFilePath))
+        if (string.IsNullOrWhiteSpace(ezdFilePath))
         {
             return string.Empty;
         }
 
-        if (!File.Exists(_options.EzdFilePath))
+        if (!File.Exists(ezdFilePath))
         {
-            _logger.LogWarning("配置的 Ezd 工程文件不存在，启动时不加载：{EzdPath}", _options.EzdFilePath);
+            _logger.LogWarning("配置的 Ezd 工程文件不存在，启动时不加载：{EzdPath}", ezdFilePath);
             return string.Empty;
         }
 
-        return $"\"{_options.EzdFilePath}\"";
+        return $"\"{ezdFilePath}\"";
     }
 
     /// <summary>

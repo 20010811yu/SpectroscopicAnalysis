@@ -1,6 +1,7 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using SpectroscopicAnalysis.Host.Vision;
+using System.Collections.Generic;
 
 namespace SpectroscopicAnalysis.Host.ViewModels;
 
@@ -26,6 +27,16 @@ public sealed partial class LaserMarkingViewModel : ObservableObject, IPageLifec
     /// <summary>最近一次写回结果提示（成功/失败，供页面状态栏展示）。</summary>
     [ObservableProperty]
     private string _saveStatus = string.Empty;
+
+    /// <summary>打标方式候选（文本打印=2.ezd / 条码打印=1.ezd，路径映射在服务层）。</summary>
+    public static readonly IReadOnlyList<string> MarkingModes = ["文本打印", "条码打印"];
+
+    /// <summary>当前打标方式（默认文本打印；切换时联动 EzCad2 隐藏式重新加载对应工程文件）。</summary>
+    [ObservableProperty]
+    private string _markingMode = "文本打印";
+
+    /// <summary>打标方式切换执行中标志（防重入）。</summary>
+    private bool _isSwitchingMode;
 
     public LaserMarkingViewModel(ILaserMarkingService laserMarkingService)
     {
@@ -58,5 +69,31 @@ public sealed partial class LaserMarkingViewModel : ObservableObject, IPageLifec
 
         // 编辑内容写回 txt（服务层原子替换写入）；结果状态提示由页面展示
         SaveStatus = _laserMarkingService.WriteMarkingContent(value) ? "已保存" : "保存失败";
+    }
+
+    /// <summary>打标方式切换（用户下拉选择）：联动 EzCad2 隐藏式重新加载对应工程文件。</summary>
+    partial void OnMarkingModeChanged(string value)
+    {
+        if (_isSwitchingMode)
+        {
+            return;
+        }
+
+        _isSwitchingMode = true;
+        SaveStatus = $"正在切换为{value}…";
+        _ = SwitchModeAsync(value);
+    }
+
+    private async Task SwitchModeAsync(string mode)
+    {
+        try
+        {
+            var error = await _laserMarkingService.SwitchMarkingModeAsync(mode);
+            SaveStatus = error is null ? $"已切换为{mode}" : $"切换失败：{error}";
+        }
+        finally
+        {
+            _isSwitchingMode = false;
+        }
     }
 }

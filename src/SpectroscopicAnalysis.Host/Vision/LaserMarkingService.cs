@@ -12,12 +12,19 @@ namespace SpectroscopicAnalysis.Host.Vision;
 public class LaserMarkingService : ILaserMarkingService
 {
     private readonly string _contentFilePath;
+    private readonly string _textEzdFilePath;
+    private readonly string _barcodeEzdFilePath;
+    private readonly IEzCad2Controller _ezCad2Controller;
     private readonly ILogger<LaserMarkingService> _logger;
     private readonly IErrorCollector _errorCollector;
 
-    public LaserMarkingService(IConfiguration configuration, ILogger<LaserMarkingService> logger, IErrorCollector errorCollector)
+    public LaserMarkingService(IConfiguration configuration, IEzCad2Controller ezCad2Controller, ILogger<LaserMarkingService> logger, IErrorCollector errorCollector)
     {
         _contentFilePath = configuration["LaserMarking:ContentFilePath"] ?? @"D:\Desktop\2.txt";
+        // 文本打印用 EzCad2:EzdFilePath（启动默认工程）；条码打印为独立配置
+        _textEzdFilePath = configuration["EzCad2:EzdFilePath"] ?? @"D:\Desktop\261117\2.ezd";
+        _barcodeEzdFilePath = configuration["LaserMarking:BarcodeEzdFilePath"] ?? @"D:\Desktop\261117\1.ezd";
+        _ezCad2Controller = ezCad2Controller;
         _logger = logger;
         _errorCollector = errorCollector;
     }
@@ -61,5 +68,25 @@ public class LaserMarkingService : ILaserMarkingService
             _errorCollector.Collect(ErrorCodes.EzCad2LaunchFailed, $"写回打标文本文件失败：{_contentFilePath}", exception: ex);
             return false;
         }
+    }
+
+    /// <inheritdoc/>
+    public async Task<string?> SwitchMarkingModeAsync(string mode, CancellationToken cancellationToken = default)
+    {
+        // 模式 → 工程文件映射：文本打印=2.ezd（启动默认），条码打印=1.ezd
+        var ezdPath = mode switch
+        {
+            "文本打印" => _textEzdFilePath,
+            "条码打印" => _barcodeEzdFilePath,
+            _ => null,
+        };
+
+        if (ezdPath is null)
+        {
+            return $"未知的打标方式：{mode}";
+        }
+
+        _logger.LogInformation("切换打标方式：{Mode}（工程文件 {EzdPath}）", mode, ezdPath);
+        return await _ezCad2Controller.SwitchEzdFileAsync(ezdPath, cancellationToken);
     }
 }

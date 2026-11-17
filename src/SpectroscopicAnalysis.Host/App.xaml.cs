@@ -101,7 +101,10 @@ public partial class App
                 services.AddSingleton<ViewModels.MainViewModel>();
                 services.AddSingleton<MainWindow>();
                 // 外部打标软件：随上位机启动自动拉起 EzCad2（最小化 + 不显示任务栏）
-                services.AddHostedService<Vision.EzCad2Launcher>();
+                // 单例双注册：既是托管服务（启动拉起/守护/退出联动关闭），又作为控制接口供打标方式切换调用
+                services.AddSingleton<Vision.EzCad2Launcher>();
+                services.AddHostedService(sp => sp.GetRequiredService<Vision.EzCad2Launcher>());
+                services.AddSingleton<Vision.IEzCad2Controller>(sp => sp.GetRequiredService<Vision.EzCad2Launcher>());
             })
             .UseSerilog((context, loggerConfiguration) =>
             {

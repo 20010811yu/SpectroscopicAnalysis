@@ -16,13 +16,16 @@ public class EzCad2Options
     /// <summary>可执行文件完整路径；为空时回退到当前用户桌面 EzCad2.exe。</summary>
     public string ExecutablePath { get; set; } = string.Empty;
 
+    /// <summary>启动时自动加载的打标工程文件（.ezd）完整路径；为空时仅启动软件不加载文件。</summary>
+    public string EzdFilePath { get; set; } = string.Empty;
+
     /// <summary>启动后等待主窗口就绪的超时（毫秒，集中配置原则）。</summary>
     public int WaitForWindowTimeoutMs { get; set; } = 15000;
 }
 
 /// <summary>
-/// 随上位机启动自动拉起 EzCad2.exe（激光打标软件）：
-/// 窗口最小化启动，并通过 WS_EX_TOOLWINDOW 扩展样式使其不出现在任务栏。
+/// 随上位机启动自动拉起 EzCad2.exe（激光打标软件），并以命令行参数加载配置的 .ezd 工程文件：
+/// 启动后强制最小化并完全隐藏窗口，使其不出现在桌面与任务栏。
 /// 失败仅记录错误（9003），不阻断上位机启动（打标软件为辅助外部程序）。
 /// </summary>
 public class EzCad2Launcher : BackgroundService
@@ -64,13 +67,16 @@ public class EzCad2Launcher : BackgroundService
             return;
         }
 
-        _logger.LogInformation("自动启动 EzCad2：{ExePath}", exePath);
+        // 启动参数：可配置的 .ezd 工程文件（EzCad2 接收文件路径作为命令行参数直接打开）
+        var arguments = ResolveEzdArgument();
+        _logger.LogInformation("自动启动 EzCad2：{ExePath} {Arguments}", exePath, arguments);
 
         using var process = new Process
         {
             StartInfo = new ProcessStartInfo
             {
                 FileName = exePath,
+                Arguments = arguments,
                 UseShellExecute = true,
                 // 窗口最小化启动（多数 Win32 程序响应 STARTUPINFO 的 SW_MINIMIZE）
                 WindowStyle = ProcessWindowStyle.Minimized,
@@ -147,6 +153,26 @@ public class EzCad2Launcher : BackgroundService
             _logger.LogWarning(ex, "解析 EzCad2 快捷方式失败：{ShortcutPath}", shortcutPath);
             return null;
         }
+    }
+
+    /// <summary>
+    /// 构造启动参数：配置的 .ezd 文件存在时作为参数传入（含引号防路径空格）；
+    /// 文件不存在仅记录警告，仍正常启动软件（不阻断打标软件可用性）。
+    /// </summary>
+    private string ResolveEzdArgument()
+    {
+        if (string.IsNullOrWhiteSpace(_options.EzdFilePath))
+        {
+            return string.Empty;
+        }
+
+        if (!File.Exists(_options.EzdFilePath))
+        {
+            _logger.LogWarning("配置的 Ezd 工程文件不存在，启动时不加载：{EzdPath}", _options.EzdFilePath);
+            return string.Empty;
+        }
+
+        return $"\"{_options.EzdFilePath}\"";
     }
 
     /// <summary>追加 WS_EX_TOOLWINDOW 扩展样式：窗口不出现在任务栏（不改变最小化状态与可见性）。</summary>

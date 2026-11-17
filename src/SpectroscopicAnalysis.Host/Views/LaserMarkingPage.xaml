@@ -1,0 +1,40 @@
+<UserControl x:Class="SpectroscopicAnalysis.Host.Views.LaserMarkingPage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <!-- 激光打标页：打标文本输入框（内容来自配置路径的文本文件，进入页面时自动加载） -->
+    <Grid Margin="16">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <!-- 标题行：页标题 + 刷新按钮 -->
+        <Grid Grid.Row="0" Margin="0,0,0,12">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <TextBlock Grid.Column="0" Text="激光打标" Style="{StaticResource Text.PageTitle}" />
+            <Button Grid.Column="1" Content="重新加载" Style="{StaticResource ModeBtn}"
+                    Command="{Binding ReloadContentCommand}" VerticalAlignment="Center" />
+        </Grid>
+
+        <!-- 打标文本卡（弹性布局：卡占满剩余空间，输入框填满卡内） -->
+        <Border Grid.Row="1" Style="{StaticResource Card}">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+
+                <TextBlock Grid.Row="0" Text="打标文本内容" Style="{StaticResource Text.CardTitle}" Margin="0,0,0,8" />
+                <TextBox Grid.Row="1"
+                         Text="{Binding MarkingContent, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                         AcceptsReturn="True" TextWrapping="Wrap"
+                         VerticalContentAlignment="Top"
+                         VerticalScrollBarVisibility="Auto"
+                         FontSize="{DynamicResource FontSize.Body}" />
+            </Grid>
+        </Border>
+    </Grid>
+</UserControl>

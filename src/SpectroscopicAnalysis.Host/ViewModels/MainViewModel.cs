@@ -43,7 +43,8 @@ public sealed partial class MainViewModel : ObservableObject
         SctViewModel sct,
         CoefficientsViewModel coefficients,
         AlarmsViewModel alarms,
-        SettingsViewModel settings)
+        SettingsViewModel settings,
+        LaserMarkingViewModel laserMarking)
     {
         var items = new ObservableCollection<NavItem>
         {
@@ -51,6 +52,7 @@ public sealed partial class MainViewModel : ObservableObject
             new() { Title = "样品档案", Target = samples },
             new() { Title = "SCT 管理", Target = sct },
             new() { Title = "系数管理", Target = coefficients },
+            new() { Title = "激光打标", Target = laserMarking },
             new() { Title = "日志报警", Target = alarms },
             new() { Title = "设置", Target = settings },
         };

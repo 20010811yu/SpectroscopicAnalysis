@@ -70,6 +70,9 @@ public partial class App
                 services.AddSingleton<ViewModels.CoefficientsViewModel>();
                 services.AddSingleton<ViewModels.AlarmsViewModel>();
                 services.AddSingleton<ViewModels.SettingsViewModel>();
+                services.AddSingleton<ViewModels.LaserMarkingViewModel>();
+                // 激光打标：打标文本内容读取服务（页面经接口消费，后续打标指令下发在同接口扩展）
+                services.AddSingleton<Vision.ILaserMarkingService, Vision.LaserMarkingService>();
                 services.AddSingleton<ViewModels.MainViewModel>();
                 services.AddSingleton<MainWindow>();
                 // 外部打标软件：随上位机启动自动拉起 EzCad2（最小化 + 不显示任务栏）

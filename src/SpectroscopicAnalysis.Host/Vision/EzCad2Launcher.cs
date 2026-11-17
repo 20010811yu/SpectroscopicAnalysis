@@ -63,6 +63,13 @@ public class EzCad2Launcher : BackgroundService
         try
         {
             await Task.Run(() => Launch(stoppingToken), stoppingToken);
+
+            // 常驻隐藏守护：EzCad2 会自行重新显示最小化形态的迷你条窗（屏幕底部约 160x28），反复重绘造成闪烁；
+            // 上位机运行期间持续轮询，发现可见主窗口立即隐藏（150ms 轮询，开销可忽略）
+            if (_hideWindow)
+            {
+                HideGuardLoop(stoppingToken);
+            }
         }
         catch (OperationCanceledException)
         {
@@ -72,6 +79,26 @@ public class EzCad2Launcher : BackgroundService
         {
             // 携带登记错误码走统一错误链（9003），不吞异常
             _errorCollector.Collect(ErrorCodes.EzCad2LaunchFailed, "EzCad2 自动启动失败", exception: ex);
+        }
+    }
+
+    /// <summary>
+    /// 常驻隐藏守护循环：轮询期间发现主窗口可见（EzCad2 自行重新显示迷你条窗等）立即最小化并隐藏。
+    /// 阻塞调用线程（Task.Run 线程）直至上位机退出。
+    /// </summary>
+    private void HideGuardLoop(CancellationToken stoppingToken)
+    {
+        while (!stoppingToken.IsCancellationRequested)
+        {
+            if (_mainWindowHandle != IntPtr.Zero && IsWindow(_mainWindowHandle) && IsWindowVisible(_mainWindowHandle))
+            {
+                ShowWindow(_mainWindowHandle, SW_MINIMIZE);
+                ApplyToolWindowStyle(_mainWindowHandle);
+                ShowWindow(_mainWindowHandle, SW_HIDE);
+                _logger.LogDebug("守护循环重新隐藏了 EzCad2 自行显示的窗口");
+            }
+
+            Thread.Sleep(150);
         }
     }
 
@@ -487,6 +514,9 @@ public class EzCad2Launcher : BackgroundService
 
     [DllImport("user32.dll")]
     private static extern bool IsWindow(IntPtr hWnd);
+
+    [DllImport("user32.dll")]
+    private static extern bool IsWindowVisible(IntPtr hWnd);
 
     [DllImport("user32.dll")]
     private static extern bool PostMessage(IntPtr hWnd, uint msg, IntPtr wParam, IntPtr lParam);

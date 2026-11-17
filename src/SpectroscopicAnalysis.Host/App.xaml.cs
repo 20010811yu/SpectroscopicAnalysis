@@ -21,6 +21,9 @@ public partial class App
 {
     private readonly IHost _host;
 
+    /// <summary>单实例互斥体：禁止多个上位机实例并存（多实例会互相争抢联动关闭/重启 EzCad2 等外部资源）。</summary>
+    private Mutex? _singleInstanceMutex;
+
     public App()
     {
         _host = HostApp.CreateDefaultBuilder()
@@ -85,6 +88,17 @@ public partial class App
     protected override async void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
+
+        // 单实例保护：已存在实例时提示并退出（互斥体持有至进程退出自动释放）
+        _singleInstanceMutex = new Mutex(true, @"Global\SpectroscopicAnalysisHost", out var createdNew);
+        if (!createdNew)
+        {
+            MessageBox.Show("上位机已在运行中，请勿重复启动。", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
+            Log.Information("检测到已有上位机实例运行，本次启动退出");
+            Log.CloseAndFlush();
+            Shutdown(0);
+            return;
+        }
 
         // 全局异常兜底（开发规范 11.2 最小版；完整错误链随 D9 落地）——启动期先记录再终止
         DispatcherUnhandledException += (_, ex) =>

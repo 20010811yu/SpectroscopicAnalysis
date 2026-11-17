@@ -38,6 +38,9 @@ public class EzCad2Launcher : BackgroundService
     /// <summary>本服务拉起的 EzCad2 进程；退出时联动关闭（不 Dispose，进程对象由服务持有至 StopAsync）。</summary>
     private Process? _launchedProcess;
 
+    /// <summary>启动时记录的主窗口句柄；隐藏窗口后 Process.MainWindowHandle 会返回 0，关闭时须用本句柄。</summary>
+    private IntPtr _mainWindowHandle;
+
     public EzCad2Launcher(IConfiguration configuration, ILogger<EzCad2Launcher> logger, IErrorCollector errorCollector)
     {
         _options = configuration.GetSection("EzCad2").Get<EzCad2Options>() ?? new EzCad2Options();
@@ -74,10 +77,13 @@ public class EzCad2Launcher : BackgroundService
             try
             {
                 process.Refresh();
-                // 优雅关闭：向主窗口投递 WM_CLOSE（隐藏窗口同样有效）
-                if (process.MainWindowHandle != IntPtr.Zero)
+                // 优雅关闭：向启动时记录的主窗口句柄投递 WM_CLOSE（隐藏后 Process.MainWindowHandle 返回 0，不可用）
+                var mainWindow = _mainWindowHandle != IntPtr.Zero && IsWindow(_mainWindowHandle)
+                    ? _mainWindowHandle
+                    : process.MainWindowHandle;
+                if (mainWindow != IntPtr.Zero)
                 {
-                    process.CloseMainWindow();
+                    PostMessage(mainWindow, WM_CLOSE, IntPtr.Zero, IntPtr.Zero);
                 }
 
                 // 等待宽限期，未退出则强制结束（隐藏窗口下若弹出保存确认框无法交互，走此兜底）
@@ -88,6 +94,7 @@ public class EzCad2Launcher : BackgroundService
                 }
 
                 _logger.LogInformation("EzCad2 已随上位机关闭");
+                process.Dispose();
             }
             catch (Exception ex)
             {
@@ -112,7 +119,8 @@ public class EzCad2Launcher : BackgroundService
         var arguments = ResolveEzdArgument();
         _logger.LogInformation("自动启动 EzCad2：{ExePath} {Arguments}", exePath, arguments);
 
-        using var process = new Process
+        // 不用 using：进程对象须存活到 StopAsync 联动关闭，Dispose 后再访问其成员会抛 ObjectDisposedException
+        var process = new Process
         {
             StartInfo = new ProcessStartInfo
             {
@@ -142,6 +150,7 @@ public class EzCad2Launcher : BackgroundService
         }
 
         // 强制最小化（程序可能无视启动参数自行弹出窗口）→ 隐藏窗口 → 加工具窗样式确保任务栏无图标
+        _mainWindowHandle = mainWindow;
         ShowWindow(mainWindow, SW_MINIMIZE);
         ApplyToolWindowStyle(mainWindow);
         ShowWindow(mainWindow, SW_HIDE);
@@ -237,6 +246,14 @@ public class EzCad2Launcher : BackgroundService
 
     [DllImport("user32.dll")]
     private static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
+
+    [DllImport("user32.dll")]
+    private static extern bool IsWindow(IntPtr hWnd);
+
+    [DllImport("user32.dll")]
+    private static extern bool PostMessage(IntPtr hWnd, uint msg, IntPtr wParam, IntPtr lParam);
+
+    private const uint WM_CLOSE = 0x0010;
 
     [DllImport("user32.dll", EntryPoint = "GetWindowLongW")]
     private static extern long GetWindowLong(IntPtr hWnd, int nIndex);

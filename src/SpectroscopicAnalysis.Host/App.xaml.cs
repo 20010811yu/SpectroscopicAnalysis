@@ -177,8 +177,16 @@ public partial class App
 
     protected override void OnExit(ExitEventArgs e)
     {
-        // Host 停止为同步引导期收尾（WPF OnExit 无异步重载），业务代码中禁止此类阻塞写法
-        _host.StopAsync(TimeSpan.FromSeconds(5)).GetAwaiter().GetResult();
+        // Host 停止限时 5 秒：放到后台线程执行（.NET 10 宿主 StopAsync 在个别场景下即使有取消令牌也不返回，
+        // 必须用硬超时兜底）；超时则直接强制退出进程——EzCad2 清理在服务 StopAsync 内部先行完成，不受影响
+        var stopTask = Task.Run(() => _host.StopAsync(TimeSpan.FromSeconds(5)));
+        if (!stopTask.Wait(TimeSpan.FromSeconds(5)))
+        {
+            Log.Warning("Host 停止超时（5 秒），强制退出进程");
+            Log.CloseAndFlush();
+            Environment.Exit(e.ApplicationExitCode);
+        }
+
         _host.Dispose();
         Log.Information("上位机退出");
         Log.CloseAndFlush();

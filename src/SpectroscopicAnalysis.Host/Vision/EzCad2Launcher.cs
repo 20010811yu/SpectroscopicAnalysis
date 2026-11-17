@@ -48,6 +48,10 @@ public class EzCad2Launcher : BackgroundService, IEzCad2Controller
     private readonly ILogger<EzCad2Launcher> _logger;
     private readonly IErrorCollector _errorCollector;
 
+    /// <summary>宿主应用停止令牌：ExecuteAsync 的 stoppingToken 在部分宿主版本关机时不会取消，
+    /// 守护循环必须额外监听 ApplicationStopping 才能在上位机退出时及时结束（否则 base.StopAsync 永久等待导致卡死）。</summary>
+    private readonly CancellationToken _appStopping;
+
     /// <summary>启动/切换/联动关闭互斥锁：避免并发重启 EzCad2 造成进程与句柄状态混乱。</summary>
     private readonly SemaphoreSlim _launchLock = new(1, 1);
 
@@ -57,9 +61,10 @@ public class EzCad2Launcher : BackgroundService, IEzCad2Controller
     /// <summary>启动时记录的主窗口句柄；隐藏窗口后 Process.MainWindowHandle 会返回 0，关闭时须用本句柄。</summary>
     private IntPtr _mainWindowHandle;
 
-    public EzCad2Launcher(IConfiguration configuration, ILogger<EzCad2Launcher> logger, IErrorCollector errorCollector)
+    public EzCad2Launcher(IConfiguration configuration, IHostApplicationLifetime appLifetime, ILogger<EzCad2Launcher> logger, IErrorCollector errorCollector)
     {
         _options = configuration.GetSection("EzCad2").Get<EzCad2Options>() ?? new EzCad2Options();
+        _appStopping = appLifetime.ApplicationStopping;
         _hideWindow = _options.HideWindow;
         _logger = logger;
         _errorCollector = errorCollector;
@@ -72,14 +77,19 @@ public class EzCad2Launcher : BackgroundService, IEzCad2Controller
     {
         try
         {
-            await Task.Run(() => Launch(stoppingToken, _options.EzdFilePath), stoppingToken);
-
-            // 常驻隐藏守护：EzCad2 会自行重新显示最小化形态的迷你条窗（屏幕底部约 160x28），反复重绘造成闪烁；
-            // 上位机运行期间持续轮询，发现可见主窗口立即隐藏（150ms 轮询，开销可忽略）
-            if (_hideWindow)
+            // 注意：Launch 与守护循环必须整体在 Task.Run 的后台线程执行——
+            // WPF 同步上下文会把 await 之后的延续调度回 UI 线程，若守护循环在 UI 线程同步阻塞将冻结整个界面
+            await Task.Run(() =>
             {
-                HideGuardLoop(stoppingToken);
-            }
+                Launch(stoppingToken, _options.EzdFilePath);
+
+                // 常驻隐藏守护：EzCad2 会自行重新显示最小化形态的迷你条窗（屏幕底部约 160x28），反复重绘造成闪烁；
+                // 上位机运行期间持续轮询，发现可见主窗口立即隐藏（150ms 轮询，开销可忽略）
+                if (_hideWindow)
+                {
+                    HideGuardLoop(_appStopping);
+                }
+            }, _appStopping);
         }
         catch (OperationCanceledException)
         {
@@ -113,55 +123,87 @@ public class EzCad2Launcher : BackgroundService, IEzCad2Controller
     }
 
     /// <summary>
-    /// 上位机退出时联动关闭 EzCad2：先优雅关闭（WM_CLOSE，等待进程自行清理退出），
-    /// 超时后强制 Kill 兜底。失败仅记录，不影响上位机退出流程。
+    /// 上位机退出时联动关闭 EzCad2：先优雅关闭（WM_CLOSE）并异步有界等待，超时强制 Kill；
+    /// 最后按进程名兜底清理所有 EzCad2 残留（覆盖切换期间产生的孤儿实例）。
+    /// 全程异步等待，不阻塞 UI 线程；失败仅记录，不影响上位机退出流程。
     /// </summary>
     public override async Task StopAsync(CancellationToken cancellationToken)
     {
-        var process = _launchedProcess;
-        if (process != null)
+        try
         {
-            // 进程对象可能未关联句柄（启动流程被并发实例打断等），视为无可关闭对象直接跳过
+            var process = _launchedProcess;
             var associated = false;
-            try
+            if (process != null)
             {
-                associated = !process.HasExited;
-            }
-            catch (InvalidOperationException)
-            {
-                _logger.LogDebug("EzCad2 进程对象未关联（无可关闭对象），跳过联动关闭");
+                // 进程对象可能未关联句柄（启动流程被并发实例打断等），视为无可关闭对象直接跳过
+                try
+                {
+                    associated = !process.HasExited;
+                }
+                catch (InvalidOperationException)
+                {
+                    _logger.LogDebug("EzCad2 进程对象未关联（无可关闭对象），跳过联动关闭");
+                }
             }
 
-            if (associated)
+            if (associated && process != null)
+            {
+                // 优雅关闭：向启动时记录的主窗口句柄投递 WM_CLOSE（隐藏后 Process.MainWindowHandle 返回 0，不可用）
+                var mainWindow = _mainWindowHandle != IntPtr.Zero && IsWindow(_mainWindowHandle)
+                    ? _mainWindowHandle
+                    : IntPtr.Zero;
+                if (mainWindow != IntPtr.Zero)
+                {
+                    PostMessage(mainWindow, WM_CLOSE, IntPtr.Zero, IntPtr.Zero);
+                }
+
+                // 异步等待宽限期，未退出则强制结束（隐藏窗口下若弹出保存确认框无法交互，走此兜底）
+                try
+                {
+                    await process.WaitForExitAsync(cancellationToken)
+                        .WaitAsync(TimeSpan.FromMilliseconds(ShutdownGraceMs), CancellationToken.None);
+                }
+                catch (TimeoutException)
+                {
+                    // 优雅关闭超时
+                }
+
+                if (!process.HasExited)
+                {
+                    process.Kill(entireProcessTree: true);
+                    _logger.LogWarning("EzCad2 优雅关闭超时，已强制结束进程");
+                }
+
+                _logger.LogInformation("EzCad2 已随上位机关闭");
+            }
+
+            // 兜底：按进程名清理所有 EzCad2 残留（覆盖工程切换期间的孤儿实例）
+            foreach (var leftover in Process.GetProcessesByName("EzCad2"))
             {
                 try
                 {
-                    process.Refresh();
-                    // 优雅关闭：向启动时记录的主窗口句柄投递 WM_CLOSE（隐藏后 Process.MainWindowHandle 返回 0，不可用）
-                    var mainWindow = _mainWindowHandle != IntPtr.Zero && IsWindow(_mainWindowHandle)
-                        ? _mainWindowHandle
-                        : process.MainWindowHandle;
-                    if (mainWindow != IntPtr.Zero)
+                    if (!leftover.HasExited)
                     {
-                        PostMessage(mainWindow, WM_CLOSE, IntPtr.Zero, IntPtr.Zero);
+                        leftover.Kill(entireProcessTree: true);
+                        _logger.LogWarning("已强制结束残留 EzCad2 进程（PID {Pid}）", leftover.Id);
                     }
-
-                    // 等待宽限期，未退出则强制结束（隐藏窗口下若弹出保存确认框无法交互，走此兜底）
-                    if (!process.WaitForExit(ShutdownGraceMs) && !process.HasExited)
-                    {
-                        process.Kill(entireProcessTree: true);
-                        _logger.LogWarning("EzCad2 优雅关闭超时，已强制结束进程");
-                    }
-
-                    _logger.LogInformation("EzCad2 已随上位机关闭");
-                    process.Dispose();
                 }
                 catch (Exception ex)
                 {
-                    // 关闭失败不阻断上位机退出；记录 9003 供排查
-                    _errorCollector.Collect(ErrorCodes.EzCad2LaunchFailed, "EzCad2 联动关闭失败", exception: ex);
+                    _logger.LogWarning(ex, "清理残留 EzCad2 进程失败（PID {Pid}）", leftover.Id);
+                }
+                finally
+                {
+                    leftover.Dispose();
                 }
             }
+
+            process?.Dispose();
+        }
+        catch (Exception ex)
+        {
+            // 关闭失败不阻断上位机退出；记录 9003 供排查
+            _errorCollector.Collect(ErrorCodes.EzCad2LaunchFailed, "EzCad2 联动关闭失败", exception: ex);
         }
 
         await base.StopAsync(cancellationToken);
@@ -296,7 +338,17 @@ public class EzCad2Launcher : BackgroundService, IEzCad2Controller
 
         if (_watcherThread.IsAlive)
         {
-            PostThreadMessage(_watcherThread.ManagedThreadId, WM_QUIT, IntPtr.Zero, IntPtr.Zero);
+            // 投递 WM_QUIT 结束消息泵；线程可能尚未创建消息队列导致投递失败，重试数次
+            for (var attempt = 0; attempt < 5 && _watcherThread.IsAlive; attempt++)
+            {
+                if (PostThreadMessage(_watcherThread.ManagedThreadId, WM_QUIT, IntPtr.Zero, IntPtr.Zero))
+                {
+                    break;
+                }
+
+                Thread.Sleep(100);
+            }
+
             _watcherThread.Join(2000);
         }
     }

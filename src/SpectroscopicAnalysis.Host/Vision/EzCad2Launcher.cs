@@ -370,9 +370,9 @@ public class EzCad2Launcher : BackgroundService
         U = new InputUnion { mi = new MOUSEINPUT { dwFlags = flags } },
     };
 
-    /// <summary>对象列表第一行（文本条目）相对窗口矩形的点击偏移（物理像素）。</summary>
-    private const int ObjectListRowOffsetX = 75;
-    private const int ObjectListRowOffsetY = 100;
+    /// <summary>对象列表第一行（文本条目）相对窗口矩形的点击偏移（物理像素；实测：标题栏+菜单+工具栏+面板表头共约 130px，行中心在 137）。</summary>
+    private const int ObjectListRowOffsetX = 55;
+    private const int ObjectListRowOffsetY = 137;
 
     /// <summary>解析 .lnk 快捷方式的目标 exe 路径（WScript.Shell COM；解析失败返回 null）。</summary>
     private string? ResolveShortcutTarget(string shortcutPath)

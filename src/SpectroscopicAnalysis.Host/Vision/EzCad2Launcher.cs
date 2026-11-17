@@ -24,6 +24,9 @@ public class EzCad2Options
 
     /// <summary>启动后自动向主窗口发送 Ctrl+A 选中画布上全部对象（含文本区）。</summary>
     public bool AutoSelectAll { get; set; } = true;
+
+    /// <summary>是否隐藏 EzCad2 窗口（false = 正常显示窗口；调试期暂不隐藏）。</summary>
+    public bool HideWindow { get; set; } = true;
 }
 
 /// <summary>
@@ -47,9 +50,13 @@ public class EzCad2Launcher : BackgroundService
     public EzCad2Launcher(IConfiguration configuration, ILogger<EzCad2Launcher> logger, IErrorCollector errorCollector)
     {
         _options = configuration.GetSection("EzCad2").Get<EzCad2Options>() ?? new EzCad2Options();
+        _hideWindow = _options.HideWindow;
         _logger = logger;
         _errorCollector = errorCollector;
     }
+
+    /// <summary>是否隐藏窗口的运行时快照（构造时取自配置，回调与收尾逻辑共用）。</summary>
+    private readonly bool _hideWindow;
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
@@ -147,8 +154,8 @@ public class EzCad2Launcher : BackgroundService
                 FileName = exePath,
                 Arguments = arguments,
                 UseShellExecute = true,
-                // 窗口最小化启动（多数 Win32 程序响应 STARTUPINFO 的 SW_MINIMIZE）
-                WindowStyle = ProcessWindowStyle.Minimized,
+                // 隐藏模式下窗口最小化启动；调试显示模式正常启动
+                WindowStyle = _hideWindow ? ProcessWindowStyle.Minimized : ProcessWindowStyle.Normal,
             },
             EnableRaisingEvents = true,
         };
@@ -254,6 +261,12 @@ public class EzCad2Launcher : BackgroundService
             _mainWindowHandle = hwnd;
         }
 
+        if (!_hideWindow)
+        {
+            // 调试期配置：窗口正常显示，不做最小化/隐藏处理
+            return;
+        }
+
         // 强制最小化 → 工具窗样式（任务栏无图标）→ 隐藏
         ShowWindow(hwnd, SW_MINIMIZE);
         ApplyToolWindowStyle(hwnd);
@@ -292,17 +305,25 @@ public class EzCad2Launcher : BackgroundService
     }
 
     /// <summary>
-    /// 真实键盘输入完成画布全选：短暂显示窗口并置前（约 1 秒）→ SendInput 发送 Ctrl+A → 重新最小化并隐藏。
+    /// 真实键盘输入完成画布全选：窗口置前（隐藏模式下短暂闪现）→ SendInput 发送 Ctrl+A → 隐藏模式下重新隐藏。
     /// PostMessage 投递按键对 EzCad2 不生效（其焦点/加速键处理依赖真实输入队列），故必须走系统输入。
     /// </summary>
     private bool SelectAllViaRealKeyboard(IntPtr mainWindow)
     {
-        // 短暂显示并置前（闪现约 1 秒后立即重新隐藏）
-        ShowWindow(mainWindow, SW_SHOW);
+        // 隐藏模式需先短暂显示并置前；显示模式窗口本来可见，直接置前
+        if (_hideWindow)
+        {
+            ShowWindow(mainWindow, SW_SHOW);
+        }
+
         if (!SetForegroundWindow(mainWindow))
         {
-            // 置前失败恢复隐藏并报告（Windows 前台锁策略下偶发）
-            ShowWindow(mainWindow, SW_HIDE);
+            // 置前失败：隐藏模式下恢复隐藏并报告（Windows 前台锁策略下偶发）
+            if (_hideWindow)
+            {
+                ShowWindow(mainWindow, SW_HIDE);
+            }
+
             return false;
         }
 
@@ -320,9 +341,13 @@ public class EzCad2Launcher : BackgroundService
 
         Thread.Sleep(300);
 
-        // 重新隐藏（最小化 → 隐藏；工具窗样式仍在，任务栏不会出现图标）
-        ShowWindow(mainWindow, SW_MINIMIZE);
-        ShowWindow(mainWindow, SW_HIDE);
+        // 隐藏模式下重新隐藏（最小化 → 隐藏；工具窗样式仍在，任务栏不会出现图标）
+        if (_hideWindow)
+        {
+            ShowWindow(mainWindow, SW_MINIMIZE);
+            ShowWindow(mainWindow, SW_HIDE);
+        }
+
         return true;
     }
 

@@ -22,9 +22,6 @@ public class EzCad2Options
     /// <summary>启动后等待主窗口就绪的超时（毫秒，集中配置原则）。</summary>
     public int WaitForWindowTimeoutMs { get; set; } = 15000;
 
-    /// <summary>启动后自动向主窗口发送 Ctrl+A 选中画布上全部对象（含文本区）。</summary>
-    public bool AutoSelectAll { get; set; } = true;
-
     /// <summary>是否隐藏 EzCad2 窗口（false = 正常显示窗口；调试期暂不隐藏）。</summary>
     public bool HideWindow { get; set; } = true;
 }
@@ -200,19 +197,6 @@ public class EzCad2Launcher : BackgroundService
         _mainWindowHandle = IntPtr.Zero;
         StartShowEventWatcher(process.Id, _options.WaitForWindowTimeoutMs, stoppingToken);
 
-        // 窗口就绪后自动选中文本对象（配置开关；点击对象列表条目选中，不依赖画布焦点）
-        if (_options.AutoSelectAll && _mainWindowHandle != IntPtr.Zero && IsWindow(_mainWindowHandle))
-        {
-            if (SelectTextObjectByMouse(_mainWindowHandle))
-            {
-                _logger.LogInformation("已点击对象列表选中文本对象{HideNote}", _hideWindow ? "，窗口已重新隐藏" : "");
-            }
-            else
-            {
-                _logger.LogWarning("EzCad2 自动选中文本对象失败（窗口未能置前）");
-            }
-        }
-
         _logger.LogInformation("EzCad2 已启动，窗口已隐藏且不在任务栏显示");
     }
 
@@ -337,69 +321,6 @@ public class EzCad2Launcher : BackgroundService
         var shortcut = Path.Combine(desktop, "EzCad2.exe.lnk");
         return File.Exists(shortcut) ? ResolveShortcutTarget(shortcut) : null;
     }
-
-    /// <summary>
-    /// 鼠标点击选中打标文本对象：点击窗口左上角「对象列表」面板的第一行（文本条目）即选中画布对应对象。
-    /// 相比 Ctrl+A 快捷键（需画布键盘焦点，时序脆弱），点击列表条目不依赖焦点，选中行为确定。
-    /// 面板锚定窗口左上角，点击坐标取窗口矩形相对偏移。
-    /// </summary>
-    private bool SelectTextObjectByMouse(IntPtr mainWindow)
-    {
-        // 隐藏模式需先还原窗口（窗口此前为最小化+隐藏态；SW_SHOW 只改可见性不解除最小化，
-        // 最小化窗口的矩形在屏幕外 -32000 处，点击与焦点都会落空），显示模式直接置前
-        if (_hideWindow)
-        {
-            ShowWindow(mainWindow, SW_RESTORE);
-        }
-
-        if (!SetForegroundWindow(mainWindow))
-        {
-            // 置前失败：隐藏模式下恢复隐藏并报告（Windows 前台锁策略下偶发）
-            if (_hideWindow)
-            {
-                ShowWindow(mainWindow, SW_HIDE);
-            }
-
-            return false;
-        }
-
-        Thread.Sleep(800);
-
-        // 点击「对象列表」面板第一行（文本条目）：标题栏+工具栏+面板表头约占窗口顶部 100 物理像素，
-        // 行宽覆盖列表前 150 物理像素；点中即选中画布中的文本对象
-        if (!GetWindowRect(mainWindow, out var rect))
-        {
-            return false;
-        }
-
-        var clickX = rect.Left + ObjectListRowOffsetX;
-        var clickY = rect.Top + ObjectListRowOffsetY;
-        SetCursorPos(clickX, clickY);
-        Thread.Sleep(200);
-        SendInput(1, new[] { MakeMouseInput(MOUSEEVENTF_LEFTDOWN) }, Marshal.SizeOf<INPUT>());
-        Thread.Sleep(80);
-        SendInput(1, new[] { MakeMouseInput(MOUSEEVENTF_LEFTUP) }, Marshal.SizeOf<INPUT>());
-        Thread.Sleep(300);
-
-        // 隐藏模式下重新隐藏（最小化 → 隐藏；工具窗样式仍在，任务栏不会出现图标）
-        if (_hideWindow)
-        {
-            ShowWindow(mainWindow, SW_MINIMIZE);
-            ShowWindow(mainWindow, SW_HIDE);
-        }
-
-        return true;
-    }
-
-    private static INPUT MakeMouseInput(uint flags) => new()
-    {
-        type = INPUT_MOUSE,
-        U = new InputUnion { mi = new MOUSEINPUT { dwFlags = flags } },
-    };
-
-    /// <summary>对象列表第一行（文本条目）相对窗口矩形的点击偏移（物理像素；实测：标题栏+菜单+工具栏+面板表头共约 130px，行中心在 137）。</summary>
-    private const int ObjectListRowOffsetX = 55;
-    private const int ObjectListRowOffsetY = 137;
 
     /// <summary>解析 .lnk 快捷方式的目标 exe 路径（WScript.Shell COM；解析失败返回 null）。</summary>
     private string? ResolveShortcutTarget(string shortcutPath)
@@ -553,59 +474,6 @@ public class EzCad2Launcher : BackgroundService
     private const uint WM_QUIT = 0x0012;
     private const uint EVENT_OBJECT_SHOW = 0x8002;
     private const uint WINEVENT_OUTOFCONTEXT = 0x0000;
-
-    private const int SW_RESTORE = 9;
-
-    // SendInput（真实鼠标输入，注入系统输入队列）
-    private const uint INPUT_MOUSE = 0;
-    private const uint MOUSEEVENTF_LEFTDOWN = 0x0002;
-    private const uint MOUSEEVENTF_LEFTUP = 0x0004;
-
-    [DllImport("user32.dll")]
-    private static extern uint SendInput(uint nInputs, INPUT[] pInputs, int cbSize);
-
-    [DllImport("user32.dll")]
-    private static extern bool SetForegroundWindow(IntPtr hWnd);
-
-    [DllImport("user32.dll")]
-    private static extern bool GetWindowRect(IntPtr hWnd, out RECT lpRect);
-
-    [DllImport("user32.dll")]
-    private static extern bool SetCursorPos(int x, int y);
-
-    [StructLayout(LayoutKind.Sequential)]
-    private struct RECT
-    {
-        public int Left;
-        public int Top;
-        public int Right;
-        public int Bottom;
-    }
-
-    [StructLayout(LayoutKind.Sequential)]
-    private struct INPUT
-    {
-        public uint type;
-        public InputUnion U;
-    }
-
-    [StructLayout(LayoutKind.Explicit)]
-    private struct InputUnion
-    {
-        [FieldOffset(0)]
-        public MOUSEINPUT mi;
-    }
-
-    [StructLayout(LayoutKind.Sequential)]
-    private struct MOUSEINPUT
-    {
-        public int dx;
-        public int dy;
-        public uint mouseData;
-        public uint dwFlags;
-        public uint time;
-        public IntPtr dwExtraInfo;
-    }
 
     [StructLayout(LayoutKind.Sequential)]
     private struct MSG

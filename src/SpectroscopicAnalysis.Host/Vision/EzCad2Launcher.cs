@@ -27,12 +27,16 @@ public class EzCad2Options
 /// 随上位机启动自动拉起 EzCad2.exe（激光打标软件），并以命令行参数加载配置的 .ezd 工程文件：
 /// 启动后强制最小化并完全隐藏窗口，使其不出现在桌面与任务栏。
 /// 失败仅记录错误（9003），不阻断上位机启动（打标软件为辅助外部程序）。
+/// 上位机退出时联动关闭 EzCad2：先尝试优雅关闭（WM_CLOSE），超时后强制结束进程。
 /// </summary>
 public class EzCad2Launcher : BackgroundService
 {
     private readonly EzCad2Options _options;
     private readonly ILogger<EzCad2Launcher> _logger;
     private readonly IErrorCollector _errorCollector;
+
+    /// <summary>本服务拉起的 EzCad2 进程；退出时联动关闭（不 Dispose，进程对象由服务持有至 StopAsync）。</summary>
+    private Process? _launchedProcess;
 
     public EzCad2Launcher(IConfiguration configuration, ILogger<EzCad2Launcher> logger, IErrorCollector errorCollector)
     {
@@ -56,6 +60,43 @@ public class EzCad2Launcher : BackgroundService
             // 携带登记错误码走统一错误链（9003），不吞异常
             _errorCollector.Collect(ErrorCodes.EzCad2LaunchFailed, "EzCad2 自动启动失败", exception: ex);
         }
+    }
+
+    /// <summary>
+    /// 上位机退出时联动关闭 EzCad2：先优雅关闭（WM_CLOSE，等待进程自行清理退出），
+    /// 超时后强制 Kill 兜底。失败仅记录，不影响上位机退出流程。
+    /// </summary>
+    public override async Task StopAsync(CancellationToken cancellationToken)
+    {
+        var process = _launchedProcess;
+        if (process != null && !process.HasExited)
+        {
+            try
+            {
+                process.Refresh();
+                // 优雅关闭：向主窗口投递 WM_CLOSE（隐藏窗口同样有效）
+                if (process.MainWindowHandle != IntPtr.Zero)
+                {
+                    process.CloseMainWindow();
+                }
+
+                // 等待宽限期，未退出则强制结束（隐藏窗口下若弹出保存确认框无法交互，走此兜底）
+                if (!process.WaitForExit(ShutdownGraceMs) && !process.HasExited)
+                {
+                    process.Kill(entireProcessTree: true);
+                    _logger.LogWarning("EzCad2 优雅关闭超时，已强制结束进程");
+                }
+
+                _logger.LogInformation("EzCad2 已随上位机关闭");
+            }
+            catch (Exception ex)
+            {
+                // 关闭失败不阻断上位机退出；记录 9003 供排查
+                _errorCollector.Collect(ErrorCodes.EzCad2LaunchFailed, "EzCad2 联动关闭失败", exception: ex);
+            }
+        }
+
+        await base.StopAsync(cancellationToken);
     }
 
     private void Launch(CancellationToken stoppingToken)
@@ -88,6 +129,9 @@ public class EzCad2Launcher : BackgroundService
             _errorCollector.Collect(ErrorCodes.EzCad2LaunchFailed, "EzCad2 进程启动返回失败");
             return;
         }
+
+        // 留存进程引用，供 StopAsync 在上位机退出时联动关闭（此处不 Dispose，避免句柄提前失效）
+        _launchedProcess = process;
 
         // 等主窗口句柄出现（消息循环就绪后才能改样式；集中配置超时，防止无限等待）
         var mainWindow = WaitForMainWindow(process, _options.WaitForWindowTimeoutMs, stoppingToken);
@@ -187,6 +231,9 @@ public class EzCad2Launcher : BackgroundService
     private const long WS_EX_TOOLWINDOW = 0x00000080;
     private const int SW_MINIMIZE = 6;
     private const int SW_HIDE = 0;
+
+    /// <summary>优雅关闭宽限期（毫秒）：超时未退出则强制结束进程（上限受 Host 停止超时 5s 约束）。</summary>
+    private const int ShutdownGraceMs = 3000;
 
     [DllImport("user32.dll")]
     private static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);

@@ -72,34 +72,48 @@ public class EzCad2Launcher : BackgroundService
     public override async Task StopAsync(CancellationToken cancellationToken)
     {
         var process = _launchedProcess;
-        if (process != null && !process.HasExited)
+        if (process != null)
         {
+            // 进程对象可能未关联句柄（启动流程被并发实例打断等），视为无可关闭对象直接跳过
+            var associated = false;
             try
             {
-                process.Refresh();
-                // 优雅关闭：向启动时记录的主窗口句柄投递 WM_CLOSE（隐藏后 Process.MainWindowHandle 返回 0，不可用）
-                var mainWindow = _mainWindowHandle != IntPtr.Zero && IsWindow(_mainWindowHandle)
-                    ? _mainWindowHandle
-                    : process.MainWindowHandle;
-                if (mainWindow != IntPtr.Zero)
-                {
-                    PostMessage(mainWindow, WM_CLOSE, IntPtr.Zero, IntPtr.Zero);
-                }
-
-                // 等待宽限期，未退出则强制结束（隐藏窗口下若弹出保存确认框无法交互，走此兜底）
-                if (!process.WaitForExit(ShutdownGraceMs) && !process.HasExited)
-                {
-                    process.Kill(entireProcessTree: true);
-                    _logger.LogWarning("EzCad2 优雅关闭超时，已强制结束进程");
-                }
-
-                _logger.LogInformation("EzCad2 已随上位机关闭");
-                process.Dispose();
+                associated = !process.HasExited;
             }
-            catch (Exception ex)
+            catch (InvalidOperationException)
             {
-                // 关闭失败不阻断上位机退出；记录 9003 供排查
-                _errorCollector.Collect(ErrorCodes.EzCad2LaunchFailed, "EzCad2 联动关闭失败", exception: ex);
+                _logger.LogDebug("EzCad2 进程对象未关联（无可关闭对象），跳过联动关闭");
+            }
+
+            if (associated)
+            {
+                try
+                {
+                    process.Refresh();
+                    // 优雅关闭：向启动时记录的主窗口句柄投递 WM_CLOSE（隐藏后 Process.MainWindowHandle 返回 0，不可用）
+                    var mainWindow = _mainWindowHandle != IntPtr.Zero && IsWindow(_mainWindowHandle)
+                        ? _mainWindowHandle
+                        : process.MainWindowHandle;
+                    if (mainWindow != IntPtr.Zero)
+                    {
+                        PostMessage(mainWindow, WM_CLOSE, IntPtr.Zero, IntPtr.Zero);
+                    }
+
+                    // 等待宽限期，未退出则强制结束（隐藏窗口下若弹出保存确认框无法交互，走此兜底）
+                    if (!process.WaitForExit(ShutdownGraceMs) && !process.HasExited)
+                    {
+                        process.Kill(entireProcessTree: true);
+                        _logger.LogWarning("EzCad2 优雅关闭超时，已强制结束进程");
+                    }
+
+                    _logger.LogInformation("EzCad2 已随上位机关闭");
+                    process.Dispose();
+                }
+                catch (Exception ex)
+                {
+                    // 关闭失败不阻断上位机退出；记录 9003 供排查
+                    _errorCollector.Collect(ErrorCodes.EzCad2LaunchFailed, "EzCad2 联动关闭失败", exception: ex);
+                }
             }
         }
 

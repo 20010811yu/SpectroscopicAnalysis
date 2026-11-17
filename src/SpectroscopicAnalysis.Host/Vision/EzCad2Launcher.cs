@@ -329,6 +329,21 @@ public class EzCad2Launcher : BackgroundService
 
         Thread.Sleep(800);
 
+        // 先点击画布中心把键盘焦点落到画布（不点击的话 Ctrl+A 快捷键不会被画布处理）
+        if (!GetWindowRect(mainWindow, out var rect))
+        {
+            return false;
+        }
+
+        var centerX = (rect.Left + rect.Right) / 2;
+        var centerY = (rect.Top + rect.Bottom) / 2;
+        SetCursorPos(centerX, centerY);
+        Thread.Sleep(200);
+        SendInput(1, new[] { MakeMouseInput(MOUSEEVENTF_LEFTDOWN) }, Marshal.SizeOf<INPUT>());
+        Thread.Sleep(80);
+        SendInput(1, new[] { MakeMouseInput(MOUSEEVENTF_LEFTUP) }, Marshal.SizeOf<INPUT>());
+        Thread.Sleep(300);
+
         // SendInput：CTRL 按下 → A 按下 → A 抬起 → CTRL 抬起
         var inputs = new[]
         {
@@ -355,6 +370,12 @@ public class EzCad2Launcher : BackgroundService
     {
         type = INPUT_KEYBOARD,
         U = new InputUnion { ki = new KEYBDINPUT { wVk = (ushort)vk, dwFlags = flags } },
+    };
+
+    private static INPUT MakeMouseInput(uint flags) => new()
+    {
+        type = INPUT_MOUSE,
+        U = new InputUnion { mi = new MOUSEINPUT { dwFlags = flags } },
     };
 
     /// <summary>解析 .lnk 快捷方式的目标 exe 路径（WScript.Shell COM；解析失败返回 null）。</summary>
@@ -513,16 +534,34 @@ public class EzCad2Launcher : BackgroundService
     private const IntPtr VK_A = 0x41;
     private const int SW_SHOW = 5;
 
-    // SendInput（真实键盘输入，注入系统输入队列）
+    // SendInput（真实键盘/鼠标输入，注入系统输入队列）
     private const uint INPUT_KEYBOARD = 1;
+    private const uint INPUT_MOUSE = 0;
     private const uint KEYEVENTF_KEYDOWN = 0x0000;
     private const uint KEYEVENTF_KEYUP = 0x0002;
+    private const uint MOUSEEVENTF_LEFTDOWN = 0x0002;
+    private const uint MOUSEEVENTF_LEFTUP = 0x0004;
 
     [DllImport("user32.dll")]
     private static extern uint SendInput(uint nInputs, INPUT[] pInputs, int cbSize);
 
     [DllImport("user32.dll")]
     private static extern bool SetForegroundWindow(IntPtr hWnd);
+
+    [DllImport("user32.dll")]
+    private static extern bool GetWindowRect(IntPtr hWnd, out RECT lpRect);
+
+    [DllImport("user32.dll")]
+    private static extern bool SetCursorPos(int x, int y);
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct RECT
+    {
+        public int Left;
+        public int Top;
+        public int Right;
+        public int Bottom;
+    }
 
     [StructLayout(LayoutKind.Sequential)]
     private struct INPUT
@@ -536,6 +575,19 @@ public class EzCad2Launcher : BackgroundService
     {
         [FieldOffset(0)]
         public KEYBDINPUT ki;
+        [FieldOffset(0)]
+        public MOUSEINPUT mi;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct MOUSEINPUT
+    {
+        public int dx;
+        public int dy;
+        public uint mouseData;
+        public uint dwFlags;
+        public uint time;
+        public IntPtr dwExtraInfo;
     }
 
     [StructLayout(LayoutKind.Sequential)]

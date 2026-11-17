@@ -91,8 +91,11 @@ public class EzCad2Launcher : BackgroundService
             return;
         }
 
+        // 强制最小化（程序可能无视启动参数自行弹出窗口）→ 隐藏窗口 → 加工具窗样式确保任务栏无图标
+        ShowWindow(mainWindow, SW_MINIMIZE);
         ApplyToolWindowStyle(mainWindow);
-        _logger.LogInformation("EzCad2 已启动并隐藏任务栏图标");
+        ShowWindow(mainWindow, SW_HIDE);
+        _logger.LogInformation("EzCad2 已启动，窗口已隐藏且不在任务栏显示");
     }
 
     /// <summary>
@@ -156,6 +159,11 @@ public class EzCad2Launcher : BackgroundService
     // Win32 扩展样式操作（仅外部窗口样式设置，不涉及业务）
     private const int GWL_EXSTYLE = -20;
     private const long WS_EX_TOOLWINDOW = 0x00000080;
+    private const int SW_MINIMIZE = 6;
+    private const int SW_HIDE = 0;
+
+    [DllImport("user32.dll")]
+    private static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
 
     [DllImport("user32.dll", EntryPoint = "GetWindowLongW")]
     private static extern long GetWindowLong(IntPtr hWnd, int nIndex);

@@ -21,6 +21,9 @@ public class EzCad2Options
 
     /// <summary>启动后等待主窗口就绪的超时（毫秒，集中配置原则）。</summary>
     public int WaitForWindowTimeoutMs { get; set; } = 15000;
+
+    /// <summary>启动后自动向主窗口发送 Ctrl+A 选中画布上全部对象（含文本区）。</summary>
+    public bool AutoSelectAll { get; set; } = true;
 }
 
 /// <summary>
@@ -163,6 +166,13 @@ public class EzCad2Launcher : BackgroundService
         _mainWindowHandle = IntPtr.Zero;
         StartShowEventWatcher(process.Id, _options.WaitForWindowTimeoutMs, stoppingToken);
 
+        // 窗口就绪后自动选中画布对象（配置开关；隐藏窗口同样接收投递的按键消息）
+        if (_options.AutoSelectAll && _mainWindowHandle != IntPtr.Zero && IsWindow(_mainWindowHandle))
+        {
+            SendSelectAll(_mainWindowHandle);
+            _logger.LogInformation("已向 EzCad2 发送 Ctrl+A 自动选中画布对象");
+        }
+
         _logger.LogInformation("EzCad2 已启动，窗口已隐藏且不在任务栏显示");
     }
 
@@ -273,6 +283,21 @@ public class EzCad2Launcher : BackgroundService
 
         var shortcut = Path.Combine(desktop, "EzCad2.exe.lnk");
         return File.Exists(shortcut) ? ResolveShortcutTarget(shortcut) : null;
+    }
+
+    /// <summary>
+    /// 向主窗口投递 Ctrl+A 按键序列（EzCad2 编辑菜单的选择全部对象快捷键）：
+    /// 用 PostMessage 而非 SendInput——窗口处于隐藏状态不能抢焦点，按键随窗口消息队列派发。
+    /// </summary>
+    private static void SendSelectAll(IntPtr mainWindow)
+    {
+        PostMessage(mainWindow, WM_KEYDOWN, VK_CONTROL, IntPtr.Zero);
+        Thread.Sleep(50);
+        PostMessage(mainWindow, WM_KEYDOWN, VK_A, IntPtr.Zero);
+        Thread.Sleep(50);
+        PostMessage(mainWindow, WM_KEYUP, VK_A, IntPtr.Zero);
+        Thread.Sleep(50);
+        PostMessage(mainWindow, WM_KEYUP, VK_CONTROL, IntPtr.Zero);
     }
 
     /// <summary>解析 .lnk 快捷方式的目标 exe 路径（WScript.Shell COM；解析失败返回 null）。</summary>
@@ -424,6 +449,11 @@ public class EzCad2Launcher : BackgroundService
     private const uint WM_QUIT = 0x0012;
     private const uint EVENT_OBJECT_SHOW = 0x8002;
     private const uint WINEVENT_OUTOFCONTEXT = 0x0000;
+
+    private const uint WM_KEYDOWN = 0x0100;
+    private const uint WM_KEYUP = 0x0101;
+    private const IntPtr VK_CONTROL = 0x11;
+    private const IntPtr VK_A = 0x41;
 
     [StructLayout(LayoutKind.Sequential)]
     private struct MSG

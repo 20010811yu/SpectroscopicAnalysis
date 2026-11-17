@@ -117,6 +117,9 @@ public class EzCad2Launcher : BackgroundService
 
         // 启动参数：可配置的 .ezd 工程文件（EzCad2 接收文件路径作为命令行参数直接打开）
         var arguments = ResolveEzdArgument();
+        // 已有 EzCad2 在后台运行时先关闭（确保以最新配置/工程文件重新拉起），再重新启动
+        ShutdownExistingProcesses();
+
         _logger.LogInformation("自动启动 EzCad2：{ExePath} {Arguments}", exePath, arguments);
 
         // 不用 using：进程对象须存活到 StopAsync 联动关闭，Dispose 后再访问其成员会抛 ObjectDisposedException
@@ -226,6 +229,49 @@ public class EzCad2Launcher : BackgroundService
         }
 
         return $"\"{_options.EzdFilePath}\"";
+    }
+
+    /// <summary>
+    /// 检查并关闭已在后台运行的 EzCad2 进程（按 exe 文件名匹配，不限于本程序拉起的实例）：
+    /// 先投递 WM_CLOSE 优雅关闭并等待宽限期，未退出则强制结束。失败仅记录，继续重新启动流程。
+    /// </summary>
+    private void ShutdownExistingProcesses()
+    {
+        var processName = Path.GetFileNameWithoutExtension("EzCad2.exe");
+        foreach (var process in Process.GetProcessesByName(processName))
+        {
+            try
+            {
+                using (process)
+                {
+                    if (process.HasExited)
+                    {
+                        continue;
+                    }
+
+                    var mainWindow = process.MainWindowHandle != IntPtr.Zero ? process.MainWindowHandle : IntPtr.Zero;
+                    if (mainWindow != IntPtr.Zero)
+                    {
+                        PostMessage(mainWindow, WM_CLOSE, IntPtr.Zero, IntPtr.Zero);
+                    }
+
+                    if (!process.WaitForExit(ShutdownGraceMs) && !process.HasExited)
+                    {
+                        process.Kill(entireProcessTree: true);
+                        _logger.LogWarning("EzCad2 优雅关闭超时，已强制结束残留进程（PID {Pid}）", process.Id);
+                    }
+                    else
+                    {
+                        _logger.LogInformation("已关闭后台残留的 EzCad2 进程（PID {Pid}）", process.Id);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                // 单个残留进程关闭失败不阻断后续重新启动；记录 9003 供排查
+                _errorCollector.Collect(ErrorCodes.EzCad2LaunchFailed, "关闭后台残留 EzCad2 进程失败", exception: ex);
+            }
+        }
     }
 
     /// <summary>追加 WS_EX_TOOLWINDOW 扩展样式：窗口不出现在任务栏（不改变最小化状态与可见性）。</summary>

@@ -173,16 +173,16 @@ public class EzCad2Launcher : BackgroundService
         _mainWindowHandle = IntPtr.Zero;
         StartShowEventWatcher(process.Id, _options.WaitForWindowTimeoutMs, stoppingToken);
 
-        // 窗口就绪后自动选中画布对象（配置开关；用真实键盘输入，PostMessage 投递按键对 EzCad2 不生效）
+        // 窗口就绪后自动选中文本对象（配置开关；点击对象列表条目选中，不依赖画布焦点）
         if (_options.AutoSelectAll && _mainWindowHandle != IntPtr.Zero && IsWindow(_mainWindowHandle))
         {
-            if (SelectAllViaRealKeyboard(_mainWindowHandle))
+            if (SelectTextObjectByMouse(_mainWindowHandle))
             {
-                _logger.LogInformation("已通过真实键盘输入完成 EzCad2 画布全选，窗口已重新隐藏");
+                _logger.LogInformation("已点击对象列表选中文本对象{HideNote}", _hideWindow ? "，窗口已重新隐藏" : "");
             }
             else
             {
-                _logger.LogWarning("EzCad2 自动全选失败（窗口未能置前）");
+                _logger.LogWarning("EzCad2 自动选中文本对象失败（窗口未能置前）");
             }
         }
 
@@ -305,15 +305,17 @@ public class EzCad2Launcher : BackgroundService
     }
 
     /// <summary>
-    /// 真实键盘输入完成画布全选：窗口置前（隐藏模式下短暂闪现）→ SendInput 发送 Ctrl+A → 隐藏模式下重新隐藏。
-    /// PostMessage 投递按键对 EzCad2 不生效（其焦点/加速键处理依赖真实输入队列），故必须走系统输入。
+    /// 鼠标点击选中打标文本对象：点击窗口左上角「对象列表」面板的第一行（文本条目）即选中画布对应对象。
+    /// 相比 Ctrl+A 快捷键（需画布键盘焦点，时序脆弱），点击列表条目不依赖焦点，选中行为确定。
+    /// 面板锚定窗口左上角，点击坐标取窗口矩形相对偏移。
     /// </summary>
-    private bool SelectAllViaRealKeyboard(IntPtr mainWindow)
+    private bool SelectTextObjectByMouse(IntPtr mainWindow)
     {
-        // 隐藏模式需先短暂显示并置前；显示模式窗口本来可见，直接置前
+        // 隐藏模式需先还原窗口（窗口此前为最小化+隐藏态；SW_SHOW 只改可见性不解除最小化，
+        // 最小化窗口的矩形在屏幕外 -32000 处，点击与焦点都会落空），显示模式直接置前
         if (_hideWindow)
         {
-            ShowWindow(mainWindow, SW_SHOW);
+            ShowWindow(mainWindow, SW_RESTORE);
         }
 
         if (!SetForegroundWindow(mainWindow))
@@ -329,31 +331,20 @@ public class EzCad2Launcher : BackgroundService
 
         Thread.Sleep(800);
 
-        // 先点击画布中心把键盘焦点落到画布（不点击的话 Ctrl+A 快捷键不会被画布处理）
+        // 点击「对象列表」面板第一行（文本条目）：标题栏+工具栏+面板表头约占窗口顶部 100 物理像素，
+        // 行宽覆盖列表前 150 物理像素；点中即选中画布中的文本对象
         if (!GetWindowRect(mainWindow, out var rect))
         {
             return false;
         }
 
-        var centerX = (rect.Left + rect.Right) / 2;
-        var centerY = (rect.Top + rect.Bottom) / 2;
-        SetCursorPos(centerX, centerY);
+        var clickX = rect.Left + ObjectListRowOffsetX;
+        var clickY = rect.Top + ObjectListRowOffsetY;
+        SetCursorPos(clickX, clickY);
         Thread.Sleep(200);
         SendInput(1, new[] { MakeMouseInput(MOUSEEVENTF_LEFTDOWN) }, Marshal.SizeOf<INPUT>());
         Thread.Sleep(80);
         SendInput(1, new[] { MakeMouseInput(MOUSEEVENTF_LEFTUP) }, Marshal.SizeOf<INPUT>());
-        Thread.Sleep(300);
-
-        // SendInput：CTRL 按下 → A 按下 → A 抬起 → CTRL 抬起
-        var inputs = new[]
-        {
-            MakeKeyInput(VK_CONTROL, KEYEVENTF_KEYDOWN),
-            MakeKeyInput(VK_A, KEYEVENTF_KEYDOWN),
-            MakeKeyInput(VK_A, KEYEVENTF_KEYUP),
-            MakeKeyInput(VK_CONTROL, KEYEVENTF_KEYUP),
-        };
-        SendInput((uint)inputs.Length, inputs, Marshal.SizeOf<INPUT>());
-
         Thread.Sleep(300);
 
         // 隐藏模式下重新隐藏（最小化 → 隐藏；工具窗样式仍在，任务栏不会出现图标）
@@ -366,17 +357,15 @@ public class EzCad2Launcher : BackgroundService
         return true;
     }
 
-    private static INPUT MakeKeyInput(IntPtr vk, uint flags) => new()
-    {
-        type = INPUT_KEYBOARD,
-        U = new InputUnion { ki = new KEYBDINPUT { wVk = (ushort)vk, dwFlags = flags } },
-    };
-
     private static INPUT MakeMouseInput(uint flags) => new()
     {
         type = INPUT_MOUSE,
         U = new InputUnion { mi = new MOUSEINPUT { dwFlags = flags } },
     };
+
+    /// <summary>对象列表第一行（文本条目）相对窗口矩形的点击偏移（物理像素）。</summary>
+    private const int ObjectListRowOffsetX = 75;
+    private const int ObjectListRowOffsetY = 100;
 
     /// <summary>解析 .lnk 快捷方式的目标 exe 路径（WScript.Shell COM；解析失败返回 null）。</summary>
     private string? ResolveShortcutTarget(string shortcutPath)
@@ -528,17 +517,10 @@ public class EzCad2Launcher : BackgroundService
     private const uint EVENT_OBJECT_SHOW = 0x8002;
     private const uint WINEVENT_OUTOFCONTEXT = 0x0000;
 
-    private const uint WM_KEYDOWN = 0x0100;
-    private const uint WM_KEYUP = 0x0101;
-    private const IntPtr VK_CONTROL = 0x11;
-    private const IntPtr VK_A = 0x41;
-    private const int SW_SHOW = 5;
+    private const int SW_RESTORE = 9;
 
-    // SendInput（真实键盘/鼠标输入，注入系统输入队列）
-    private const uint INPUT_KEYBOARD = 1;
+    // SendInput（真实鼠标输入，注入系统输入队列）
     private const uint INPUT_MOUSE = 0;
-    private const uint KEYEVENTF_KEYDOWN = 0x0000;
-    private const uint KEYEVENTF_KEYUP = 0x0002;
     private const uint MOUSEEVENTF_LEFTDOWN = 0x0002;
     private const uint MOUSEEVENTF_LEFTUP = 0x0004;
 
@@ -574,8 +556,6 @@ public class EzCad2Launcher : BackgroundService
     private struct InputUnion
     {
         [FieldOffset(0)]
-        public KEYBDINPUT ki;
-        [FieldOffset(0)]
         public MOUSEINPUT mi;
     }
 
@@ -585,16 +565,6 @@ public class EzCad2Launcher : BackgroundService
         public int dx;
         public int dy;
         public uint mouseData;
-        public uint dwFlags;
-        public uint time;
-        public IntPtr dwExtraInfo;
-    }
-
-    [StructLayout(LayoutKind.Sequential)]
-    private struct KEYBDINPUT
-    {
-        public ushort wVk;
-        public ushort wScan;
         public uint dwFlags;
         public uint time;
         public IntPtr dwExtraInfo;

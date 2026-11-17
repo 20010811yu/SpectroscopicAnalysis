@@ -69,6 +69,8 @@ public partial class App
                 services.AddSingleton<ViewModels.SettingsViewModel>();
                 services.AddSingleton<ViewModels.MainViewModel>();
                 services.AddSingleton<MainWindow>();
+                // 外部打标软件：随上位机启动自动拉起 EzCad2（最小化 + 不显示任务栏）
+                services.AddHostedService<Vision.EzCad2Launcher>();
             })
             .UseSerilog((context, loggerConfiguration) =>
             {

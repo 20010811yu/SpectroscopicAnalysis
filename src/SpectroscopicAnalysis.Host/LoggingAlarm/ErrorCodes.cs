@@ -37,4 +37,7 @@ public static class ErrorCodes
 
     /// <summary>9002 未捕获异常兜底。</summary>
     public const int UnhandledException = 9002;
+
+    /// <summary>9003 EzCad2 自动启动失败（进程启动失败/等待超时）。</summary>
+    public const int EzCad2LaunchFailed = 9003;
 }

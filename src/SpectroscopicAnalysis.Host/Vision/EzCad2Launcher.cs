@@ -166,11 +166,17 @@ public class EzCad2Launcher : BackgroundService
         _mainWindowHandle = IntPtr.Zero;
         StartShowEventWatcher(process.Id, _options.WaitForWindowTimeoutMs, stoppingToken);
 
-        // 窗口就绪后自动选中画布对象（配置开关；隐藏窗口同样接收投递的按键消息）
+        // 窗口就绪后自动选中画布对象（配置开关；用真实键盘输入，PostMessage 投递按键对 EzCad2 不生效）
         if (_options.AutoSelectAll && _mainWindowHandle != IntPtr.Zero && IsWindow(_mainWindowHandle))
         {
-            SendSelectAll(_mainWindowHandle);
-            _logger.LogInformation("已向 EzCad2 发送 Ctrl+A 自动选中画布对象");
+            if (SelectAllViaRealKeyboard(_mainWindowHandle))
+            {
+                _logger.LogInformation("已通过真实键盘输入完成 EzCad2 画布全选，窗口已重新隐藏");
+            }
+            else
+            {
+                _logger.LogWarning("EzCad2 自动全选失败（窗口未能置前）");
+            }
         }
 
         _logger.LogInformation("EzCad2 已启动，窗口已隐藏且不在任务栏显示");
@@ -286,19 +292,45 @@ public class EzCad2Launcher : BackgroundService
     }
 
     /// <summary>
-    /// 向主窗口投递 Ctrl+A 按键序列（EzCad2 编辑菜单的选择全部对象快捷键）：
-    /// 用 PostMessage 而非 SendInput——窗口处于隐藏状态不能抢焦点，按键随窗口消息队列派发。
+    /// 真实键盘输入完成画布全选：短暂显示窗口并置前（约 1 秒）→ SendInput 发送 Ctrl+A → 重新最小化并隐藏。
+    /// PostMessage 投递按键对 EzCad2 不生效（其焦点/加速键处理依赖真实输入队列），故必须走系统输入。
     /// </summary>
-    private static void SendSelectAll(IntPtr mainWindow)
+    private bool SelectAllViaRealKeyboard(IntPtr mainWindow)
     {
-        PostMessage(mainWindow, WM_KEYDOWN, VK_CONTROL, IntPtr.Zero);
-        Thread.Sleep(50);
-        PostMessage(mainWindow, WM_KEYDOWN, VK_A, IntPtr.Zero);
-        Thread.Sleep(50);
-        PostMessage(mainWindow, WM_KEYUP, VK_A, IntPtr.Zero);
-        Thread.Sleep(50);
-        PostMessage(mainWindow, WM_KEYUP, VK_CONTROL, IntPtr.Zero);
+        // 短暂显示并置前（闪现约 1 秒后立即重新隐藏）
+        ShowWindow(mainWindow, SW_SHOW);
+        if (!SetForegroundWindow(mainWindow))
+        {
+            // 置前失败恢复隐藏并报告（Windows 前台锁策略下偶发）
+            ShowWindow(mainWindow, SW_HIDE);
+            return false;
+        }
+
+        Thread.Sleep(800);
+
+        // SendInput：CTRL 按下 → A 按下 → A 抬起 → CTRL 抬起
+        var inputs = new[]
+        {
+            MakeKeyInput(VK_CONTROL, KEYEVENTF_KEYDOWN),
+            MakeKeyInput(VK_A, KEYEVENTF_KEYDOWN),
+            MakeKeyInput(VK_A, KEYEVENTF_KEYUP),
+            MakeKeyInput(VK_CONTROL, KEYEVENTF_KEYUP),
+        };
+        SendInput((uint)inputs.Length, inputs, Marshal.SizeOf<INPUT>());
+
+        Thread.Sleep(300);
+
+        // 重新隐藏（最小化 → 隐藏；工具窗样式仍在，任务栏不会出现图标）
+        ShowWindow(mainWindow, SW_MINIMIZE);
+        ShowWindow(mainWindow, SW_HIDE);
+        return true;
     }
+
+    private static INPUT MakeKeyInput(IntPtr vk, uint flags) => new()
+    {
+        type = INPUT_KEYBOARD,
+        U = new InputUnion { ki = new KEYBDINPUT { wVk = (ushort)vk, dwFlags = flags } },
+    };
 
     /// <summary>解析 .lnk 快捷方式的目标 exe 路径（WScript.Shell COM；解析失败返回 null）。</summary>
     private string? ResolveShortcutTarget(string shortcutPath)
@@ -454,6 +486,42 @@ public class EzCad2Launcher : BackgroundService
     private const uint WM_KEYUP = 0x0101;
     private const IntPtr VK_CONTROL = 0x11;
     private const IntPtr VK_A = 0x41;
+    private const int SW_SHOW = 5;
+
+    // SendInput（真实键盘输入，注入系统输入队列）
+    private const uint INPUT_KEYBOARD = 1;
+    private const uint KEYEVENTF_KEYDOWN = 0x0000;
+    private const uint KEYEVENTF_KEYUP = 0x0002;
+
+    [DllImport("user32.dll")]
+    private static extern uint SendInput(uint nInputs, INPUT[] pInputs, int cbSize);
+
+    [DllImport("user32.dll")]
+    private static extern bool SetForegroundWindow(IntPtr hWnd);
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct INPUT
+    {
+        public uint type;
+        public InputUnion U;
+    }
+
+    [StructLayout(LayoutKind.Explicit)]
+    private struct InputUnion
+    {
+        [FieldOffset(0)]
+        public KEYBDINPUT ki;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct KEYBDINPUT
+    {
+        public ushort wVk;
+        public ushort wScan;
+        public uint dwFlags;
+        public uint time;
+        public IntPtr dwExtraInfo;
+    }
 
     [StructLayout(LayoutKind.Sequential)]
     private struct MSG

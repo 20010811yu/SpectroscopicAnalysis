@@ -144,19 +144,14 @@ public class EzCad2Launcher : BackgroundService
         // 留存进程引用，供 StopAsync 在上位机退出时联动关闭（此处不 Dispose，避免句柄提前失效）
         _launchedProcess = process;
 
-        // 等主窗口句柄出现（消息循环就绪后才能改样式；集中配置超时，防止无限等待）
-        var mainWindow = WaitForMainWindow(process, _options.WaitForWindowTimeoutMs, stoppingToken);
-        if (mainWindow == IntPtr.Zero)
+        // 轮询隐藏该进程的所有可见窗口（含启动闪屏与主窗口；闪屏在主窗口前出现，逐个发现即隐藏）
+        _mainWindowHandle = HideAllWindowsDuringStartup(process, _options.WaitForWindowTimeoutMs, stoppingToken);
+        if (_mainWindowHandle == IntPtr.Zero)
         {
-            _logger.LogWarning("EzCad2 未探测到主窗口句柄，跳过任务栏隐藏");
+            _logger.LogWarning("EzCad2 未探测到任何窗口，跳过窗口隐藏");
             return;
         }
 
-        // 强制最小化（程序可能无视启动参数自行弹出窗口）→ 隐藏窗口 → 加工具窗样式确保任务栏无图标
-        _mainWindowHandle = mainWindow;
-        ShowWindow(mainWindow, SW_MINIMIZE);
-        ApplyToolWindowStyle(mainWindow);
-        ShowWindow(mainWindow, SW_HIDE);
         _logger.LogInformation("EzCad2 已启动，窗口已隐藏且不在任务栏显示");
     }
 
@@ -299,6 +294,18 @@ public class EzCad2Launcher : BackgroundService
     [DllImport("user32.dll")]
     private static extern bool PostMessage(IntPtr hWnd, uint msg, IntPtr wParam, IntPtr lParam);
 
+    [DllImport("user32.dll")]
+    private static extern bool EnumWindows(EnumWindowsProc lpEnumFunc, IntPtr lParam);
+
+    [DllImport("user32.dll")]
+    private static extern bool IsWindowVisible(IntPtr hWnd);
+
+    [DllImport("user32.dll")]
+    private static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint lpdwProcessId);
+
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+    private static extern int GetWindowTextLength(IntPtr hWnd);
+
     private const uint WM_CLOSE = 0x0010;
 
     [DllImport("user32.dll", EntryPoint = "GetWindowLongW")]
@@ -307,21 +314,52 @@ public class EzCad2Launcher : BackgroundService
     [DllImport("user32.dll", EntryPoint = "SetWindowLongW")]
     private static extern long SetWindowLong(IntPtr hWnd, int nIndex, long dwNewLong);
 
-    /// <summary>启动等待期间句柄探测重试（MainWindowHandle 需要窗口消息循环就绪，属启动期瞬态，非通信重试）。</summary>
-    private static IntPtr WaitForMainWindow(Process process, int timeoutMs, CancellationToken stoppingToken)
+    /// <summary>
+    /// 启动等待期内持续枚举并隐藏进程的所有可见窗口（轮询间隔 200ms，属启动期瞬态，非通信重试）：
+    /// 每个窗口强制最小化 → 加工具窗样式 → 隐藏。主窗口取标题非空的窗口（闪屏无标题），
+    /// 供退出时投递 WM_CLOSE 使用；超时返回最后记录的主窗口（可能为 IntPtr.Zero）。
+    /// </summary>
+    private IntPtr HideAllWindowsDuringStartup(Process process, int timeoutMs, CancellationToken stoppingToken)
     {
+        var pid = process.Id;
         var deadline = Environment.TickCount64 + timeoutMs;
+        var mainWindow = IntPtr.Zero;
+
         while (Environment.TickCount64 < deadline && !stoppingToken.IsCancellationRequested)
         {
             process.Refresh();
-            if (process.MainWindowHandle != IntPtr.Zero)
+            if (process.HasExited)
             {
-                return process.MainWindowHandle;
+                return mainWindow;
             }
+
+            EnumWindows((hWnd, _) =>
+            {
+                GetWindowThreadProcessId(hWnd, out var windowPid);
+                if (windowPid != pid || !IsWindowVisible(hWnd))
+                {
+                    return true;
+                }
+
+                // 主窗口优先取有标题的（闪屏为无标题无边框窗口）
+                if (mainWindow == IntPtr.Zero && GetWindowTextLength(hWnd) > 0)
+                {
+                    mainWindow = hWnd;
+                }
+
+                // 强制最小化（程序可能无视启动参数自行弹窗）→ 工具窗样式（任务栏无图标）→ 隐藏
+                ShowWindow(hWnd, SW_MINIMIZE);
+                ApplyToolWindowStyle(hWnd);
+                ShowWindow(hWnd, SW_HIDE);
+                return true;
+            }, IntPtr.Zero);
 
             Thread.Sleep(200);
         }
 
-        return IntPtr.Zero;
+        return mainWindow;
     }
+
+    /// <summary>枚举顶层窗口回调。</summary>
+    private delegate bool EnumWindowsProc(IntPtr hWnd, IntPtr lParam);
 }

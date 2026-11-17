@@ -807,7 +807,8 @@ public sealed partial class SctViewModel : ObservableObject, IPageLifecycle
 
     // ==================== 手动触发（提交策略引擎任务队列；引擎未注入时保持禁用） ====================
 
-    /// <summary>手动触发标准化（提交 Standardize 任务，优先级高于生产分析——任务清单第 5 节⑥）。</summary>
+    /// <summary>手动触发标准化（提交 Standardize 任务，优先级高于生产分析——任务清单第 5 节⑥）。
+    /// 仅允许对设置样/类型标准化样触发（须先选中行）。</summary>
     [RelayCommand(CanExecute = nameof(CanTriggerAnalysis))]
     private void TriggerStandardization()
     {
@@ -817,11 +818,24 @@ public sealed partial class SctViewModel : ObservableObject, IPageLifecycle
             return;
         }
 
-        _strategyEngine.SubmitTask(SctTaskType.Standardize, null, "人工触发");
-        _ui.Invoke(() => PolicySavedMessage = "✓ 标准化任务已提交队列");
+        var row = SelectedSample;
+        if (row is null)
+        {
+            TriggerError = "请先在列表中选中目标样品";
+            return;
+        }
+
+        if (row.SampleTypeKey is not (SampleType.SettingUp or SampleType.TypeStd))
+        {
+            TriggerError = "仅设置样或类型标准化样可手动触发标准化";
+            return;
+        }
+
+        _strategyEngine.SubmitTask(SctTaskType.Standardize, row.SampleId, "人工触发");
+        _ui.Invoke(() => PolicySavedMessage = $"✓ 标准化任务已提交队列（{row.SampleId}）");
     }
 
-    /// <summary>手动触发控制检查（提交 ControlCheck 任务，引擎按轮换/合金规则选样）。</summary>
+    /// <summary>手动触发控制检查（提交 ControlCheck 任务；仅允许对控制样触发，须先选中行）。</summary>
     [RelayCommand(CanExecute = nameof(CanTriggerAnalysis))]
     private void TriggerControlCheck()
     {
@@ -831,8 +845,21 @@ public sealed partial class SctViewModel : ObservableObject, IPageLifecycle
             return;
         }
 
-        _strategyEngine.SubmitTask(SctTaskType.ControlCheck, null, "人工触发");
-        _ui.Invoke(() => PolicySavedMessage = "✓ 控制检查任务已提交队列");
+        var row = SelectedSample;
+        if (row is null)
+        {
+            TriggerError = "请先在列表中选中目标样品";
+            return;
+        }
+
+        if (row.SampleTypeKey != SampleType.Control)
+        {
+            TriggerError = "仅控制样可手动触发控制检查";
+            return;
+        }
+
+        _strategyEngine.SubmitTask(SctTaskType.ControlCheck, row.SampleId, "人工触发");
+        _ui.Invoke(() => PolicySavedMessage = $"✓ 控制检查任务已提交队列（{row.SampleId}）");
     }
 
     /// <summary>手动触发测高任务（提交 HeightMeasure 任务到任务队列，需选中目标标样）。</summary>

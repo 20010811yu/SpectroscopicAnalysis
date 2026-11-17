@@ -152,6 +152,19 @@
                         </Grid>
                         <Button Content="查询" Command="{Binding SearchCommand}" Style="{StaticResource PrimaryBtn}" Margin="8,0,0,0" Padding="14,5" />
                     </StackPanel>
+                    <!-- 手动触发错误提示（类型不符/未选行），停靠工具栏下方 -->
+                    <TextBlock DockPanel.Dock="Bottom" Text="{Binding TriggerError}" Foreground="{DynamicResource Brush.Status.Failed}">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock" BasedOn="{StaticResource Text.Caption}">
+                                <Setter Property="Visibility" Value="Visible" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding TriggerError}" Value="{x:Null}">
+                                        <Setter Property="Visibility" Value="Collapsed" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
                     <StackPanel Orientation="Horizontal" DockPanel.Dock="Right" HorizontalAlignment="Right" VerticalAlignment="Center">
                         <Button Content="测高登记" Command="{Binding OpenMeasureCommand}" Style="{StaticResource SecondaryBtn}" Padding="10,5" />
                         <Button Content="阈值调整" Command="{Binding OpenThresholdCommand}" Style="{StaticResource SecondaryBtn}" Margin="8,0,0,0" Padding="10,5" />
@@ -159,9 +172,9 @@
                         <Button Content="手动测高执行" Command="{Binding TriggerHeightMeasureCommand}"
                                 ToolTip="提交测高任务到策略引擎队列（需选中行）" Style="{StaticResource SecondaryBtn}" Margin="16,0,0,0" Padding="10,5" />
                         <Button Content="手动标准化" Command="{Binding TriggerStandardizationCommand}"
-                                ToolTip="提交标准化任务到策略引擎队列" Style="{StaticResource PrimaryBtn}" Margin="8,0,0,0" Padding="10,5" />
+                                ToolTip="提交标准化任务到策略引擎队列（需选中设置样或类型标准化样）" Style="{StaticResource PrimaryBtn}" Margin="8,0,0,0" Padding="10,5" />
                         <Button Content="手动控制检查" Command="{Binding TriggerControlCheckCommand}"
-                                ToolTip="提交控制检查任务到策略引擎队列" Style="{StaticResource PrimaryBtn}" Margin="8,0,0,0" Padding="10,5" />
+                                ToolTip="提交控制检查任务到策略引擎队列（需选中控制样）" Style="{StaticResource PrimaryBtn}" Margin="8,0,0,0" Padding="10,5" />
                     </StackPanel>
                 </DockPanel>
 

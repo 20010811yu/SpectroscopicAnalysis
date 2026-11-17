@@ -148,32 +148,9 @@ public class EzCad2Launcher : BackgroundService, IEzCad2Controller
 
             if (associated && process != null)
             {
-                // 优雅关闭：向启动时记录的主窗口句柄投递 WM_CLOSE（隐藏后 Process.MainWindowHandle 返回 0，不可用）
-                var mainWindow = _mainWindowHandle != IntPtr.Zero && IsWindow(_mainWindowHandle)
-                    ? _mainWindowHandle
-                    : IntPtr.Zero;
-                if (mainWindow != IntPtr.Zero)
-                {
-                    PostMessage(mainWindow, WM_CLOSE, IntPtr.Zero, IntPtr.Zero);
-                }
-
-                // 异步等待宽限期，未退出则强制结束（隐藏窗口下若弹出保存确认框无法交互，走此兜底）
-                try
-                {
-                    await process.WaitForExitAsync(cancellationToken)
-                        .WaitAsync(TimeSpan.FromMilliseconds(ShutdownGraceMs), CancellationToken.None);
-                }
-                catch (TimeoutException)
-                {
-                    // 优雅关闭超时
-                }
-
-                if (!process.HasExited)
-                {
-                    process.Kill(entireProcessTree: true);
-                    _logger.LogWarning("EzCad2 优雅关闭超时，已强制结束进程");
-                }
-
+                // 直接强制结束：WM_CLOSE 优雅关闭会让 EzCad2 在退出途中弹出闪屏（隐藏守护此时已停止），
+                // 强杀则窗口根本不会出现。EzCad2 自带 AUTOSAVE 机制，强杀无数据丢失风险。
+                process.Kill(entireProcessTree: true);
                 _logger.LogInformation("EzCad2 已随上位机关闭");
             }
 

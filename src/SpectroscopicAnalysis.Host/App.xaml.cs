@@ -74,6 +74,8 @@ public partial class App
                 // 设备抽象 + Workflow 编排（Stub 网关；Modbus 真实现落地后仅替换本节注册）
                 // PLC 数据交互日志（独立文件 logs/plc-YYYYMMDD.log，按天滚动保留 3 天）
                 services.AddSingleton<DeviceInterface.IPlcCommLogger, DeviceInterface.PlcCommLogger>();
+                // 海康VM专用日志（独立子文件夹 logs/hikvm/；预注册，海康视觉集成代码直接注入埋点）
+                services.AddSingleton<Vision.IHikVisionLogger, Vision.HikVisionLogger>();
                 var workflowOptions = new Workflow.WorkflowOptions();
                 context.Configuration.GetSection("Workflow").Bind(workflowOptions);
                 services.AddSingleton(workflowOptions);

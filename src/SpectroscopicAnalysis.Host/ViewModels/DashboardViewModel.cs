@@ -46,6 +46,8 @@ public sealed partial class DashboardViewModel : ObservableObject, IPageLifecycl
     private readonly IWorkflowOrchestrator _orchestrator;
     private readonly IUiDispatcher _ui;
     private readonly IErrorCollector _errors;
+    private readonly Ui.IDialogService _dialogs;
+    private readonly SampleManager.ISampleRegistrationService _registration;
 
     /// <summary>SampleID → 样品类型键映射（类型筛选用；SCT 四类取自 SCT_Sample，生产样取自 Production_Sample）。</summary>
     private Dictionary<string, string> _sampleTypeMap = new();
@@ -99,7 +101,8 @@ public sealed partial class DashboardViewModel : ObservableObject, IPageLifecycl
 
     public DashboardViewModel(ISctOperationLogRepository logs, ISctSampleRepository samples,
         IProductionSampleRepository production, ISctStrategyEngine engine, IWorkflowOrchestrator orchestrator,
-        IUiDispatcher ui, IErrorCollector errors)
+        IUiDispatcher ui, IErrorCollector errors, Ui.IDialogService dialogs,
+        SampleManager.ISampleRegistrationService registration)
     {
         _logs = logs;
         _samples = samples;
@@ -108,6 +111,8 @@ public sealed partial class DashboardViewModel : ObservableObject, IPageLifecycl
         _orchestrator = orchestrator;
         _ui = ui;
         _errors = errors;
+        _dialogs = dialogs;
+        _registration = registration;
         // 编排器取走任务/状态变化时同步刷新队列卡与 KPI（否则注册后任务瞬间被主循环出队，面板看似"没刷新"）
         _orchestrator.StateChanged += (_, _) =>
         {
@@ -241,7 +246,7 @@ public sealed partial class DashboardViewModel : ObservableObject, IPageLifecycl
     /// <summary>KPI 定时刷新周期（秒；倒计时/今日已完成等随时间自然变化的数据靠它保鲜）。</summary>
     private static readonly TimeSpan KpiRefreshInterval = TimeSpan.FromSeconds(30);
 
-    /// <summary>「今日已完成」数（今日分析成功/预警的生产样数，按样品去重）。</summary>
+    /// <summary>「今日已完成」数（Status=Completed 的生产样；有结果的按最新结果时间=今日过滤，无结果也计入）。</summary>
     [ObservableProperty]
     private int _todayCompletedCount;
 
@@ -289,7 +294,7 @@ public sealed partial class DashboardViewModel : ObservableObject, IPageLifecycl
     }
 
     /// <summary>
-    /// 刷新 KPI 四卡：今日已完成（生产样结果按样品去重）/ 队列待分析 / 未确认报警 / 控制样倒计时。
+    /// 刷新 KPI 四卡：今日已完成（Status=Completed 生产样，无结果也计入）/ 队列待分析 / 未确认报警 / 控制样倒计时。
     /// I/O 在后台线程，结果经 IUiDispatcher 回 UI 线程（开发规范第 4 节）。
     /// </summary>
     private void RefreshKpis()
@@ -298,13 +303,15 @@ public sealed partial class DashboardViewModel : ObservableObject, IPageLifecycl
         {
             try
             {
-                // 今日已完成：今日有成功/预警结果的生产样数（Fail 不计；按 SampleId 去重）
+                // 今日已完成：Production_Sample 中 Status=Completed 的样品；
+                // 有分析结果的按最新结果时间=今日过滤，无结果记录的完成样品也计入（表无完成时间字段）
                 var today = DateTime.Today;
-                var completed = _production.GetAllResults()
-                    .Where(r => r.OperationTime?.Date == today && r.ResultStatus != AnalysisResultStatus.Fail)
-                    .Select(r => r.SampleId)
-                    .Distinct()
-                    .Count();
+                var latestResultTime = _production.GetAllResults()
+                    .GroupBy(r => r.SampleId)
+                    .ToDictionary(g => g.Key, g => g.Max(r => r.OperationTime));
+                var completed = _production.GetAll()
+                    .Count(p => p.Status == ProductionStatus.Completed &&
+                        (!latestResultTime.TryGetValue(p.SampleId, out var t) || t?.Date == today));
                 var countdown = _engine.GetControlCountdown();
                 var text = countdown.Mode == ControlInsertMode.ByTime
                     ? $"{(int)countdown.MinutesSinceControl} / {countdown.ControlInsertMinutes} 分钟"
@@ -324,6 +331,35 @@ public sealed partial class DashboardViewModel : ObservableObject, IPageLifecycl
                 _errors.Collect(ErrorCodes.UnhandledException, "主控台 KPI 刷新失败", null, ex);
             }
         });
+    }
+
+    // ==================== 样品注册（弹窗） ====================
+
+    /// <summary>打开样品注册弹窗：构建表单 VM（提交委托=注册服务）→ 模态弹窗；注册成功后刷新队列与 KPI。</summary>
+    [RelayCommand]
+    private void OpenSampleRegister()
+    {
+        // 提交委托：表单 → 注册表单数据 → 注册服务（校验/查重/入库/自动入队）
+        var form = new SampleRegisterFormViewModel(async vm =>
+        {
+            try
+            {
+                return await _registration.RegisterAsync(vm.ToForm());
+            }
+            catch (Exception ex)
+            {
+                // 注册服务未捕获异常兜底（统一错误链，不静默吞掉）
+                _errors.Collect(ErrorCodes.UnhandledException, "样品注册失败", vm.SampleId, ex);
+                return "注册失败，请稍后重试";
+            }
+        });
+
+        if (_dialogs.ShowSampleRegister(form))
+        {
+            // 注册成功：入库与入队已完成，刷新队列卡与 KPI（StateChanged 亦会触发，此处即时同步）
+            RefreshQueue();
+            RefreshKpis();
+        }
     }
 
     /// <summary>队列回到首页（已在第 1 页时禁用）。</summary>

@@ -89,6 +89,8 @@ public partial class App
                 services.AddSingleton<Ui.IUiDispatcher, Ui.UiDispatcher>();
                 services.AddSingleton<IErrorCollector, ErrorCollector>();
                 services.AddSingleton<Ui.IDialogService, Ui.DialogService>();
+                // 样品注册服务（样品档案页与主控台共用：校验/查重/入库/自动入队）
+                services.AddSingleton<SampleManager.ISampleRegistrationService, SampleManager.SampleRegistrationService>();
                 services.AddSingleton<ViewModels.DashboardViewModel>();
                 services.AddSingleton<ViewModels.SamplesViewModel>();
                 services.AddSingleton<ViewModels.SctViewModel>();

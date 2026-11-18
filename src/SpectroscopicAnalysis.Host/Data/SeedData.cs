@@ -40,6 +40,12 @@ public sealed class SeedData
     /// <summary>种子数据目标总量（演示用途：手工演示样 + 生成样凑满 3000 条）。</summary>
     private const int SeedTargetCount = 3000;
 
+    /// <summary>操作日志种子行数（无外键表，承担大部分数据量；全表总量目标 > 10 万行）。</summary>
+    private const int LogSeedCount = 70000;
+
+    /// <summary>生产样种子条数（配套扩容；每 Completed 样再带 1~2 条分析结果）。</summary>
+    private const int ProductionSeedTargetCount = 10000;
+
     /// <summary>注入演示样品与各子表数据（INSERT OR IGNORE 幂等，单事务）。</summary>
     public void SeedDemo()
     {
@@ -101,7 +107,7 @@ public sealed class SeedData
         // 批量子表数据：标准值/控制限/校正系数/操作日志各 ≥5000 行（确定性生成）
         SeedBulkSubTables(conn, tx, samples);
 
-        // 生产样独立档案表：≥3000 条（多日期入库）+ 分析结果（每样 1~2 条）
+        // 生产样独立档案表：≥10000 条（多日期入库）+ 分析结果（每样 1~2 条）
         SeedProductionSamples(conn, tx);
 
         tx.Commit();
@@ -112,7 +118,7 @@ public sealed class SeedData
     /// 标准值 = 每样品 2 个元素 × 3000 样品 = 6000 行；
     /// 控制限 = 控制样（约 1000 条）× 5 元素 = 5000 行；
     /// 校正系数 = 4 方法 × 10 元素 × 125 版本 = 5000 行；
-    /// 操作日志 = 5000 行（轮转类型/结果状态，时间递减）。
+    /// 操作日志 = 70000 行（轮转类型/结果状态，时间递减）。
     /// </summary>
     private static void SeedBulkSubTables(SqliteConnection conn, SqliteTransaction tx, List<SctSample> samples)
     {
@@ -146,8 +152,8 @@ public sealed class SeedData
         // 校正系数：4 方法 × 10 元素 × 125 版本 = 5000 行（来源必填，轮转设置样/类型标准化样）
         SeedCoefficients(conn, tx, samples);
 
-        // 操作日志：5000 行（类型/结果轮转，时间按小时递减，关联样品轮转）
-        for (var i = 0; i < 5000; i++)
+        // 操作日志：70000 行（类型/结果轮转，时间按小时递减，关联样品轮转；无外键表承担主要数据量）
+        for (var i = 0; i < LogSeedCount; i++)
         {
             var opType = opTypes[i % opTypes.Length];
             var status = (i % 10) switch { 8 => "Warning", 9 => "Fail", _ => "Success" };
@@ -364,8 +370,8 @@ public sealed class SeedData
     }
 
     /// <summary>
-    /// 生产样演示数据（确定性）：3000 条生产样（入库时间近 30 天内多日期分布）
-    /// + 每样 1~2 条分析结果（共约 4500 条，原始/校正后双存、系数版本可追溯）。
+    /// 生产样演示数据（确定性）：10000 条生产样（入库时间近 30 天内多日期分布）
+    /// + 每样 1~2 条分析结果（共约 7500 条，原始/校正后双存、系数版本可追溯）。
     /// </summary>
     private static void SeedProductionSamples(SqliteConnection conn, SqliteTransaction tx)
     {
@@ -373,7 +379,7 @@ public sealed class SeedData
         var methods = new[] { "GB/T 7999-A", "ASTM E1251-A" };
         var baseTime = DateTime.Parse("2026-11-10 08:00");
 
-        for (var seq = 1; seq <= SeedTargetCount; seq++)
+        for (var seq = 1; seq <= ProductionSeedTargetCount; seq++)
         {
             // 状态轮转：10 个一组 [待分析×5, 已完成×5]；每组第 10 个为"分析失败回退待分析"样（记录失败原因）
             var status = seq % 10 <= 5 ? ProductionStatus.Pending : ProductionStatus.Completed;

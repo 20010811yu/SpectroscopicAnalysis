@@ -39,10 +39,16 @@ public sealed class SeedBulkTests
             Assert.True(Count("SCT_CertifiedValue") >= 5000, $"CertifiedValue={Count("SCT_CertifiedValue")}");
             Assert.True(Count("ControlLimit") >= 5000, $"ControlLimit={Count("ControlLimit")}");
             Assert.True(Count("CorrectionCoefficient") >= 5000, $"Coeff={Count("CorrectionCoefficient")}");
-            Assert.True(Count("SCT_OperationLog") >= 5000, $"Log={Count("SCT_OperationLog")}");
-            Assert.True(Count("Production_Sample") >= 3000, $"Production={Count("Production_Sample")}");
-            // 状态两值化后：仅已完成样(40%)×1~2 条生成结果；待分析样（含失败回退）不落结果
-            Assert.True(Count("Analysis_Result") >= 1800, $"AnalysisResult={Count("Analysis_Result")}");
+            Assert.True(Count("SCT_OperationLog") >= 70000, $"Log={Count("SCT_OperationLog")}");
+            Assert.True(Count("Production_Sample") >= 10000, $"Production={Count("Production_Sample")}");
+            // 状态两值化后：仅已完成样(约50%)×1~2 条生成结果；待分析样（含失败回退）不落结果
+            Assert.True(Count("Analysis_Result") >= 5000, $"AnalysisResult={Count("Analysis_Result")}");
+
+            // 全表总数据量超过 10 万行
+            var total = Count("SCT_Sample") + Count("SCT_CertifiedValue") + Count("ControlLimit")
+                + Count("CorrectionCoefficient") + Count("SCT_OperationLog") + Count("Production_Sample")
+                + Count("Analysis_Result");
+            Assert.True(total > 100_000, $"全表总量={total}");
             Assert.Equal(0L, CountWhere("Production_Sample", "Status NOT IN ('PendingAnalysis','Completed')"));
             Assert.Equal(0, CountWhere("SCT_Sample", "SampleType = 'Production'"));
 

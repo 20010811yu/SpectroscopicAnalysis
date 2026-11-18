@@ -1,5 +1,4 @@
 using System.IO;
-using Serilog;
 
 namespace SpectroscopicAnalysis.Host.Vision;
 
@@ -22,39 +21,30 @@ public interface IHikVisionLogger
 }
 
 /// <summary>
-/// 海康 VM 日志实现：独立 Serilog 文件 logs\hikvm\hikvm-YYYYMMDD.log
-/// （按天滚动、只保留最近 3 天，超期自动删除），UTF-8 中文可读；
-/// 输出格式：时间(毫秒) [级别] 内容；不污染主日志与 PLC 日志配置。
+/// 海康 VM 日志实现：独立文件 logs\hikvm\hikvm-YYYYMMDD.log（按天文件名、只保留最近 3 天）。
+/// 条目格式：[时间(毫秒)] [级别] 内容；新条目置顶（时间倒序）、条目之间明显分隔线；
+/// 不污染主日志与 PLC 日志。
 /// </summary>
 public sealed class HikVisionLogger : IHikVisionLogger, IDisposable
 {
-    /// <summary>日志保留天数（与 PLC 通信日志一致，只保留最近 3 天）。</summary>
-    public const int RetainedDays = 3;
-
-    /// <summary>专用 Serilog Logger（独立管道）。</summary>
-    private readonly ILogger _logger;
+    /// <summary>共用置顶写入器（时间倒序 + 分隔线 + 行数封顶 + 过期清理）。</summary>
+    private readonly DeviceInterface.DeviceLogFileWriter _writer;
 
     public HikVisionLogger()
     {
-        _logger = new LoggerConfiguration()
-            .MinimumLevel.Information()
-            .Enrich.FromLogContext()
-            .WriteTo.File(
-                Path.Combine(AppContext.BaseDirectory, "logs", "hikvm", "hikvm-.log"),
-                rollingInterval: RollingInterval.Day,
-                retainedFileCountLimit: RetainedDays,
-                outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff} [{Level}] {Content}{NewLine}",
-                encoding: System.Text.Encoding.UTF8)
-            .CreateLogger();
+        _writer = new DeviceInterface.DeviceLogFileWriter(
+            Path.Combine(AppContext.BaseDirectory, "logs", "hikvm"),
+            filePrefix: "hikvm",
+            retainedDays: DeviceInterface.DeviceLogFileWriterDefaults.RetainedDays,
+            maxLines: DeviceInterface.DeviceLogFileWriterDefaults.MaxLines);
     }
 
     /// <inheritdoc />
-    public void Log(string level, string content)
-    {
-        // 结构化属性经消息模板注入输出模板（时间戳由 Serilog 自动记录）
-        _logger.Information("海康VM {Level} {Content}", level, content);
-    }
+    public void Log(string level, string content) =>
+        _writer.Write($"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] [{level}] {content}");
 
-    /// <summary>宿主退出时释放文件句柄并 flush。</summary>
-    public void Dispose() => ((IDisposable)_logger).Dispose();
+    /// <summary>无需释放资源（保留 IDisposable 与旧实现兼容）。</summary>
+    public void Dispose()
+    {
+    }
 }

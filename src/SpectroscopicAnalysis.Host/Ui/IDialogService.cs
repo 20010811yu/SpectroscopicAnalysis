@@ -11,4 +11,10 @@ public interface IDialogService
 
     /// <summary>弹出提示对话框（仅告知信息，无分支）。</summary>
     void Alert(string title, string message);
+
+    /// <summary>
+    /// 弹出样品注册表单对话框（模态）；用户确认入库成功（Confirmed=true）后返回 true，取消返回 false。
+    /// 表单校验/错误提示在表单 VM 与注册服务内完成，弹窗内就地红字展示。
+    /// </summary>
+    bool ShowSampleRegister(ViewModels.SampleRegisterFormViewModel form);
 }

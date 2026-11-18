@@ -1,0 +1,119 @@
+<Window x:Class="SpectroscopicAnalysis.Host.Views.RegisterSampleDialogWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="样品注册" WindowStartupLocation="CenterOwner"
+        ResizeMode="NoResize" SizeToContent="Height"
+        ShowInTaskbar="False" Background="{DynamicResource Brush.Bg.Page}">
+    <!-- 样品注册弹窗（主控台「＋ 样品注册」入口；表单复刻样品档案页注册面板，业务在注册服务） -->
+    <Window.Resources>
+        <!-- 表单输入统一尺寸：宽 280 高 32（与样品档案页注册面板一致） -->
+        <Style TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
+            <Setter Property="Width" Value="280" />
+            <Setter Property="Height" Value="32" />
+            <Setter Property="HorizontalAlignment" Value="Left" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+        <Style TargetType="ComboBox" BasedOn="{StaticResource {x:Type ComboBox}}">
+            <Setter Property="Width" Value="280" />
+            <Setter Property="Height" Value="32" />
+            <Setter Property="HorizontalAlignment" Value="Left" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+        <!-- 行级显隐：生产样仅分析方法组；设置样/控制样/类型标准样共用架位/厚度组；关联合金仅类型标准样 -->
+        <Style x:Key="ProductionRow" TargetType="FrameworkElement">
+            <Setter Property="Visibility" Value="Collapsed" />
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding SampleType}" Value="Production">
+                    <Setter Property="Visibility" Value="Visible" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+        <Style x:Key="StdRow" TargetType="FrameworkElement">
+            <Setter Property="Visibility" Value="Collapsed" />
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding SampleType}" Value="SettingUp">
+                    <Setter Property="Visibility" Value="Visible" />
+                </DataTrigger>
+                <DataTrigger Binding="{Binding SampleType}" Value="Control">
+                    <Setter Property="Visibility" Value="Visible" />
+                </DataTrigger>
+                <DataTrigger Binding="{Binding SampleType}" Value="TypeStd">
+                    <Setter Property="Visibility" Value="Visible" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+        <Style x:Key="TypeStdRow" TargetType="FrameworkElement">
+            <Setter Property="Visibility" Value="Collapsed" />
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding SampleType}" Value="TypeStd">
+                    <Setter Property="Visibility" Value="Visible" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+    </Window.Resources>
+
+    <Border Style="{StaticResource Card}" Margin="16">
+        <StackPanel>
+            <TextBlock Text="样品注册" Style="{StaticResource Text.CardTitle}" Margin="0,0,0,12" />
+            <StackPanel>
+                <!-- 第一步：类型选择 -->
+                <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                    <TextBlock Text="样品类型*" Style="{StaticResource Text.Caption}" Width="110" VerticalAlignment="Center" />
+                    <ComboBox ItemsSource="{Binding SampleTypeOptions}" SelectedItem="{Binding SampleType}" />
+                </StackPanel>
+                <!-- 公共字段：编号/名称 -->
+                <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                    <TextBlock Text="样品编号*" Style="{StaticResource Text.Caption}" Width="110" VerticalAlignment="Center" />
+                    <TextBox Text="{Binding SampleId, UpdateSourceTrigger=PropertyChanged}" />
+                    <TextBlock Text="样品名称*" Style="{StaticResource Text.Caption}" Width="110" VerticalAlignment="Center" Margin="24,0,0,0" />
+                    <TextBox Text="{Binding SampleName, UpdateSourceTrigger=PropertyChanged}" />
+                </StackPanel>
+                <!-- 生产样：分析方法下拉 -->
+                <StackPanel Orientation="Horizontal" Margin="0,0,0,8" Style="{StaticResource ProductionRow}">
+                    <TextBlock Text="分析方法*" Style="{StaticResource Text.Caption}" Width="110" VerticalAlignment="Center" />
+                    <ComboBox ItemsSource="{Binding AnalysisMethodOptions}" SelectedItem="{Binding AnalysisMethod}" />
+                </StackPanel>
+                <!-- 设置样/控制样/类型标准样：架位 + 最大使用次数 -->
+                <StackPanel Orientation="Horizontal" Margin="0,0,0,8" Style="{StaticResource StdRow}">
+                    <TextBlock Text="样品架位置*" Style="{StaticResource Text.Caption}" Width="110" VerticalAlignment="Center" />
+                    <TextBox Text="{Binding RackPosition, UpdateSourceTrigger=PropertyChanged}" />
+                    <TextBlock Text="最大使用次数*" Style="{StaticResource Text.Caption}" Width="110" VerticalAlignment="Center" Margin="24,0,0,0" />
+                    <TextBox Text="{Binding MaxUsageCount, UpdateSourceTrigger=PropertyChanged}" />
+                </StackPanel>
+                <!-- 设置样/控制样/类型标准样：初始/最小厚度 -->
+                <StackPanel Orientation="Horizontal" Margin="0,0,0,8" Style="{StaticResource StdRow}">
+                    <TextBlock Text="初始厚度 (mm)*" Style="{StaticResource Text.Caption}" Width="110" VerticalAlignment="Center" />
+                    <TextBox Text="{Binding InitialThickness, UpdateSourceTrigger=PropertyChanged}" />
+                    <TextBlock Text="最小厚度 (mm)*" Style="{StaticResource Text.Caption}" Width="110" VerticalAlignment="Center" Margin="24,0,0,0" />
+                    <TextBox Text="{Binding MinThickness, UpdateSourceTrigger=PropertyChanged}" />
+                </StackPanel>
+                <!-- 仅类型标准样：关联合金 -->
+                <StackPanel Orientation="Horizontal" Margin="0,0,0,8" Style="{StaticResource TypeStdRow}">
+                    <TextBlock Text="关联合金*" Style="{StaticResource Text.Caption}" Width="110" VerticalAlignment="Center" />
+                    <TextBox Text="{Binding AlloyType, UpdateSourceTrigger=PropertyChanged}" />
+                </StackPanel>
+            </StackPanel>
+
+            <!-- 校验错误就地红字（弹窗不关闭，便于修正后重试） -->
+            <TextBlock Text="{Binding RegisterError}" TextWrapping="Wrap" Margin="0,4,0,8"
+                       Foreground="{DynamicResource Brush.Status.Failed}">
+                <TextBlock.Style>
+                    <Style TargetType="TextBlock" BasedOn="{StaticResource Text.Caption}">
+                        <Setter Property="Visibility" Value="Visible" />
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding RegisterError}" Value="{x:Null}">
+                                <Setter Property="Visibility" Value="Collapsed" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </TextBlock.Style>
+            </TextBlock>
+
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                <Button Content="取消" Command="{Binding CancelCommand}" Style="{StaticResource SecondaryBtn}" Margin="0,0,8,0" />
+                <Button Content="确认入库" Command="{Binding ConfirmCommand}"
+                        Style="{StaticResource PrimaryBtn}" Padding="14,6" />
+            </StackPanel>
+        </StackPanel>
+    </Border>
+</Window>

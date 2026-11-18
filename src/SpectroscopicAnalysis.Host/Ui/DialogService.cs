@@ -18,4 +18,16 @@ public sealed class DialogService : IDialogService
     {
         HandyControl.Controls.MessageBox.Show(message, title, MessageBoxButton.OK, MessageBoxImage.Information);
     }
+
+    /// <inheritdoc />
+    public bool ShowSampleRegister(ViewModels.SampleRegisterFormViewModel form)
+    {
+        var window = new Views.RegisterSampleDialogWindow
+        {
+            Owner = Application.Current.MainWindow,
+            DataContext = form,
+        };
+        window.ShowDialog();
+        return form.Confirmed;
+    }
 }

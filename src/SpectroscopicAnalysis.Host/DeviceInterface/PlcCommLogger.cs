@@ -24,7 +24,8 @@ public interface IPlcCommLogger
 }
 
 /// <summary>
-/// PLC 数据交互日志实现：独立 Serilog 文件 logs/plc-YYYYMMDD.log（按天滚动、只保留最近 3 天，超期自动删除），
+/// PLC 数据交互日志实现：独立 Serilog 文件 logs\plc\plc-YYYYMMDD.log（独立子文件夹与主日志分离；
+/// 按天滚动、只保留最近 3 天，超期自动删除），
 /// 输出格式：时间(毫秒) [方向] 地址: 内容，UTF-8 中文可读；不污染主日志（logs/host-.log）配置。
 /// Serilog File sink 线程安全，写失败不影响业务。
 /// </summary>
@@ -42,7 +43,7 @@ public sealed class PlcCommLogger : IPlcCommLogger, IDisposable
             .MinimumLevel.Information()
             .Enrich.FromLogContext()
             .WriteTo.File(
-                Path.Combine(AppContext.BaseDirectory, "logs", "plc-.log"),
+                Path.Combine(AppContext.BaseDirectory, "logs", "plc", "plc-.log"),
                 rollingInterval: RollingInterval.Day,
                 retainedFileCountLimit: RetainedDays,
                 outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff} [{Direction}] {Address}: {Content}{NewLine}",

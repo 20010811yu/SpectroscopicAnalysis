@@ -16,7 +16,7 @@ public sealed class MainViewModelTests
             new FakeUiDispatcher(), new FakeDialogService(), new FakeErrorCollector()),
         new SctViewModel(new FakeSampleRepository(), new FakeOperationLogRepository(), new FakeSctPolicyStore(),
             new FakeUiDispatcher(), new FakeDialogService(), new FakeErrorCollector()),
-        new CoefficientsViewModel(),
+        new CoefficientsViewModel(new FakeCoefficientRepository(), new FakeOperationLogRepository(), new FakeUiDispatcher(), new FakeErrorCollector()),
         new AlarmsViewModel(),
         new SettingsViewModel(),
         new LaserMarkingViewModel(new FakeLaserMarkingService()));

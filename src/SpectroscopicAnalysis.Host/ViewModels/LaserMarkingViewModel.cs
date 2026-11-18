@@ -28,8 +28,8 @@ public sealed partial class LaserMarkingViewModel : ObservableObject, IPageLifec
     [ObservableProperty]
     private string _saveStatus = string.Empty;
 
-    /// <summary>打标方式候选（文本打印=2.ezd / 条码打印=1.ezd，路径映射在服务层）。</summary>
-    public static readonly IReadOnlyList<string> MarkingModes = ["文本打印", "条码打印"];
+    /// <summary>打标方式候选（文本打印=2.ezd / 条码打印=1.ezd，路径映射在服务层）。须为实例公共属性——WPF {Binding} 无法绑定静态字段。</summary>
+    public IReadOnlyList<string> MarkingModes { get; } = ["文本打印", "条码打印"];
 
     /// <summary>当前打标方式（默认文本打印；切换时联动 EzCad2 隐藏式重新加载对应工程文件）。</summary>
     [ObservableProperty]

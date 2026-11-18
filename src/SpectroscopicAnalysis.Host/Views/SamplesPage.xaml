@@ -979,10 +979,10 @@
                                                             <Grid.ColumnDefinitions>
                                                                 <ColumnDefinition Width="*" /><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /><ColumnDefinition Width="*" />
                                                             </Grid.ColumnDefinitions>
-                                                            <TextBlock Grid.Column="0" Text="原始" Style="{StaticResource Table.Header}" Padding="0,4" />
-                                                            <TextBlock Grid.Column="1" Text="校正后" Style="{StaticResource Table.Header}" Padding="0,4" />
-                                                            <TextBlock Grid.Column="2" Text="判定" Style="{StaticResource Table.Header}" Padding="0,4" />
-                                                            <TextBlock Grid.Column="3" Text="时间" Style="{StaticResource Table.Header}" Padding="0,4" />
+                                                            <TextBlock Grid.Column="0" Text="原始浓度" Style="{StaticResource Table.Header}" Padding="0,4" />
+                                                            <TextBlock Grid.Column="1" Text="校正后浓度" Style="{StaticResource Table.Header}" Padding="0,4" />
+                                                            <TextBlock Grid.Column="2" Text="判定结果" Style="{StaticResource Table.Header}" Padding="0,4" />
+                                                            <TextBlock Grid.Column="3" Text="分析时间" Style="{StaticResource Table.Header}" Padding="0,4" />
                                                         </Grid>
                                                         <ItemsPresenter Grid.Row="1" />
                                                     </Grid>

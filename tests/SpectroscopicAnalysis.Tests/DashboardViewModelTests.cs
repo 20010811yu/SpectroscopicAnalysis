@@ -80,7 +80,7 @@ public sealed class DashboardViewModelTests
         };
 
         vm.OpenSampleRegisterCommand.Execute(null);
-        await WaitQueueAsync(vm);                   // RefreshQueue 为 fire-and-forget，轮询等待快照落到 UI
+        await WaitQueueAsync(vm);                   // 队列/KPI 为 fire-and-forget，轮询等待两者都落到 UI
 
         var form = dialogs.RegisterForms.Single();
         Assert.True(form.Confirmed);                // 注册成功
@@ -89,10 +89,10 @@ public sealed class DashboardViewModelTests
         Assert.Equal(1, vm.QueuePendingCount);      // KPI 待分析同步刷新
     }
 
-    /// <summary>等待 fire-and-forget 的队列刷新完成（后台取数 + Dispatcher 回 UI，轮询直到快照非空或超时）。</summary>
+    /// <summary>等待 fire-and-forget 的队列/KPI 刷新完成（后台取数 + Dispatcher 回 UI，轮询直到两者非默认值或超时）。</summary>
     private static async Task WaitQueueAsync(DashboardViewModel vm)
     {
-        for (var i = 0; i < 100 && vm.QueueTotalCount == 0; i++)
+        for (var i = 0; i < 100 && (vm.QueueTotalCount == 0 || vm.QueuePendingCount == 0); i++)
         {
             await Task.Delay(10);
         }

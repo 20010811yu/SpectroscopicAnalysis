@@ -7,7 +7,19 @@ namespace SpectroscopicAnalysis.Host.LoggingAlarm;
 public interface IErrorCollector
 {
     /// <summary>
-    /// 记录业务错误：错误码必填，样品/任务上下文可选，结构化写入 Serilog 并供后续报警面板/统计消费。
+    /// 记录业务错误：错误码必填，样品/任务上下文可选，结构化写入 Serilog 并追加内存报警表供报警面板/统计消费。
     /// </summary>
     void Collect(int errorCode, string message, string? sampleId = null, Exception? exception = null);
+
+    /// <summary>未确认报警数（主控台 KPI「未确认报警」数据源；进程重启后清零）。</summary>
+    int UnacknowledgedCount { get; }
+
+    /// <summary>报警记录快照（最新在前，封顶保留；后续 D9 报警面板数据源）。</summary>
+    IReadOnlyList<AlarmRecord> GetAlarms();
+
+    /// <summary>确认单条报警。</summary>
+    void Acknowledge(long alarmId);
+
+    /// <summary>全部确认。</summary>
+    void AcknowledgeAll();
 }

@@ -75,13 +75,27 @@ internal sealed class FakeDialogService : IDialogService
     public void Alert(string title, string message) => Messages.Add($"{title}|{message}");
 }
 
-/// <summary>Fake 错误收集：记录 (错误码, 消息, 样品) 供断言，不做 I/O。</summary>
+/// <summary>Fake 错误收集：记录 (错误码, 消息, 样品) 供断言，不做 I/O；内存报警表逻辑复用真实实现。</summary>
 internal sealed class FakeErrorCollector : IErrorCollector
 {
+    /// <summary>真实实现承载报警表（计数/确认逻辑与生产一致）。</summary>
+    private readonly ErrorCollector _inner = new();
+
     public List<(int Code, string Message, string? SampleId)> Collected { get; } = new();
 
-    public void Collect(int errorCode, string message, string? sampleId = null, Exception? exception = null) =>
+    public void Collect(int errorCode, string message, string? sampleId = null, Exception? exception = null)
+    {
         Collected.Add((errorCode, message, sampleId));
+        _inner.Collect(errorCode, message, sampleId, exception);
+    }
+
+    public int UnacknowledgedCount => _inner.UnacknowledgedCount;
+
+    public IReadOnlyList<AlarmRecord> GetAlarms() => _inner.GetAlarms();
+
+    public void Acknowledge(long alarmId) => _inner.Acknowledge(alarmId);
+
+    public void AcknowledgeAll() => _inner.AcknowledgeAll();
 }
 
 /// <summary>Fake 标准值仓储：预设列表 + Delete 调用记录。</summary>

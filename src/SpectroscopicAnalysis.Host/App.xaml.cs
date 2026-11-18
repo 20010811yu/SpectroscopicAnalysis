@@ -91,6 +91,8 @@ public partial class App
                 services.AddSingleton<Ui.IDialogService, Ui.DialogService>();
                 // 样品注册服务（样品档案页与主控台共用：校验/查重/入库/自动入队）
                 services.AddSingleton<SampleManager.ISampleRegistrationService, SampleManager.SampleRegistrationService>();
+                // 校正计算引擎（纯计算：线性模型 + IEC 干扰迭代；干扰系数由调用方提供）
+                services.AddSingleton<Correction.ICorrectionEngine, Correction.CorrectionEngine>();
                 services.AddSingleton<ViewModels.DashboardViewModel>();
                 services.AddSingleton<ViewModels.SamplesViewModel>();
                 services.AddSingleton<ViewModels.SctViewModel>();

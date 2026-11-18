@@ -1,5 +1,6 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using SpectroscopicAnalysis.Host.ViewModels;
+using SpectroscopicAnalysis.Host.Vision;
 
 namespace SpectroscopicAnalysis.Tests;
 
@@ -17,7 +18,8 @@ public sealed class MainViewModelTests
             new FakeUiDispatcher(), new FakeDialogService(), new FakeErrorCollector()),
         new CoefficientsViewModel(),
         new AlarmsViewModel(),
-        new SettingsViewModel());
+        new SettingsViewModel(),
+        new LaserMarkingViewModel(new FakeLaserMarkingService()));
 
     [Fact]
     public void 构造后_默认落在主控台且首项选中()

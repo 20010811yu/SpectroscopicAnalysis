@@ -26,13 +26,21 @@ public sealed class SctManualTriggerTests
     }
 
     [Fact]
-    public void 引擎注入_标准化与控制检查可触发并入队()
+    public async Task 引擎注入_标准化与控制检查可触发并入队()
     {
+        _samples.Store.Add(MakeSample("SUS-001"));                       // 设置样（默认类型）
+        _samples.Store.Add(MakeSample("CTL-001", SampleType.Control));
         var engine = new SctStrategyEngine(_policy, _samples, _logs, _errors);
         var vm = Create(engine);
+        await vm.LoadCommand.ExecuteAsync(null);
 
+        // 手动标准化仅限设置样/类型标准化样（e50ef9f），需选中设置样行
+        vm.SelectedSample = vm.SctSamples.First(s => s.SampleId == "SUS-001");
         Assert.True(vm.TriggerStandardizationCommand.CanExecute(null));
         vm.TriggerStandardizationCommand.Execute(null);
+
+        // 手动控制检查仅限控制样（e50ef9f），切换选中控制样行
+        vm.SelectedSample = vm.SctSamples.First(s => s.SampleId == "CTL-001");
         Assert.True(vm.TriggerControlCheckCommand.CanExecute(null));
         vm.TriggerControlCheckCommand.Execute(null);
 
@@ -63,11 +71,14 @@ public sealed class SctManualTriggerTests
     }
 
     [Fact]
-    public void 去重合并_重复点击标准化只保留一个任务()
+    public async Task 去重合并_重复点击标准化只保留一个任务()
     {
+        _samples.Store.Add(MakeSample("SUS-001"));
         var engine = new SctStrategyEngine(_policy, _samples, _logs, _errors);
         var vm = Create(engine);
+        await vm.LoadCommand.ExecuteAsync(null);
 
+        vm.SelectedSample = vm.SctSamples.First();      // 选中设置样行后触发
         vm.TriggerStandardizationCommand.Execute(null);
         vm.TriggerStandardizationCommand.Execute(null);
 
@@ -75,11 +86,11 @@ public sealed class SctManualTriggerTests
         Assert.False(engine.TryDequeue(out _));                             // 第二次被去重合并
     }
 
-    private static SctSample MakeSample(string id) => new()
+    private static SctSample MakeSample(string id, string sampleType = SampleType.SettingUp) => new()
     {
         SampleId = id,
         SampleName = id,
-        SampleType = SampleType.SettingUp,
+        SampleType = sampleType,
         Status = SampleStatus.Normal,
         MinThickness = 5,
         MaxUsageCount = 50,

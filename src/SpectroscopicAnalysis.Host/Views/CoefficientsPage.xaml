@@ -1,30 +1,197 @@
 <UserControl x:Class="SpectroscopicAnalysis.Host.Views.CoefficientsPage"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
-    <!-- 系数管理骨架（对照 docs/prototypes/coefficients.html；静态占位） -->
+    <!-- 系数管理（对照 docs/prototypes/coefficients.html；两 Tab 真实数据 + 干扰矩阵占位，只读展示） -->
+    <UserControl.Resources>
+        <!-- Tab 卡显隐：仅激活 Tab 对应卡显示（equality 触发器，避免新增转换器） -->
+        <Style x:Key="TabCard" TargetType="Border" BasedOn="{StaticResource Card}">
+            <Setter Property="Margin" Value="{DynamicResource Spacing.CardGap}" />
+            <Setter Property="Visibility" Value="Collapsed" />
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding ActiveTab}" Value="Current">
+                    <Setter Property="Visibility" Value="Visible" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+        <Style x:Key="TabCardHistory" TargetType="Border" BasedOn="{StaticResource TabCard}">
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding ActiveTab}" Value="History">
+                    <Setter Property="Visibility" Value="Visible" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+        <Style x:Key="TabCardMatrix" TargetType="Border" BasedOn="{StaticResource TabCard}">
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding ActiveTab}" Value="Matrix">
+                    <Setter Property="Visibility" Value="Visible" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+        <!-- Tab 按钮选中态：激活 Tab 高亮主色（equality 触发器） -->
+        <Style x:Key="TabBtnCurrent" TargetType="Button" BasedOn="{StaticResource ModeBtn}">
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding ActiveTab}" Value="Current">
+                    <Setter Property="Background" Value="{DynamicResource Brush.Primary}" />
+                    <Setter Property="Foreground" Value="White" />
+                    <Setter Property="FontWeight" Value="SemiBold" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+        <Style x:Key="TabBtnHistory" TargetType="Button" BasedOn="{StaticResource ModeBtn}">
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding ActiveTab}" Value="History">
+                    <Setter Property="Background" Value="{DynamicResource Brush.Primary}" />
+                    <Setter Property="Foreground" Value="White" />
+                    <Setter Property="FontWeight" Value="SemiBold" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+        <Style x:Key="TabBtnMatrix" TargetType="Button" BasedOn="{StaticResource ModeBtn}">
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding ActiveTab}" Value="Matrix">
+                    <Setter Property="Background" Value="{DynamicResource Brush.Primary}" />
+                    <Setter Property="Foreground" Value="White" />
+                    <Setter Property="FontWeight" Value="SemiBold" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+    </UserControl.Resources>
     <ScrollViewer VerticalScrollBarVisibility="Auto">
         <StackPanel Margin="16">
-            <TextBlock Text="系数管理" Style="{StaticResource Text.PageTitle}" Margin="{DynamicResource Spacing.CardGap}" />
 
-            <Border Style="{StaticResource Card}" Margin="{DynamicResource Spacing.CardGap}">
+            <!-- 标题行 + Tab 切换 -->
+            <DockPanel Margin="{DynamicResource Spacing.CardGap}">
+                <TextBlock Text="系数管理" Style="{StaticResource Text.PageTitle}" VerticalAlignment="Center" />
+                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                    <Button Content="当前有效系数" Command="{Binding SetTabCommand}" CommandParameter="Current"
+                            Style="{StaticResource TabBtnCurrent}" Margin="0,0,8,0" />
+                    <Button Content="变更历史" Command="{Binding SetTabCommand}" CommandParameter="History"
+                            Style="{StaticResource TabBtnHistory}" Margin="0,0,8,0" />
+                    <Button Content="干扰系数矩阵" Command="{Binding SetTabCommand}" CommandParameter="Matrix"
+                            Style="{StaticResource TabBtnMatrix}" />
+                </StackPanel>
+            </DockPanel>
+
+            <!-- ==================== Tab 1：当前有效系数 ==================== -->
+            <Border Style="{StaticResource TabCard}">
                 <StackPanel>
-                    <TextBlock Text="当前有效系数" Style="{StaticResource Text.CardTitle}" Margin="0,0,0,8" />
-                    <TextBlock Text="方法 / 元素 / 斜率 a / 截距 b / 内标 / 版本 / 生效时间 / 来源 / 状态" Style="{StaticResource Table.Header}" TextWrapping="Wrap" />
-                    <TextBlock Text="C = a·I + b（生产样品结果应用最新版本系数；原始与校正数据双存）" Style="{StaticResource Text.Caption}" Margin="0,8,0,0" />
+                    <!-- 筛选行：方法 / 元素 / 仅当前有效 -->
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                        <TextBlock Text="分析方法" Style="{StaticResource Text.Caption}" VerticalAlignment="Center" Margin="0,0,6,0" />
+                        <ComboBox ItemsSource="{Binding MethodFilterOptions}" SelectedItem="{Binding FilterMethod}"
+                                  Width="140" Height="28" Margin="0,0,16,0" />
+                        <TextBlock Text="元素" Style="{StaticResource Text.Caption}" VerticalAlignment="Center" Margin="0,0,6,0" />
+                        <ComboBox ItemsSource="{Binding ElementFilterOptions}" SelectedItem="{Binding FilterElement}"
+                                  Width="100" Height="28" Margin="0,0,16,0" />
+                        <CheckBox Content="仅当前有效" IsChecked="{Binding FilterCurrentOnly}" VerticalAlignment="Center" />
+                    </StackPanel>
+
+                    <TextBlock Text="C = a·I + b（生产样品结果应用最新版本系数；原始与校正数据双存；新版本生效后旧版本归档不删除）"
+                               Style="{StaticResource Text.Caption}" Margin="0,0,0,8" />
+
+                    <!-- 空态 -->
+                    <TextBlock Text="暂无系数记录（标准化完成后自动生成新版本）" Style="{StaticResource Text.Caption}" Margin="0,4"
+                               Visibility="{Binding HasCoefficients, Converter={StaticResource BoolToVisibility.Inverse}}" />
+                    <!-- 系数表：只读展示 -->
+                    <DataGrid ItemsSource="{Binding CoefficientRows}" Visibility="{Binding HasCoefficients, Converter={StaticResource BoolToVisibility}}"
+                              AutoGenerateColumns="False" IsReadOnly="True"
+                              CanUserAddRows="False" CanUserSortColumns="False"
+                              CanUserResizeColumns="True" CanUserResizeRows="False"
+                              HeadersVisibility="Column" GridLinesVisibility="None"
+                              BorderThickness="0" Background="Transparent"
+                              RowBackground="Transparent" AlternatingRowBackground="Transparent"
+                              RowStyle="{StaticResource GridRow}" CellStyle="{StaticResource GridCell}"
+                              ColumnHeaderStyle="{StaticResource GridColumnHeader}"
+                              FontSize="{DynamicResource FontSize.Body}">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="元素" Binding="{Binding ElementText}" Width="0.8*" MinWidth="60" ElementStyle="{StaticResource GridCellText}" />
+                            <DataGridTextColumn Header="分析方法" Binding="{Binding MethodIdText}" Width="1.2*" MinWidth="90" ElementStyle="{StaticResource GridCellText}" />
+                            <DataGridTextColumn Header="斜率 a" Binding="{Binding SlopeText}" FontFamily="Consolas" Width="1.0*" MinWidth="70" ElementStyle="{StaticResource GridCellText}" />
+                            <DataGridTextColumn Header="截距 b" Binding="{Binding InterceptText}" FontFamily="Consolas" Width="1.0*" MinWidth="70" ElementStyle="{StaticResource GridCellText}" />
+                            <DataGridTextColumn Header="版本" Binding="{Binding VersionText}" FontFamily="Consolas" Width="0.6*" MinWidth="50" ElementStyle="{StaticResource GridCellText}" />
+                            <DataGridTextColumn Header="生效时间" Binding="{Binding EffectiveTimeText}" FontFamily="Consolas" Width="1.3*" MinWidth="120" ElementStyle="{StaticResource GridCellText}" />
+                            <DataGridTextColumn Header="来源标样" Binding="{Binding SourceSampleIdText}" Width="1.0*" MinWidth="80" ElementStyle="{StaticResource GridCellText}" />
+                            <DataGridTemplateColumn Header="状态" Width="0.9*" MinWidth="70">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <Border Style="{StaticResource Badge.Base}" Background="{DynamicResource Brush.Badge.Running.Bg}"
+                                                HorizontalAlignment="Left" Padding="6,2"
+                                                Visibility="{Binding IsCurrent, Converter={StaticResource BoolToVisibility}}">
+                                            <TextBlock Text="● 当前" Style="{StaticResource Text.Caption}"
+                                                       Foreground="{DynamicResource Brush.Status.Running}" />
+                                        </Border>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                        </DataGrid.Columns>
+                    </DataGrid>
+
+                    <!-- 分页脚（每页 10 条，超过一页才显示；右下角） -->
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,8,0,0"
+                                Visibility="{Binding HasCoeffMultiPage, Converter={StaticResource BoolToVisibility}}">
+                        <Button Content="首页" Command="{Binding FirstCoeffPageCommand}" Style="{StaticResource PrimaryBtn}" Margin="0,0,8,0" />
+                        <Button Content="上一页" Command="{Binding PrevCoeffPageCommand}" Style="{StaticResource PrimaryBtn}" Margin="8,0,0,0" />
+                        <TextBlock Text="{Binding CoeffPageDisplay}" VerticalAlignment="Center" Margin="8,0"
+                                   Style="{StaticResource Text.Caption}" />
+                        <TextBox Width="48" Height="26" Text="{Binding CoeffPageJumpInput, UpdateSourceTrigger=PropertyChanged}"
+                                 VerticalContentAlignment="Center" TextAlignment="Center" Margin="4,0,0,0" />
+                        <Button Content="跳转" Command="{Binding JumpToCoeffPageCommand}" Style="{StaticResource PrimaryBtn}" Margin="8,0,0,0" />
+                        <Button Content="下一页" Command="{Binding NextCoeffPageCommand}" Style="{StaticResource PrimaryBtn}" Margin="8,0,0,0" />
+                    </StackPanel>
                 </StackPanel>
             </Border>
 
-            <Border Style="{StaticResource Card}" Margin="{DynamicResource Spacing.CardGap}">
+            <!-- ==================== Tab 2：变更历史 ==================== -->
+            <Border Style="{StaticResource TabCardHistory}">
                 <StackPanel>
-                    <TextBlock Text="变更历史" Style="{StaticResource Text.CardTitle}" Margin="0,0,0,8" />
-                    <TextBlock Text="时间 / 元素 / 变更前（a/b）/ 变更后（a/b）/ 版本 / 原因 / 来源" Style="{StaticResource Table.Header}" TextWrapping="Wrap" />
+                    <TextBlock Text="系数变更审计（标准化流程写入；变更前后值 + 时间 + 来源样品）"
+                               Style="{StaticResource Text.Caption}" Margin="0,0,0,8" />
+
+                    <TextBlock Text="暂无系数变更记录（标准化完成后自动留痕）" Style="{StaticResource Text.Caption}" Margin="0,4"
+                               Visibility="{Binding HasChanges, Converter={StaticResource BoolToVisibility.Inverse}}" />
+                    <DataGrid ItemsSource="{Binding ChangeRows}" Visibility="{Binding HasChanges, Converter={StaticResource BoolToVisibility}}"
+                              AutoGenerateColumns="False" IsReadOnly="True"
+                              CanUserAddRows="False" CanUserSortColumns="False"
+                              CanUserResizeColumns="True" CanUserResizeRows="False"
+                              HeadersVisibility="Column" GridLinesVisibility="None"
+                              BorderThickness="0" Background="Transparent"
+                              RowBackground="Transparent" AlternatingRowBackground="Transparent"
+                              RowStyle="{StaticResource GridRow}" CellStyle="{StaticResource GridCell}"
+                              ColumnHeaderStyle="{StaticResource GridColumnHeader}"
+                              FontSize="{DynamicResource FontSize.Body}">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="时间" Binding="{Binding TimeText}" FontFamily="Consolas" Width="1.3*" MinWidth="120" ElementStyle="{StaticResource GridCellText}" />
+                            <DataGridTextColumn Header="来源样品" Binding="{Binding SampleIdText}" FontFamily="Consolas" Width="1.0*" MinWidth="80" ElementStyle="{StaticResource GridCellText}" />
+                            <DataGridTextColumn Header="触发原因" Binding="{Binding TriggerReasonText}" Width="1.2*" MinWidth="90" ElementStyle="{StaticResource GridCellText}" />
+                            <DataGridTextColumn Header="变更前 (a/b)" Binding="{Binding CoeffBeforeText}" FontFamily="Consolas" Width="1.3*" MinWidth="110" ElementStyle="{StaticResource GridCellText}" />
+                            <DataGridTextColumn Header="变更后 (a/b)" Binding="{Binding CoeffAfterText}" FontFamily="Consolas" Width="1.3*" MinWidth="110" ElementStyle="{StaticResource GridCellText}" />
+                            <DataGridTextColumn Header="结果" Binding="{Binding ResultStatusText}" Width="0.8*" MinWidth="60" ElementStyle="{StaticResource GridCellText}" />
+                        </DataGrid.Columns>
+                    </DataGrid>
+
+                    <!-- 分页脚 -->
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,8,0,0"
+                                Visibility="{Binding HasChangeMultiPage, Converter={StaticResource BoolToVisibility}}">
+                        <Button Content="首页" Command="{Binding FirstChangePageCommand}" Style="{StaticResource PrimaryBtn}" Margin="0,0,8,0" />
+                        <Button Content="上一页" Command="{Binding PrevChangePageCommand}" Style="{StaticResource PrimaryBtn}" Margin="8,0,0,0" />
+                        <TextBlock Text="{Binding ChangePageDisplay}" VerticalAlignment="Center" Margin="8,0"
+                                   Style="{StaticResource Text.Caption}" />
+                        <TextBox Width="48" Height="26" Text="{Binding ChangePageJumpInput, UpdateSourceTrigger=PropertyChanged}"
+                                 VerticalContentAlignment="Center" TextAlignment="Center" Margin="4,0,0,0" />
+                        <Button Content="跳转" Command="{Binding JumpToChangePageCommand}" Style="{StaticResource PrimaryBtn}" Margin="8,0,0,0" />
+                        <Button Content="下一页" Command="{Binding NextChangePageCommand}" Style="{StaticResource PrimaryBtn}" Margin="8,0,0,0" />
+                    </StackPanel>
                 </StackPanel>
             </Border>
 
-            <Border Style="{StaticResource Card}">
+            <!-- ==================== Tab 3：干扰系数矩阵（占位） ==================== -->
+            <Border Style="{StaticResource TabCardMatrix}">
                 <StackPanel>
                     <TextBlock Text="干扰系数矩阵" Style="{StaticResource Text.CardTitle}" Margin="0,0,0,8" />
-                    <TextBlock Text="Ci = ai·Ii + bi + Σ kij·Cj（迭代 2–3 次；标准化时 kij 保持不变）" Style="{StaticResource Text.Caption}" TextWrapping="Wrap" />
+                    <TextBlock Text="Ci = ai·Ii + bi + Σ kij·Cj（干扰校正 IEC 迭代 2–3 次；标准化只更新斜率/截距，干扰系数保持不变）"
+                               Style="{StaticResource Text.Caption}" TextWrapping="Wrap" Margin="0,0,0,8" />
+                    <TextBlock Text="矩阵数据与回归工具（8–15 标样最小二乘，R² &gt; 0.95）随 CorrectionEngine 校正计算引擎接入"
+                               Style="{StaticResource Text.Caption}" Foreground="{DynamicResource Brush.Text.Disabled}" />
                 </StackPanel>
             </Border>
         </StackPanel>

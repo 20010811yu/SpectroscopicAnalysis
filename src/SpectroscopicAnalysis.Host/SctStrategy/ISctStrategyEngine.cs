@@ -45,4 +45,7 @@ public interface ISctStrategyEngine
 
     /// <summary>急停/故障恢复：清空队列（全部 Cancelled），冻结闭环状态。</summary>
     void EmergencyReset();
+
+    /// <summary>控制样插入进度快照（模式/已计数或已过分钟/阈值；主控台 KPI 展示）。</summary>
+    SctControlCountdown GetControlCountdown();
 }

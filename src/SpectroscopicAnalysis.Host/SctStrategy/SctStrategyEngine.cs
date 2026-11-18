@@ -194,6 +194,27 @@ public sealed class SctStrategyEngine : ISctStrategyEngine
         }
     }
 
+    /// <inheritdoc />
+    public SctControlCountdown GetControlCountdown()
+    {
+        lock (_gate)
+        {
+            var policy = _policyStore.Load();
+            // ByTime 无上次检查记录时按"已满间隔"返回（到期待触发），避免显示负值/NaN
+            var minutesSince = _lastControlCheckTime is null
+                ? policy.ControlInsertMinutes
+                : (_time.GetLocalNow().DateTime - _lastControlCheckTime.Value).TotalMinutes;
+            return new SctControlCountdown
+            {
+                Mode = policy.ControlInsertMode,
+                ProductionSinceControl = _productionSinceControl,
+                ControlInsertCount = policy.ControlInsertCount,
+                MinutesSinceControl = minutesSince,
+                ControlInsertMinutes = policy.ControlInsertMinutes,
+            };
+        }
+    }
+
     // ==================== 事件入口 ====================
 
     /// <inheritdoc />

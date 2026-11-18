@@ -59,4 +59,16 @@ internal sealed class FakeSctStrategyEngine : ISctStrategyEngine
     public void EmergencyReset()
     {
     }
+
+    /// <summary>可预设的倒计时快照（默认按数量模式 0/15）。</summary>
+    public SctControlCountdown Countdown { get; set; } = new()
+    {
+        Mode = ControlInsertMode.ByCount,
+        ProductionSinceControl = 0,
+        ControlInsertCount = 15,
+        MinutesSinceControl = 0,
+        ControlInsertMinutes = 60,
+    };
+
+    public SctControlCountdown GetControlCountdown() => Countdown;
 }

@@ -2,6 +2,7 @@
 using SpectroscopicAnalysis.Host.Data.Models;
 using SpectroscopicAnalysis.Host.Data.Repositories;
 using SpectroscopicAnalysis.Host.LoggingAlarm;
+using SpectroscopicAnalysis.Host.SampleManager;
 using SpectroscopicAnalysis.Host.SctStrategy;
 using SpectroscopicAnalysis.Host.Ui;
 using SpectroscopicAnalysis.Host.ViewModels;
@@ -73,6 +74,23 @@ internal sealed class FakeDialogService : IDialogService
     }
 
     public void Alert(string title, string message) => Messages.Add($"{title}|{message}");
+
+    /// <summary>注册弹窗调用记录（主控台注册入口测试断言用）。</summary>
+    public List<SampleRegisterFormViewModel> RegisterForms { get; } = new();
+
+    /// <summary>注册弹窗预设返回（true = 用户确认入库成功）。</summary>
+    public bool RegisterResult { get; set; } = true;
+
+    /// <summary>弹窗显示期间的模拟交互（真实弹窗为模态，确认发生在返回之前；测试在此回调中 await 表单命令）。</summary>
+    public Func<SampleRegisterFormViewModel, Task>? OnShown { get; set; }
+
+    public bool ShowSampleRegister(SampleRegisterFormViewModel form)
+    {
+        RegisterForms.Add(form);
+        // 模拟模态：同步等待弹窗内交互完成后再返回（与真实 ShowDialog 语义一致）
+        OnShown?.Invoke(form).GetAwaiter().GetResult();
+        return RegisterResult;
+    }
 }
 
 /// <summary>Fake 错误收集：记录 (错误码, 消息, 样品) 供断言，不做 I/O；内存报警表逻辑复用真实实现。</summary>
@@ -96,6 +114,21 @@ internal sealed class FakeErrorCollector : IErrorCollector
     public void Acknowledge(long alarmId) => _inner.Acknowledge(alarmId);
 
     public void AcknowledgeAll() => _inner.AcknowledgeAll();
+}
+
+/// <summary>Fake 样品注册服务：记录提交的表单，返回可预设的错误（默认成功）。</summary>
+internal sealed class FakeSampleRegistrationService : ISampleRegistrationService
+{
+    public List<SampleRegisterForm> Submitted { get; } = new();
+
+    /// <summary>预设返回错误（null = 成功）。</summary>
+    public string? NextError { get; set; }
+
+    public Task<string?> RegisterAsync(SampleRegisterForm form)
+    {
+        Submitted.Add(form);
+        return Task.FromResult(NextError);
+    }
 }
 
 /// <summary>Fake 标准值仓储：预设列表 + Delete 调用记录。</summary>

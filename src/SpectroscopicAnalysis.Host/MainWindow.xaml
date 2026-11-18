@@ -42,7 +42,7 @@
                         <Ellipse Style="{StaticResource StatusDot}" Fill="{DynamicResource Brush.Status.Running}" />
                         <TextBlock Text="PLC" Style="{StaticResource Text.Caption}" Margin="6,0,0,0" VerticalAlignment="Center" />
                     </StackPanel>
-                    <TextBlock Text="2026-11-10 09:40" FontFamily="Consolas" VerticalAlignment="Center" Margin="0,0,16,0"
+                    <TextBlock Text="{Binding ClockText}" FontFamily="Consolas" VerticalAlignment="Center" Margin="0,0,16,0"
                                FontSize="{DynamicResource FontSize.Caption}" Foreground="{DynamicResource Brush.Text.Secondary}" />
                     <Button Style="{StaticResource ModeBtn}" Content="100%" Command="{Binding SetScaleCommand}" CommandParameter="1.0" Margin="0,0,4,0" />
                     <Button Style="{StaticResource ModeBtn}" Content="125%" Command="{Binding SetScaleCommand}" CommandParameter="1.25" Margin="0,0,4,0" />

@@ -34,6 +34,10 @@ public sealed partial class MainViewModel : ObservableObject
     [ObservableProperty]
     private double _uiScale = 1.0;
 
+    /// <summary>顶栏实时时钟文本（顶栏状态区展示；后台定时刷新，MVVM 无 WPF 定时器依赖）。</summary>
+    [ObservableProperty]
+    private string _clockText = DateTime.Now.ToString("yyyy-MM-dd HH:mm");
+
     /// <summary>导航项（静态六项，无需变更通知）。</summary>
     public ReadOnlyObservableCollection<NavItem> NavItems { get; }
 
@@ -60,6 +64,35 @@ public sealed partial class MainViewModel : ObservableObject
 
         // 默认落在主控台
         NavigateTo(items[0]);
+        StartClock();
+    }
+
+    /// <summary>实时时钟刷新周期（秒；展示精度为分钟，1 秒节拍保证跨分即刻更新）。</summary>
+    private static readonly TimeSpan ClockInterval = TimeSpan.FromSeconds(1);
+
+    /// <summary>启动顶栏实时时钟循环（主窗口为单例常驻，随宿主退出结束；取消属正常关闭路径）。</summary>
+    private void StartClock()
+    {
+        var timer = new PeriodicTimer(ClockInterval);
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                while (await timer.WaitForNextTickAsync())
+                {
+                    var text = DateTime.Now.ToString("yyyy-MM-dd HH:mm");
+                    // 分钟未变化时不触发通知，避免无谓的 UI 刷新
+                    if (text != ClockText)
+                    {
+                        ClockText = text;
+                    }
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                // 宿主关闭取消定时器，属正常退出路径
+            }
+        });
     }
 
     /// <summary>导航命令（页面跳转属框架行为，业务逻辑在各页面 VM 内）。</summary>

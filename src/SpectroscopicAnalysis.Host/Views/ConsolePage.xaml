@@ -144,7 +144,7 @@
                                     <Border Padding="0,3">
                                         <StackPanel Orientation="Horizontal">
                                             <TextBlock Text="{Binding TimeText}" Style="{StaticResource Text.Caption}"
-                                                       FontFamily="Consolas" Width="64" VerticalAlignment="Center" />
+                                                       FontFamily="Consolas" Width="152" VerticalAlignment="Center" />
                                             <Border Style="{StaticResource Badge.Base}" Padding="8,2" Margin="0,0,8,0" VerticalAlignment="Center">
                                                 <TextBlock Text="{Binding CategoryText}" Style="{StaticResource Text.Caption}" />
                                             </Border>

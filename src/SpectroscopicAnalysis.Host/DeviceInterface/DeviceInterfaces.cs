@@ -6,7 +6,7 @@ namespace SpectroscopicAnalysis.Host.DeviceInterface;
 /// </summary>
 public interface ISendTask
 {
-    /// <summary>下发循环任务（CYCLE_START_REQUEST）；idCycle：1 生产 / 2 标准化 / 3 控制样。</summary>
+    /// <summary>下发循环任务（CYCLE_START_REQUEST）；idCycle：1 生产 / 2 标准化 / 3 检查样。</summary>
     Task SendCycleStartAsync(int idCycle, string sampleId, double gripHeight, CancellationToken ct);
 
     /// <summary>下发测高指令（MeasureHeight；结果经 Workflow 回填策略引擎）。</summary>

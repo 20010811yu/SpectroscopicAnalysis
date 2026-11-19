@@ -25,7 +25,7 @@ public sealed class ConsoleViewModelTests
     {
         var errors = new FakeErrorCollector();
         errors.Collect(1001, "机器人抓取失败", "P-001");
-        errors.Collect(5001, "控制样偏差超限");
+        errors.Collect(5001, "检查样偏差超限");
         var vm = CreateVm(errors: errors);
 
         vm.OnNavigatedTo();

@@ -1,12 +1,12 @@
 namespace SpectroscopicAnalysis.Host.SctStrategy;
 
-/// <summary>SCT 任务类型（与 CYCLE_START_REQUEST 的 ID_CYCLE 对齐：1 生产 / 2 标准化 / 3 控制样；引擎设计文档 §4）。</summary>
+/// <summary>SCT 任务类型（与 CYCLE_START_REQUEST 的 ID_CYCLE 对齐：1 生产 / 2 标准化 / 3 检查样；引擎设计文档 §4）。</summary>
 public static class SctTaskType
 {
-    /// <summary>设置样标准化（ID_CYCLE=2）。</summary>
+    /// <summary>控样标准化（ID_CYCLE=2）。</summary>
     public const string Standardize = "Standardize";
 
-    /// <summary>控制样检查（ID_CYCLE=3）。</summary>
+    /// <summary>检查样检查（ID_CYCLE=3）。</summary>
     public const string ControlCheck = "ControlCheck";
 
     /// <summary>类型标准化。</summary>

@@ -15,7 +15,7 @@ public sealed class SctStrategyEngine : ISctStrategyEngine
     /// <summary>优先级 1：超差/人工触发的标准化（高于生产分析，任务清单第 5 节⑥）。</summary>
     public const int PriorityStandardize = 1;
 
-    /// <summary>优先级 2：控制样检查。</summary>
+    /// <summary>优先级 2：检查样检查。</summary>
     public const int PriorityControlCheck = 2;
 
     /// <summary>优先级 3：类型标准化。</summary>
@@ -50,7 +50,7 @@ public sealed class SctStrategyEngine : ISctStrategyEngine
     private DateTime? _lastTypeStdTime;
     private int _productionSinceControl;
 
-    /// <summary>当前匹配的合金类型（NotifyAlloySwitched 更新；控制样合金匹配/类型标准化目标）。</summary>
+    /// <summary>当前匹配的合金类型（NotifyAlloySwitched 更新；检查样合金匹配/类型标准化目标）。</summary>
     private string? _currentAlloy;
 
     /// <summary>超差闭环状态（null = 闭环未激活；引擎设计 §7）。</summary>
@@ -253,7 +253,7 @@ public sealed class SctStrategyEngine : ISctStrategyEngine
                 return;
             }
 
-            // 生产样完成：按数量插入控制样（引擎设计 §5）
+            // 生产样完成：按数量插入检查样（引擎设计 §5）
             if (policy.ControlInsertMode == ControlInsertMode.ByCount)
             {
                 _productionSinceControl++;
@@ -271,7 +271,7 @@ public sealed class SctStrategyEngine : ISctStrategyEngine
     {
         var policy = _policyStore.Load();
         WriteLog(SctTaskType.ControlCheck, sampleId,
-            _recheckLoop is not null ? "超差验证重测" : "控制样检查",
+            _recheckLoop is not null ? "超差验证重测" : "检查样检查",
             resultStatus: passed ? "Success" : "Fail", isPass: passed);
 
         lock (_gate)
@@ -289,15 +289,15 @@ public sealed class SctStrategyEngine : ISctStrategyEngine
             if (!policy.AutoStandardizeOnControlFail)
             {
                 _errors.Collect(ErrorCodes.SctRecheckExhausted,
-                    "控制样超差且未启用自动标准化，需人工处理", sampleId);
+                    "检查样超差且未启用自动标准化，需人工处理", sampleId);
                 return;
             }
 
             if (_recheckLoop is null)
             {
-                // 首次超差：激活闭环 → 标准化（优先级 1）→ 重测同一控制样验证
+                // 首次超差：激活闭环 → 标准化（优先级 1）→ 重测同一检查样验证
                 _recheckLoop = new RecheckLoopState { ControlSampleId = sampleId, RecheckCount = 0 };
-                EnqueueStandardize("控制样超差");
+                EnqueueStandardize("检查样超差");
                 return;
             }
 
@@ -306,12 +306,12 @@ public sealed class SctStrategyEngine : ISctStrategyEngine
             if (_recheckLoop.RecheckCount >= policy.ControlRecheckMaxCount)
             {
                 _errors.Collect(ErrorCodes.SctRecheckExhausted,
-                    $"控制样 {sampleId} 超差闭环重测 {_recheckLoop.RecheckCount} 次仍超差，暂停自动模式", sampleId);
+                    $"检查样 {sampleId} 超差闭环重测 {_recheckLoop.RecheckCount} 次仍超差，暂停自动模式", sampleId);
                 _recheckLoop = null;
                 return;
             }
 
-            EnqueueStandardize("控制样超差");
+            EnqueueStandardize("检查样超差");
         }
     }
 
@@ -322,7 +322,7 @@ public sealed class SctStrategyEngine : ISctStrategyEngine
         {
             _lastStandardizeTime = _time.GetLocalNow().DateTime;
 
-            // 闭环推进：标准化完成 → 重测同一控制样验证（引擎设计 §7）
+            // 闭环推进：标准化完成 → 重测同一检查样验证（引擎设计 §7）
             if (_recheckLoop is not null)
             {
                 SubmitTaskCore(SctTaskType.ControlCheck, _recheckLoop.ControlSampleId, "超差验证重测", isRecheck: true);
@@ -415,7 +415,7 @@ public sealed class SctStrategyEngine : ISctStrategyEngine
                 EnqueueStandardize("定时标准化");
             }
 
-            // 按时间间隔插入控制样
+            // 按时间间隔插入检查样
             if (policy.ControlInsertMode == ControlInsertMode.ByTime &&
                 (_lastControlCheckTime is null || now - _lastControlCheckTime >= TimeSpan.FromMinutes(policy.ControlInsertMinutes)))
             {
@@ -433,14 +433,14 @@ public sealed class SctStrategyEngine : ISctStrategyEngine
 
     // ==================== 选样与闭环内部逻辑 ====================
 
-    /// <summary>入队标准化任务：选样失败（无可用设置样）→ 5101 报警不入队（任务清单第 5 节②）。</summary>
+    /// <summary>入队标准化任务：选样失败（无可用控样）→ 5101 报警不入队（任务清单第 5 节②）。</summary>
     private void EnqueueStandardize(string reason)
     {
         var policy = _policyStore.Load();
         var candidate = SelectStandardSample(policy.SettingSampleSelectionMode);
         if (candidate is null)
         {
-            _errors.Collect(ErrorCodes.SctSettingSampleUnavailable, "无可用设置样（须 SettingUp/Normal/启用），暂停分析", null);
+            _errors.Collect(ErrorCodes.SctSettingSampleUnavailable, "无可用控样（须 SettingUp/Normal/启用），暂停分析", null);
             WriteLog(SctTaskType.Standardize, null, reason, resultStatus: "Fail", isPass: null);
             return;
         }
@@ -457,7 +457,7 @@ public sealed class SctStrategyEngine : ISctStrategyEngine
             var control = SelectControlSample(policy);
             if (control is null)
             {
-                _errors.Collect(ErrorCodes.SctSettingSampleUnavailable, "无可用控制样（须 Control/Normal/启用），暂停分析", null);
+                _errors.Collect(ErrorCodes.SctSettingSampleUnavailable, "无可用检查样（须 Control/Normal/启用），暂停分析", null);
                 WriteLog(taskType, null, reason, resultStatus: "Fail", isPass: null);
                 return;
             }
@@ -480,7 +480,7 @@ public sealed class SctStrategyEngine : ISctStrategyEngine
     }
 
     /// <summary>
-    /// 设置样选择（任务清单第 5 节②）：SettingUp/Normal/IsActive；
+    /// 控样选择（任务清单第 5 节②）：SettingUp/Normal/IsActive；
     /// LeastUsed=使用次数最少；RoundRobin=上次使用时间最早（未用过的优先，实现轮询）。
     /// </summary>
     private SctSample? SelectStandardSample(string mode)
@@ -499,8 +499,8 @@ public sealed class SctStrategyEngine : ISctStrategyEngine
     }
 
     /// <summary>
-    /// 控制样选择（任务清单第 5 节③）：Control/Normal/IsActive；
-    /// 轮换 = 上次使用时间最早（多块轮换）。控制样不关联合金，不做合金过滤。
+    /// 检查样选择（任务清单第 5 节③）：Control/Normal/IsActive；
+    /// 轮换 = 上次使用时间最早（多块轮换）。检查样不关联合金，不做合金过滤。
     /// </summary>
     private SctSample? SelectControlSample(SctPolicyOptions policy)
     {

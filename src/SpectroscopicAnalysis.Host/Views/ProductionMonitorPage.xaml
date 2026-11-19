@@ -103,7 +103,7 @@
                 <Border Style="{StaticResource Card}" Margin="6,0,0,0" Grid.Column="3">
                     <StackPanel>
                         <TextBlock Text="{Binding ControlCountdownText}" Style="{StaticResource Text.Display}" Foreground="{DynamicResource Brush.Primary}" HorizontalAlignment="Center" />
-                        <TextBlock Text="控制样插入倒计时" Style="{StaticResource Text.Caption}" HorizontalAlignment="Center" />
+                        <TextBlock Text="检查样插入倒计时" Style="{StaticResource Text.Caption}" HorizontalAlignment="Center" />
                     </StackPanel>
                 </Border>
             </Grid>
@@ -218,7 +218,7 @@
                                 </Style>
                             </Button.Style>
                         </Button>
-                        <Button Content="设置样" Command="{Binding SetFilterCommand}" CommandParameter="SettingUp" Margin="0,0,8,0">
+                        <Button Content="控样" Command="{Binding SetFilterCommand}" CommandParameter="SettingUp" Margin="0,0,8,0">
                             <Button.Style>
                                 <Style TargetType="Button" BasedOn="{StaticResource ModeBtn}">
                                     <Style.Triggers>
@@ -231,7 +231,7 @@
                                 </Style>
                             </Button.Style>
                         </Button>
-                        <Button Content="控制样" Command="{Binding SetFilterCommand}" CommandParameter="Control" Margin="0,0,8,0">
+                        <Button Content="检查样" Command="{Binding SetFilterCommand}" CommandParameter="Control" Margin="0,0,8,0">
                             <Button.Style>
                                 <Style TargetType="Button" BasedOn="{StaticResource ModeBtn}">
                                     <Style.Triggers>

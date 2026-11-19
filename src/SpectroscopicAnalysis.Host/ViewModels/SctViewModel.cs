@@ -67,18 +67,18 @@ public sealed partial class SctViewModel : ObservableObject, IPageLifecycle
     public IReadOnlyList<FilterOption> FilterOptions { get; } = new FilterOption[]
     {
         new(FilterAll, "全部"),
-        new(SampleType.SettingUp, "设置样"),
-        new(SampleType.Control, "控制样"),
+        new(SampleType.SettingUp, "控样"),
+        new(SampleType.Control, "检查样"),
         new(SampleType.TypeStd, "类型标准化样"),
     };
 
-    /// <summary>控制样插入模式选项（SctPolicyOptions.ControlInsertMode）。</summary>
+    /// <summary>检查样插入模式选项（SctPolicyOptions.ControlInsertMode）。</summary>
     public IReadOnlyList<string> InsertModeOptions { get; } = new[]
     {
         ControlInsertMode.ByCount, ControlInsertMode.ByTime,
     };
 
-    /// <summary>控制样判定限类型选项（与 ControlLimit.LimitType 同名）。</summary>
+    /// <summary>检查样判定限类型选项（与 ControlLimit.LimitType 同名）。</summary>
     public IReadOnlyList<string> LimitTypeOptions { get; } = new[] { "Absolute", "Percent", "Sigma" };
 
     private readonly ISctSampleRepository _samples;
@@ -251,7 +251,7 @@ public sealed partial class SctViewModel : ObservableObject, IPageLifecycle
 
     // ==================== 策略配置（SctPolicyOptions 表单绑定） ====================
 
-    /// <summary>设置样选择规则选项（任务清单第 5 节②）。</summary>
+    /// <summary>控样选择规则选项（任务清单第 5 节②）。</summary>
     public IReadOnlyList<string> SettingSelectionModeOptions { get; } = new[]
     {
         SettingSampleSelectionMode.LeastUsed, SettingSampleSelectionMode.RoundRobin
@@ -272,7 +272,7 @@ public sealed partial class SctViewModel : ObservableObject, IPageLifecycle
     [ObservableProperty]
     private string _policyTypePeriodDays = "7";
 
-    /// <summary>控制样超差闭环验证重测次数上限（文本承接，保存时校验）。</summary>
+    /// <summary>检查样超差闭环验证重测次数上限（文本承接，保存时校验）。</summary>
     [ObservableProperty]
     private string _policyRecheckMax = "1";
 
@@ -808,7 +808,7 @@ public sealed partial class SctViewModel : ObservableObject, IPageLifecycle
     // ==================== 手动触发（提交策略引擎任务队列；引擎未注入时保持禁用） ====================
 
     /// <summary>手动触发标准化（提交 Standardize 任务，优先级高于生产分析——任务清单第 5 节⑥）。
-    /// 仅允许对设置样/类型标准化样触发（须先选中行）。</summary>
+    /// 仅允许对控样/类型标准化样触发（须先选中行）。</summary>
     [RelayCommand(CanExecute = nameof(CanTriggerAnalysis))]
     private void TriggerStandardization()
     {
@@ -827,7 +827,7 @@ public sealed partial class SctViewModel : ObservableObject, IPageLifecycle
 
         if (row.SampleTypeKey is not (SampleType.SettingUp or SampleType.TypeStd))
         {
-            TriggerError = "仅设置样或类型标准化样可手动触发标准化";
+            TriggerError = "仅控样或类型标准化样可手动触发标准化";
             return;
         }
 
@@ -835,7 +835,7 @@ public sealed partial class SctViewModel : ObservableObject, IPageLifecycle
         _ui.Invoke(() => PolicySavedMessage = $"✓ 标准化任务已提交队列（{row.SampleId}）");
     }
 
-    /// <summary>手动触发控制检查（提交 ControlCheck 任务；仅允许对控制样触发，须先选中行）。</summary>
+    /// <summary>手动触发控制检查（提交 ControlCheck 任务；仅允许对检查样触发，须先选中行）。</summary>
     [RelayCommand(CanExecute = nameof(CanTriggerAnalysis))]
     private void TriggerControlCheck()
     {
@@ -854,7 +854,7 @@ public sealed partial class SctViewModel : ObservableObject, IPageLifecycle
 
         if (row.SampleTypeKey != SampleType.Control)
         {
-            TriggerError = "仅控制样可手动触发控制检查";
+            TriggerError = "仅检查样可手动触发控制检查";
             return;
         }
 
@@ -895,8 +895,8 @@ public sealed partial class SctViewModel : ObservableObject, IPageLifecycle
         SampleTypeKey = s.SampleType,
         TypeDisplay = s.SampleType switch
         {
-            SampleType.SettingUp => "设置样",
-            SampleType.Control => "控制样",
+            SampleType.SettingUp => "控样",
+            SampleType.Control => "检查样",
             SampleType.TypeStd => "类型标准化样",
             SampleType.Production => "生产样",
             _ => s.SampleType,

@@ -64,7 +64,7 @@ public sealed partial class ProductionMonitorViewModel : ObservableObject, IPage
     [ObservableProperty]
     private int _unackAlarmCount;
 
-    /// <summary>「控制样插入倒计时」文本（ByCount：n / 阈值；ByTime：已过分钟 / 间隔 分钟）。</summary>
+    /// <summary>「检查样插入倒计时」文本（ByCount：n / 阈值；ByTime：已过分钟 / 间隔 分钟）。</summary>
     [ObservableProperty]
     private string _controlCountdownText = "—";
 
@@ -100,7 +100,7 @@ public sealed partial class ProductionMonitorViewModel : ObservableObject, IPage
     }
 
     /// <summary>
-    /// 刷新 KPI 四卡：今日已完成（Status=Completed 生产样，无结果也计入）/ 队列待分析 / 未确认报警 / 控制样倒计时。
+    /// 刷新 KPI 四卡：今日已完成（Status=Completed 生产样，无结果也计入）/ 队列待分析 / 未确认报警 / 检查样倒计时。
     /// I/O 在后台线程，结果经 IUiDispatcher 回 UI 线程（开发规范第 4 节）。
     /// </summary>
     private void RefreshKpis()

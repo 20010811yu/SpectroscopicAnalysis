@@ -14,7 +14,7 @@ public sealed partial class SampleRegisterFormViewModel : ObservableObject
     /// <summary>提交委托（创建方绑定注册服务）；返回错误提示，null 表示成功。</summary>
     private readonly Func<SampleRegisterFormViewModel, Task<string?>> _submitAsync;
 
-    /// <summary>样品类型下拉选项（类型键：生产样默认在前；设置样/控制样/类型标准化样）。</summary>
+    /// <summary>样品类型下拉选项（类型键：生产样默认在前；控样/检查样/类型标准化样）。</summary>
     public IReadOnlyList<string> SampleTypeOptions { get; } = new[]
     {
         Data.Models.SampleType.Production, Data.Models.SampleType.SettingUp,

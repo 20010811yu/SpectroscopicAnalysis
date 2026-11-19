@@ -4,17 +4,17 @@ using SpectroscopicAnalysis.Host.Data.Models;
 
 namespace SpectroscopicAnalysis.Host.SctStrategy;
 
-/// <summary>控制样插入模式（任务清单第 5 节③：按分析数量 / 按时间间隔）。</summary>
+/// <summary>检查样插入模式（任务清单第 5 节③：按分析数量 / 按时间间隔）。</summary>
 public static class ControlInsertMode
 {
     public const string ByCount = "ByCount";
     public const string ByTime = "ByTime";
 }
 
-/// <summary>设置样选择规则（任务清单第 5 节②：多个可用时选使用次数最少 / 轮询）。</summary>
+/// <summary>控样选择规则（任务清单第 5 节②：多个可用时选使用次数最少 / 轮询）。</summary>
 public static class SettingSampleSelectionMode
 {
-    /// <summary>选使用次数最少的设置样。</summary>
+    /// <summary>选使用次数最少的控样。</summary>
     public const string LeastUsed = "LeastUsed";
 
     /// <summary>轮询选取。</summary>
@@ -22,16 +22,16 @@ public static class SettingSampleSelectionMode
 }
 
 /// <summary>
-/// SCT 策略配置（PDF 第六节 + 任务清单第 5 节：控制样插入、超差判定、标准化触发项、
-/// 设置样选择规则、控制样轮换与合金匹配、类型标准化触发、超差闭环重测上限）。
+/// SCT 策略配置（PDF 第六节 + 任务清单第 5 节：检查样插入、超差判定、标准化触发项、
+/// 控样选择规则、检查样轮换与合金匹配、类型标准化触发、超差闭环重测上限）。
 /// 纯数据对象，不含策略逻辑；持久化经 ISctPolicyStore。
 /// </summary>
 public sealed class SctPolicyOptions
 {
-    /// <summary>设置样选择规则：LeastUsed / RoundRobin（任务清单第 5 节②）。</summary>
+    /// <summary>控样选择规则：LeastUsed / RoundRobin（任务清单第 5 节②）。</summary>
     public string SettingSampleSelectionMode { get; set; } = "LeastUsed";
 
-    /// <summary>多块控制样轮换启用（任务清单第 5 节③）。</summary>
+    /// <summary>多块检查样轮换启用（任务清单第 5 节③）。</summary>
     public bool ControlRotationEnabled { get; set; } = true;
 
     /// <summary>合金类型切换时触发类型标准化（任务清单第 5 节⑤）。</summary>
@@ -43,25 +43,25 @@ public sealed class SctPolicyOptions
     /// <summary>类型标准化期限（天）。</summary>
     public int TypeStandardizePeriodDays { get; set; } = 7;
 
-    /// <summary>控制样超差闭环：标准化后验证重测次数上限（仍失败 → 报警并暂停自动模式，任务清单第 5 节④）。</summary>
+    /// <summary>检查样超差闭环：标准化后验证重测次数上限（仍失败 → 报警并暂停自动模式，任务清单第 5 节④）。</summary>
     public int ControlRecheckMaxCount { get; set; } = 1;
 
-    /// <summary>控制样插入模式：ByCount / ByTime。</summary>
+    /// <summary>检查样插入模式：ByCount / ByTime。</summary>
     public string ControlInsertMode { get; set; } = "ByCount";
 
-    /// <summary>按数量插入：每 N 个生产样品插入一次控制样。</summary>
+    /// <summary>按数量插入：每 N 个生产样品插入一次检查样。</summary>
     public int ControlInsertCount { get; set; } = 15;
 
     /// <summary>按时间插入：间隔分钟数。</summary>
     public int ControlInsertMinutes { get; set; } = 60;
 
-    /// <summary>控制样判定限类型：Absolute / Percent / Sigma（ControlLimit.LimitType 同名）。</summary>
+    /// <summary>检查样判定限类型：Absolute / Percent / Sigma（ControlLimit.LimitType 同名）。</summary>
     public string LimitType { get; set; } = "Sigma";
 
     /// <summary>判定限值（如 σ 倍数 2/3，或百分比 5 表示 ±5%）。</summary>
     public double LimitValue { get; set; } = 2;
 
-    /// <summary>控制样超差后自动触发设置样标准化（超差闭环第一步）。</summary>
+    /// <summary>检查样超差后自动触发控样标准化（超差闭环第一步）。</summary>
     public bool AutoStandardizeOnControlFail { get; set; } = true;
 
     /// <summary>切换到自动模式时执行标准化。</summary>

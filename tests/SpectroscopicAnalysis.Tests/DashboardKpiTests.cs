@@ -118,7 +118,7 @@ public sealed class SctControlCountdownTests
         engine.NotifyAnalysisCompleted("P-002");
         Assert.Equal(2, engine.GetControlCountdown().ProductionSinceControl);
 
-        // 第 3 个达阈值 → 触发控制样任务并重置计数
+        // 第 3 个达阈值 → 触发检查样任务并重置计数
         _samples.Store.Add(MakeSample("P-003", SampleType.Production));
         engine.NotifyAnalysisCompleted("P-003");
         Assert.Equal(0, engine.GetControlCountdown().ProductionSinceControl);
@@ -138,14 +138,14 @@ public sealed class SctControlCountdownTests
     }
 
     [Fact]
-    public void ByTime_控制样完成检查后返回已过分钟()
+    public void ByTime_检查样完成检查后返回已过分钟()
     {
         _samples.Store.Add(MakeSample("CTL-001", SampleType.Control));
         _policy.Current.ControlInsertMode = ControlInsertMode.ByTime;
         _policy.Current.ControlInsertMinutes = 60;
         var engine = Create();
 
-        // 控制样分析完成 → _lastControlCheckTime = 当前时刻
+        // 检查样分析完成 → _lastControlCheckTime = 当前时刻
         engine.NotifyAnalysisCompleted("CTL-001");
 
         _time.Advance(TimeSpan.FromMinutes(20));

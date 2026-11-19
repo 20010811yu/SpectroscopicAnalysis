@@ -116,9 +116,9 @@ public sealed class WorkflowOrchestratorTests
         await WaitUntilAsync(() => _gateway.SentCycles.Any(c => c.IdCycle == 2 && c.SampleId == "SUS-001"));
         await orchestrator.StopAsync(CancellationToken.None);
 
-        // 闭环证据：超差日志 + 标准化任务入队日志（控制样超差）+ 标准化下发（ID_CYCLE=2，编排器自动消费）
+        // 闭环证据：超差日志 + 标准化任务入队日志（检查样超差）+ 标准化下发（ID_CYCLE=2，编排器自动消费）
         Assert.Contains(_logs.Store, l => l.OperationType == "ControlCheck" && l.IsPass == false);
-        Assert.Contains(_logs.Store, l => l.OperationType == "Standardization" && l.TriggerReason == "控制样超差");
+        Assert.Contains(_logs.Store, l => l.OperationType == "Standardization" && l.TriggerReason == "检查样超差");
         Assert.Contains(_gateway.SentCycles, c => c.IdCycle == 3 && c.SampleId == "CTL-001");
     }
 

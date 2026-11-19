@@ -32,7 +32,7 @@ public sealed class SctSampleRepositoryTests
     private static SctSample MakeSample(string id = "SUS-001") => new()
     {
         SampleId = id,
-        SampleName = "设置样 1",
+        SampleName = "控样 1",
         SampleType = SampleType.SettingUp,
         AlloyType = null,
         RackPosition = "A01",

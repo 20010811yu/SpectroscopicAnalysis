@@ -65,7 +65,7 @@ public sealed class SampleRegistrationServiceTests
     }
 
     [Fact]
-    public async Task 设置样_架位厚度使用次数齐全时入库初始化并入队标准化()
+    public async Task 控样_架位厚度使用次数齐全时入库初始化并入队标准化()
     {
         var error = await Create().RegisterAsync(MakeSctForm(SampleType.SettingUp));
 
@@ -80,7 +80,7 @@ public sealed class SampleRegistrationServiceTests
     }
 
     [Fact]
-    public async Task 控制样_入队控制检查()
+    public async Task 检查样_入队控制检查()
     {
         var error = await Create().RegisterAsync(MakeSctForm(SampleType.Control, "CTL-001"));
 
@@ -108,11 +108,11 @@ public sealed class SampleRegistrationServiceTests
     }
 
     [Fact]
-    public async Task 设置样_填写合金被拒()
+    public async Task 控样_填写合金被拒()
     {
         var error = await Create().RegisterAsync(MakeSctForm(SampleType.SettingUp, alloy: "3003"));
 
-        Assert.Equal("仅类型标准化样可关联合金，设置样/控制样请留空合金", error);
+        Assert.Equal("仅类型标准化样可关联合金，控样/检查样请留空合金", error);
     }
 
     [Theory]

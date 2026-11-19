@@ -19,7 +19,7 @@ public sealed class CoefficientGridRow
     public required string InterceptText { get; init; }
     public required string VersionText { get; init; }
     public required string EffectiveTimeText { get; init; }
-    /// <summary>来源设置样/类型标准化样（无来源显示 —）。</summary>
+    /// <summary>来源控样/类型标准化样（无来源显示 —）。</summary>
     public required string SourceSampleIdText { get; init; }
     /// <summary>是否当前有效版本（true = "● 当前"，false = "已归档"）。</summary>
     public bool IsCurrent { get; init; }

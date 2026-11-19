@@ -574,7 +574,7 @@ public sealed partial class SamplesViewModel : ObservableObject, IPageLifecycle
 
     // ==================== 样品注册（任务清单"入库初始化"） ====================
 
-    /// <summary>样品类型下拉选项（类型键：生产样默认在前；设置样/控制样/类型标准化样）。
+    /// <summary>样品类型下拉选项（类型键：生产样默认在前；控样/检查样/类型标准化样）。
     /// 必须为实例属性供 XAML ItemsSource 绑定（静态字段不可绑定）。</summary>
     public IReadOnlyList<string> SampleTypeOptions { get; } = new[]
     {
@@ -769,7 +769,7 @@ public sealed partial class SamplesViewModel : ObservableObject, IPageLifecycle
             return null;
         }
 
-        // 设置样/控制样/类型标准样：架位 + 厚度 + 使用次数
+        // 控样/检查样/类型标准样：架位 + 厚度 + 使用次数
         if (string.IsNullOrWhiteSpace(RegRackPosition))
         {
             return "样品架位置不能为空";
@@ -797,7 +797,7 @@ public sealed partial class SamplesViewModel : ObservableObject, IPageLifecycle
         }
         if (type != SampleType.TypeStd && !string.IsNullOrWhiteSpace(RegAlloyType))
         {
-            return "仅类型标准化样可关联合金，设置样/控制样请留空合金";
+            return "仅类型标准化样可关联合金，控样/检查样请留空合金";
         }
         return null;
     }
@@ -848,8 +848,8 @@ public sealed partial class SamplesViewModel : ObservableObject, IPageLifecycle
     private static string TypeDisplayToKey(string display) => display switch
     {
         SampleType.SettingUp or SampleType.Control or SampleType.TypeStd or SampleType.Production => display,
-        "设置样" => SampleType.SettingUp,
-        "控制样" => SampleType.Control,
+        "控样" => SampleType.SettingUp,
+        "检查样" => SampleType.Control,
         "类型标准化样" => SampleType.TypeStd,
         "生产样品" => SampleType.Production,
         _ => display,
@@ -1454,8 +1454,8 @@ public sealed partial class SamplesViewModel : ObservableObject, IPageLifecycle
         SampleTypeKey = s.SampleType,
         TypeDisplay = s.SampleType switch
         {
-            SampleType.SettingUp => "设置样",
-            SampleType.Control => "控制样",
+            SampleType.SettingUp => "控样",
+            SampleType.Control => "检查样",
             SampleType.TypeStd => "类型标准化样",
             SampleType.Production => "生产样",
             _ => s.SampleType,

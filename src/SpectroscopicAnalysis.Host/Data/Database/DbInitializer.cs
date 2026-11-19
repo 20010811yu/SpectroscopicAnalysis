@@ -48,8 +48,8 @@ public sealed class DbInitializer
         );
         """,
         // 校正系数表（版本化：同方法/元素保留多版本，IsCurrent 仅生效时间最新的版本为 1；不含操作者字段——身份内容已移除）
-        // SourceSampleID（来源设置样）外键引用 SCT_Sample.SampleID，可空（NULL 不参与约束）；
-        // ON DELETE SET NULL：删除被引用设置样时不阻塞级联删除流程，系数版本保留（来源置空）
+        // SourceSampleID（来源控样）外键引用 SCT_Sample.SampleID，可空（NULL 不参与约束）；
+        // ON DELETE SET NULL：删除被引用控样时不阻塞级联删除流程，系数版本保留（来源置空）
         """
         CREATE TABLE IF NOT EXISTS CorrectionCoefficient (
             CoeffID          INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -129,17 +129,17 @@ public sealed class DbInitializer
         "CREATE INDEX IF NOT EXISTS IX_Coefficient_Method_Current ON CorrectionCoefficient(MethodID, Element, IsCurrent);",
         "CREATE INDEX IF NOT EXISTS IX_ProductionSample_Status_Time ON Production_Sample(Status, CreatedTime);",
         "CREATE INDEX IF NOT EXISTS IX_AnalysisResult_Sample_Time ON Analysis_Result(SampleID, OperationTime);",
-        // 控制限仅允许关联控制样（任务清单第三节硬性约束；SQLite 外键无法跨列限定父表类型，以触发器强制）
+        // 控制限仅允许关联检查样（任务清单第三节硬性约束；SQLite 外键无法跨列限定父表类型，以触发器强制）
         """
         CREATE TRIGGER IF NOT EXISTS trg_ControlLimit_ControlOnly
         BEFORE INSERT ON ControlLimit
         FOR EACH ROW
         WHEN (SELECT SampleType FROM SCT_Sample WHERE SampleID = NEW.SampleID) != 'Control'
         BEGIN
-            SELECT RAISE(ABORT, '控制限仅允许关联控制样（SampleType=Control）');
+            SELECT RAISE(ABORT, '控制限仅允许关联检查样（SampleType=Control）');
         END;
         """,
-        // 校正系数仅来源于设置样/类型标准化样（SourceSampleID 可空；同规则以触发器强制）
+        // 校正系数仅来源于控样/类型标准化样（SourceSampleID 可空；同规则以触发器强制）
         """
         CREATE TRIGGER IF NOT EXISTS trg_CorrectionCoefficient_SourceSampleType
         BEFORE INSERT ON CorrectionCoefficient
@@ -147,10 +147,10 @@ public sealed class DbInitializer
         WHEN NEW.SourceSampleID IS NOT NULL
              AND (SELECT SampleType FROM SCT_Sample WHERE SampleID = NEW.SourceSampleID) NOT IN ('SettingUp', 'TypeStd')
         BEGIN
-            SELECT RAISE(ABORT, '校正系数来源样品仅允许设置样/类型标准化样（SettingUp/TypeStd）');
+            SELECT RAISE(ABORT, '校正系数来源样品仅允许控样/类型标准化样（SettingUp/TypeStd）');
         END;
         """,
-        // SCT 样品合金仅类型标准化样可关联（设置样/控制样不关联合金；生产样 Production_Sample 不受限）
+        // SCT 样品合金仅类型标准化样可关联（控样/检查样不关联合金；生产样 Production_Sample 不受限）
         """
         CREATE TRIGGER IF NOT EXISTS trg_SCT_Sample_AlloyType_TypeStdOnly
         BEFORE INSERT ON SCT_Sample
@@ -175,7 +175,7 @@ public sealed class DbInitializer
     public void EnsureCreated()
     {
         using var conn = _db.Open();
-        // 一次性重建旧结构系数表（缺版本唯一索引即旧表）：来源必填（设置样/类型标准化样）+ 版本唯一约束，
+        // 一次性重建旧结构系数表（缺版本唯一索引即旧表）：来源必填（控样/类型标准化样）+ 版本唯一约束，
         // 重建后由 SeedData.SeedCoefficientsIfEmpty 重填；新结构表不重复重建。
         DropLegacyCoefficientTableIfAny(conn);
         using var tx = conn.BeginTransaction();
@@ -191,7 +191,7 @@ public sealed class DbInitializer
         // 生产样状态机改版（Normal/Analyzing/Failed → PendingAnalysis，失败改记 FailureReason）：
         // 旧表 Status 带 4 值 CHECK 约束无法直接改，需重建表迁移（幂等：仅旧约束存在时执行）
         MigrateProductionStatusCheck(conn, tx);
-        // 控制限仅允许关联控制样：清理存量库中挂在非 Control 样上的控制限（幂等）
+        // 控制限仅允许关联检查样：清理存量库中挂在非 Control 样上的控制限（幂等）
         using (var clean = conn.CreateCommand())
         {
             clean.Transaction = tx;
@@ -201,7 +201,7 @@ public sealed class DbInitializer
                 """;
             clean.ExecuteNonQuery();
         }
-        // 校正系数仅来源于设置样/类型标准化样：清理存量库中来源为其他类型的系数行（幂等）
+        // 校正系数仅来源于控样/类型标准化样：清理存量库中来源为其他类型的系数行（幂等）
         using (var cleanCoeff = conn.CreateCommand())
         {
             cleanCoeff.Transaction = tx;
@@ -212,7 +212,7 @@ public sealed class DbInitializer
                 """;
             cleanCoeff.ExecuteNonQuery();
         }
-        // SCT 样品合金仅类型标准化样：清理存量库中设置样/控制样上的合金值（幂等）
+        // SCT 样品合金仅类型标准化样：清理存量库中控样/检查样上的合金值（幂等）
         using (var cleanAlloy = conn.CreateCommand())
         {
             cleanAlloy.Transaction = tx;
@@ -223,10 +223,10 @@ public sealed class DbInitializer
         PurgeProductionFromSctSample(conn, tx);
         // 校正系数版本化修复（幂等，须在建唯一索引前执行）：
         // ① 历史库无版本唯一约束时种子数据可能重复播种，先按（方法,元素,版本,来源）去重，保留最小 CoeffID
-        //   （来源参与唯一性：同方法/元素/版本允许设置样与类型标准化样两套系数并存）；
+        //   （来源参与唯一性：同方法/元素/版本允许控样与类型标准化样两套系数并存）；
         // ② 有效性规则：同（方法,元素）保留多版本，仅生效时间最新的版本为当前有效（并列时取版本高者），归一化 IsCurrent。
         DedupeAndNormalizeCoefficients(conn, tx);
-        // 来源必填：系数来源仅设置样/类型标准化样两类，存量空来源回填为具体设置样型号（按 CoeffID 轮转分配，幂等；
+        // 来源必填：系数来源仅控样/类型标准化样两类，存量空来源回填为具体控样型号（按 CoeffID 轮转分配，幂等；
         // 注意 SQLite 子查询 OFFSET 内不能引用外层列，改用"按编号计数定位"实现轮转）
         using (var fillSource = conn.CreateCommand())
         {
@@ -247,7 +247,7 @@ public sealed class DbInitializer
         using (var idx = conn.CreateCommand())
         {
             idx.Transaction = tx;
-            // 版本+来源唯一索引：同方法/元素/版本允许设置样与类型标准化样两套系数并存；防重复播种，使 INSERT OR IGNORE 真正生效
+            // 版本+来源唯一索引：同方法/元素/版本允许控样与类型标准化样两套系数并存；防重复播种，使 INSERT OR IGNORE 真正生效
             idx.CommandText = "CREATE UNIQUE INDEX IF NOT EXISTS UX_Coefficient_Method_Element_Version_Source ON CorrectionCoefficient(MethodID, Element, Version, SourceSampleID);";
             idx.ExecuteNonQuery();
         }

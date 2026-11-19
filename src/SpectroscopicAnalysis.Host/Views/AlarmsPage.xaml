@@ -13,7 +13,7 @@
                         <TextBlock Text="⛔ 9001 急停（演示）— 等待故障复位" Style="{StaticResource Text.Caption}" Foreground="{DynamicResource Brush.Badge.Failed.Fg}" />
                     </Border>
                     <Border Style="{StaticResource Badge.Base}" Background="{DynamicResource Brush.Badge.Warning.Bg}" HorizontalAlignment="Left" Margin="0,0,0,6" Padding="12,6">
-                        <TextBlock Text="⚠ 5001 控制样偏差接近控制限" Style="{StaticResource Text.Caption}" Foreground="{DynamicResource Brush.Badge.Warning.Fg}" />
+                        <TextBlock Text="⚠ 5001 检查样偏差接近控制限" Style="{StaticResource Text.Caption}" Foreground="{DynamicResource Brush.Badge.Warning.Fg}" />
                     </Border>
                     <Border Style="{StaticResource Badge.Base}" Background="{DynamicResource Brush.Badge.Info.Bg}" HorizontalAlignment="Left" Padding="12,6">
                         <TextBlock Text="ℹ 4001 PLC 心跳瞬时延迟（自动恢复）" Style="{StaticResource Text.Caption}" Foreground="{DynamicResource Brush.Badge.Info.Fg}" />

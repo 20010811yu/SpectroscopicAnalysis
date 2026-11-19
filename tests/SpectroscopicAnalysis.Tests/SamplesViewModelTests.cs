@@ -256,7 +256,7 @@ public sealed class SamplesViewModelTests
         var filtered = vm.SctSamples.ToList();
         Assert.Single(filtered);
         Assert.Equal("CTL-002", filtered[0].SampleId);
-        Assert.Equal("控制样", filtered[0].TypeDisplay);
+        Assert.Equal("检查样", filtered[0].TypeDisplay);
     }
 
     [Fact]
@@ -270,7 +270,7 @@ public sealed class SamplesViewModelTests
         await vm.LoadCommand.ExecuteAsync(null);
         var sus = vm.SctSamples.First(r => r.SampleId == "SUS-001");
 
-        Assert.Equal("设置样", sus.TypeDisplay);
+        Assert.Equal("控样", sus.TypeDisplay);
         Assert.Equal("9.8 / 12.0", sus.ThicknessText);
         Assert.Equal("50/50", sus.UsageText);
         Assert.Equal("11-07 08:00", sus.LastHeightText);
@@ -383,8 +383,8 @@ public sealed class SamplesViewModelTests
     public async Task Search_按编号命中()
     {
         var vm = CreateWith(
-            MakeNamed("SUS-001", "设置样 1", SampleType.SettingUp),
-            MakeNamed("CTL-002", "控制样 2", SampleType.Control));
+            MakeNamed("SUS-001", "控样 1", SampleType.SettingUp),
+            MakeNamed("CTL-002", "检查样 2", SampleType.Control));
         await vm.LoadCommand.ExecuteAsync(null);
 
         vm.SearchText = "CTL";
@@ -414,16 +414,16 @@ public sealed class SamplesViewModelTests
     public async Task Search_类型筛选与关键词组合过滤()
     {
         var vm = CreateWith(
-            MakeNamed("SUS-001", "设置样 1", SampleType.SettingUp),
-            MakeNamed("SUS-002", "设置样 2", SampleType.SettingUp),
-            MakeNamed("CTL-001", "控制样 1", SampleType.Control));
+            MakeNamed("SUS-001", "控样 1", SampleType.SettingUp),
+            MakeNamed("SUS-002", "控样 2", SampleType.SettingUp),
+            MakeNamed("CTL-001", "检查样 1", SampleType.Control));
         await vm.LoadCommand.ExecuteAsync(null);
 
         vm.SetFilterCommand.Execute(SampleType.SettingUp);
         vm.SearchText = "1";
         vm.SearchCommand.Execute(null);
 
-        Assert.Single(vm.SctSamples);                       // 设置样 ∩ "1" → 仅 SUS-001
+        Assert.Single(vm.SctSamples);                       // 控样 ∩ "1" → 仅 SUS-001
         Assert.Equal("SUS-001", vm.SctSamples[0].SampleId);
     }
 
@@ -431,7 +431,7 @@ public sealed class SamplesViewModelTests
     public async Task Search_无命中_保留原数据并弹窗提示()
     {
         var dialogs = new FakeDialogService();
-        var vm = CreateWith(dialogs, MakeNamed("SUS-001", "设置样 1", SampleType.SettingUp));
+        var vm = CreateWith(dialogs, MakeNamed("SUS-001", "控样 1", SampleType.SettingUp));
         await vm.LoadCommand.ExecuteAsync(null);
 
         vm.SearchText = "ZZZ";

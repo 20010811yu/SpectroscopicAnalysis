@@ -116,7 +116,7 @@ public sealed class SeedBulkTests
     }
 
     [Fact]
-    public void ControlLimit_仅允许关联控制样()
+    public void ControlLimit_仅允许关联检查样()
     {
         var path = Path.Combine(Path.GetTempPath(), $"seedtest_{Guid.NewGuid():N}.db");
         try
@@ -130,8 +130,8 @@ public sealed class SeedBulkTests
             {
                 cmd.CommandText = """
                     INSERT INTO SCT_Sample (SampleID, SampleName, SampleType, InitialThickness, CurrentThickness, MinThickness, UsageCount, MaxUsageCount, Status)
-                    VALUES ('CTL-T1', '控制样 T1', 'Control', 10.0, 10.0, 6.0, 0, 60, 'Normal'),
-                           ('SUS-T1', '设置样 T1', 'SettingUp', 10.0, 10.0, 8.0, 0, 50, 'Normal')
+                    VALUES ('CTL-T1', '检查样 T1', 'Control', 10.0, 10.0, 6.0, 0, 60, 'Normal'),
+                           ('SUS-T1', '控样 T1', 'SettingUp', 10.0, 10.0, 8.0, 0, 50, 'Normal')
                     """;
                 cmd.ExecuteNonQuery();
             }
@@ -147,10 +147,10 @@ public sealed class SeedBulkTests
                 cmd.ExecuteNonQuery();
             }
 
-            InsertLimit("CTL-T1");   // 控制样 → 成功
+            InsertLimit("CTL-T1");   // 检查样 → 成功
 
             var ex = Assert.Throws<Microsoft.Data.Sqlite.SqliteException>(() => InsertLimit("SUS-T1"));
-            Assert.Contains("控制限仅允许关联控制样", ex.Message);
+            Assert.Contains("控制限仅允许关联检查样", ex.Message);
 
             // 存量清理：先 DROP 触发器模拟旧库（旧库无触发器），插入违规行后 EnsureCreated 应重建触发器并清除违规行
             using (var cmd = conn.CreateCommand())
@@ -182,7 +182,7 @@ public sealed class SeedBulkTests
     }
 
     [Fact]
-    public void CorrectionCoefficient_来源仅设置样与类型标准化样()
+    public void CorrectionCoefficient_来源仅控样与类型标准化样()
     {
         var path = Path.Combine(Path.GetTempPath(), $"seedtest_{Guid.NewGuid():N}.db");
         try
@@ -211,9 +211,9 @@ public sealed class SeedBulkTests
             {
                 cmd.CommandText = """
                     INSERT INTO SCT_Sample (SampleID, SampleName, SampleType, InitialThickness, CurrentThickness, MinThickness, UsageCount, MaxUsageCount, Status)
-                    VALUES ('SUS-T2', '设置样 T2', 'SettingUp', 10.0, 10.0, 8.0, 0, 50, 'Normal'),
+                    VALUES ('SUS-T2', '控样 T2', 'SettingUp', 10.0, 10.0, 8.0, 0, 50, 'Normal'),
                            ('TS-T2-01', '类型标准化样 T2', 'TypeStd', 10.0, 10.0, 7.0, 0, 40, 'Normal'),
-                           ('CTL-T2', '控制样 T2', 'Control', 10.0, 10.0, 6.0, 0, 60, 'Normal')
+                           ('CTL-T2', '检查样 T2', 'Control', 10.0, 10.0, 6.0, 0, 60, 'Normal')
                     """;
                 cmd.ExecuteNonQuery();
             }
@@ -229,13 +229,13 @@ public sealed class SeedBulkTests
                 cmd.ExecuteNonQuery();
             }
 
-            InsertCoeff("SUS-T2");      // 设置样 → 成功
+            InsertCoeff("SUS-T2");      // 控样 → 成功
             InsertCoeff("TS-T2-01");    // 类型标准化样 → 成功
 
             var ex = Assert.Throws<Microsoft.Data.Sqlite.SqliteException>(() => InsertCoeff("CTL-T2"));
-            Assert.Contains("校正系数来源样品仅允许设置样/类型标准化样", ex.Message);
+            Assert.Contains("校正系数来源样品仅允许控样/类型标准化样", ex.Message);
 
-            // 存量清理：DROP 触发器模拟旧库，插入来源为控制样的违规行 → EnsureCreated 后被清除
+            // 存量清理：DROP 触发器模拟旧库，插入来源为检查样的违规行 → EnsureCreated 后被清除
             using (var cmd = conn.CreateCommand())
             {
                 cmd.CommandText = "DROP TRIGGER trg_CorrectionCoefficient_SourceSampleType";
@@ -291,8 +291,8 @@ public sealed class SeedBulkTests
             {
                 cmd.CommandText = """
                     INSERT INTO SCT_Sample (SampleID, SampleName, SampleType, InitialThickness, CurrentThickness, MinThickness, UsageCount, MaxUsageCount, Status)
-                    VALUES ('SUS-T3', '设置样 T3', 'SettingUp', 10.0, 10.0, 8.0, 0, 50, 'Normal'),
-                           ('CTL-T3', '控制样 T3', 'Control', 10.0, 10.0, 6.0, 0, 60, 'Normal'),
+                    VALUES ('SUS-T3', '控样 T3', 'SettingUp', 10.0, 10.0, 8.0, 0, 50, 'Normal'),
+                           ('CTL-T3', '检查样 T3', 'Control', 10.0, 10.0, 6.0, 0, 60, 'Normal'),
                            ('TS-T3-01', '类型标准化样 T3', 'TypeStd', 10.0, 10.0, 7.0, 0, 40, 'Normal')
                     """;
                 cmd.ExecuteNonQuery();
@@ -311,7 +311,7 @@ public sealed class SeedBulkTests
             Assert.Throws<Microsoft.Data.Sqlite.SqliteException>(() => SetAlloy("SUS-T3"));
             Assert.Throws<Microsoft.Data.Sqlite.SqliteException>(() => SetAlloy("CTL-T3"));
 
-            // 存量清理：DROP 触发器模拟旧库，给控制样挂合金 → EnsureCreated 后被清空
+            // 存量清理：DROP 触发器模拟旧库，给检查样挂合金 → EnsureCreated 后被清空
             using (var cmd = conn.CreateCommand())
             {
                 cmd.CommandText = "DROP TRIGGER trg_SCT_Sample_AlloyType_TypeStdOnly; DROP TRIGGER trg_SCT_Sample_AlloyType_TypeStdOnly_Update";

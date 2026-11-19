@@ -25,7 +25,7 @@ public sealed class ControlLimit
 
 /// <summary>
 /// 校正系数（表 CorrectionCoefficient，字段见任务清单 2.3；版本化：IsCurrent + Version）。
-/// 注意：不含操作者字段（身份内容已移除，规则 11）；SourceSampleID 为来源设置样，可空。
+/// 注意：不含操作者字段（身份内容已移除，规则 11）；SourceSampleID 为来源控样，可空。
 /// </summary>
 public sealed class CorrectionCoefficient
 {

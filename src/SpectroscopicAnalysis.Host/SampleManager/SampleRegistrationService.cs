@@ -133,7 +133,7 @@ public sealed class SampleRegistrationService : ISampleRegistrationService
             return null;
         }
 
-        // 设置样/控制样/类型标准样：架位 + 厚度 + 使用次数
+        // 控样/检查样/类型标准样：架位 + 厚度 + 使用次数
         if (string.IsNullOrWhiteSpace(form.RackPosition))
         {
             return "样品架位置不能为空";
@@ -161,7 +161,7 @@ public sealed class SampleRegistrationService : ISampleRegistrationService
         }
         if (form.SampleType != SampleType.TypeStd && !string.IsNullOrWhiteSpace(form.AlloyType))
         {
-            return "仅类型标准化样可关联合金，设置样/控制样请留空合金";
+            return "仅类型标准化样可关联合金，控样/检查样请留空合金";
         }
         return null;
     }

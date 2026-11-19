@@ -24,13 +24,13 @@
                 </Grid.ColumnDefinitions>
                 <Border Grid.Column="0" Style="{StaticResource Card}" Margin="0,0,12,0">
                     <StackPanel>
-                        <TextBlock Text="设置样" Style="{StaticResource Text.Caption}" />
+                        <TextBlock Text="控样" Style="{StaticResource Text.Caption}" />
                         <TextBlock Text="{Binding SettingUpCount, Mode=OneWay}" Style="{StaticResource Text.CardTitle}" />
                     </StackPanel>
                 </Border>
                 <Border Grid.Column="1" Style="{StaticResource Card}" Margin="0,0,12,0">
                     <StackPanel>
-                        <TextBlock Text="控制样" Style="{StaticResource Text.Caption}" />
+                        <TextBlock Text="检查样" Style="{StaticResource Text.Caption}" />
                         <TextBlock Text="{Binding ControlCount, Mode=OneWay}" Style="{StaticResource Text.CardTitle}" />
                     </StackPanel>
                 </Border>
@@ -93,7 +93,7 @@
                                 </Style>
                             </Button.Style>
                         </Button>
-                        <Button Content="设置样" Command="{Binding SetFilterCommand}" CommandParameter="SettingUp" Margin="0,0,8,0">
+                        <Button Content="控样" Command="{Binding SetFilterCommand}" CommandParameter="SettingUp" Margin="0,0,8,0">
                             <Button.Style>
                                 <Style TargetType="Button" BasedOn="{StaticResource ModeBtn}">
                                     <Style.Triggers>
@@ -106,7 +106,7 @@
                                 </Style>
                             </Button.Style>
                         </Button>
-                        <Button Content="控制样" Command="{Binding SetFilterCommand}" CommandParameter="Control" Margin="0,0,8,0">
+                        <Button Content="检查样" Command="{Binding SetFilterCommand}" CommandParameter="Control" Margin="0,0,8,0">
                             <Button.Style>
                                 <Style TargetType="Button" BasedOn="{StaticResource ModeBtn}">
                                     <Style.Triggers>
@@ -173,9 +173,9 @@
                         <Button Content="手动测高执行" Command="{Binding TriggerHeightMeasureCommand}"
                                 ToolTip="提交测高任务到策略引擎队列（需选中行）" Style="{StaticResource SecondaryBtn}" Margin="16,0,0,0" Padding="10,5" />
                         <Button Content="手动标准化" Command="{Binding TriggerStandardizationCommand}"
-                                ToolTip="提交标准化任务到策略引擎队列（需选中设置样或类型标准化样）" Style="{StaticResource PrimaryBtn}" Margin="8,0,0,0" Padding="10,5" />
+                                ToolTip="提交标准化任务到策略引擎队列（需选中控样或类型标准化样）" Style="{StaticResource PrimaryBtn}" Margin="8,0,0,0" Padding="10,5" />
                         <Button Content="手动控制检查" Command="{Binding TriggerControlCheckCommand}"
-                                ToolTip="提交控制检查任务到策略引擎队列（需选中控制样）" Style="{StaticResource PrimaryBtn}" Margin="8,0,0,0" Padding="10,5" />
+                                ToolTip="提交控制检查任务到策略引擎队列（需选中检查样）" Style="{StaticResource PrimaryBtn}" Margin="8,0,0,0" Padding="10,5" />
                     </StackPanel>
                 </DockPanel>
 
@@ -412,10 +412,10 @@
                             <RowDefinition Height="Auto" /><RowDefinition Height="Auto" />
                         </Grid.RowDefinitions>
 
-                        <TextBlock Grid.Row="0" Grid.Column="0" Text="设置样选择规则" Style="{StaticResource Text.Caption}" VerticalAlignment="Center" Margin="0,0,12,8" />
+                        <TextBlock Grid.Row="0" Grid.Column="0" Text="控样选择规则" Style="{StaticResource Text.Caption}" VerticalAlignment="Center" Margin="0,0,12,8" />
                         <ComboBox Grid.Row="0" Grid.Column="1" ItemsSource="{Binding SettingSelectionModeOptions}" SelectedItem="{Binding PolicySettingSelectionMode}" Margin="0,0,0,8" />
 
-                        <TextBlock Grid.Row="1" Grid.Column="0" Text="控制样插入模式" Style="{StaticResource Text.Caption}" VerticalAlignment="Center" Margin="0,0,12,8" />
+                        <TextBlock Grid.Row="1" Grid.Column="0" Text="检查样插入模式" Style="{StaticResource Text.Caption}" VerticalAlignment="Center" Margin="0,0,12,8" />
                         <ComboBox Grid.Row="1" Grid.Column="1" ItemsSource="{Binding InsertModeOptions}" SelectedItem="{Binding PolicyInsertMode}" Margin="0,0,0,8" />
 
                         <TextBlock Grid.Row="2" Grid.Column="0" Text="每 N 个生产样插入" Style="{StaticResource Text.Caption}" VerticalAlignment="Center" Margin="0,0,12,8" />
@@ -424,7 +424,7 @@
                         <TextBlock Grid.Row="3" Grid.Column="0" Text="时间间隔（分钟）" Style="{StaticResource Text.Caption}" VerticalAlignment="Center" Margin="0,0,12,8" />
                         <TextBox Grid.Row="3" Grid.Column="1" Text="{Binding PolicyInsertMinutes, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,8" />
 
-                        <CheckBox Grid.Row="4" Grid.Column="0" Grid.ColumnSpan="2" Content="多块控制样轮换"
+                        <CheckBox Grid.Row="4" Grid.Column="0" Grid.ColumnSpan="2" Content="多块检查样轮换"
                                   IsChecked="{Binding PolicyRotationEnabled}" Margin="0,0,0,8" />
 
                         <TextBlock Grid.Row="6" Grid.Column="0" Text="判定限类型" Style="{StaticResource Text.Caption}" VerticalAlignment="Center" Margin="0,0,12,8" />
@@ -436,7 +436,7 @@
                         <TextBlock Grid.Row="8" Grid.Column="0" Text="超差验证重测上限" Style="{StaticResource Text.Caption}" VerticalAlignment="Center" Margin="0,0,12,8" />
                         <TextBox Grid.Row="8" Grid.Column="1" Text="{Binding PolicyRecheckMax, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,8" />
 
-                        <CheckBox Grid.Row="9" Grid.Column="0" Grid.ColumnSpan="2" Content="控制样超差自动触发标准化"
+                        <CheckBox Grid.Row="9" Grid.Column="0" Grid.ColumnSpan="2" Content="检查样超差自动触发标准化"
                                   IsChecked="{Binding AutoOnControlFail}" Margin="0,0,0,8" />
                         <CheckBox Grid.Row="10" Grid.Column="0" Grid.ColumnSpan="2" Content="切换自动模式时执行标准化"
                                   IsChecked="{Binding StandardizeOnAutoMode}" Margin="0,0,0,8" />

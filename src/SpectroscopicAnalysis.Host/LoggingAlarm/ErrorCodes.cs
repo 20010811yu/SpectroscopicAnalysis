@@ -19,10 +19,10 @@ public static class ErrorCodes
     public const int SctSampleMaintainFailed = 5006;
 
     // 51xx SCT 策略引擎
-    /// <summary>5101 设置样选择无可用样品（报警暂停分析）。</summary>
+    /// <summary>5101 控样选择无可用样品（报警暂停分析）。</summary>
     public const int SctSettingSampleUnavailable = 5101;
 
-    /// <summary>5102 控制样超差闭环重测耗尽（报警暂停自动模式）。</summary>
+    /// <summary>5102 检查样超差闭环重测耗尽（报警暂停自动模式）。</summary>
     public const int SctRecheckExhausted = 5102;
 
     /// <summary>5103 类型标准化样无匹配（合金无对应标样）。</summary>

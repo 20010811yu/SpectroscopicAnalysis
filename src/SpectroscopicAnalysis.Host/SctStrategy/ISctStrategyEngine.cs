@@ -22,10 +22,10 @@ public interface ISctStrategyEngine
     /// <summary>任务完成/失败回执（Workflow 执行后回调；失败不自动重试）。</summary>
     void CompleteTask(int taskId, bool success, string? error);
 
-    /// <summary>样品分析完成（生产样完成计数→控制样插入；标样次数联动→测高任务，引擎设计 §5/§8）。</summary>
+    /// <summary>样品分析完成（生产样完成计数→检查样插入；标样次数联动→测高任务，引擎设计 §5/§8）。</summary>
     void NotifyAnalysisCompleted(string sampleId);
 
-    /// <summary>控制样判定结果（超差闭环推进，引擎设计 §7；passed 按 LimitType/LimitValue 判定后的布尔结果）。</summary>
+    /// <summary>检查样判定结果（超差闭环推进，引擎设计 §7；passed 按 LimitType/LimitValue 判定后的布尔结果）。</summary>
     void NotifyControlResult(string sampleId, bool passed);
 
     /// <summary>标准化完成（超差闭环推进：安排验证重测，引擎设计 §7）。</summary>
@@ -40,12 +40,12 @@ public interface ISctStrategyEngine
     /// <summary>合金类型切换（按配置触发类型标准化，引擎设计 §5）。</summary>
     void NotifyAlloySwitched(string alloyType);
 
-    /// <summary>时钟节拍（定时标准化/按时间插入控制样/类型标准化期限判定；由宿主定期调用）。</summary>
+    /// <summary>时钟节拍（定时标准化/按时间插入检查样/类型标准化期限判定；由宿主定期调用）。</summary>
     void OnTick();
 
     /// <summary>急停/故障恢复：清空队列（全部 Cancelled），冻结闭环状态。</summary>
     void EmergencyReset();
 
-    /// <summary>控制样插入进度快照（模式/已计数或已过分钟/阈值；主控台 KPI 展示）。</summary>
+    /// <summary>检查样插入进度快照（模式/已计数或已过分钟/阈值；主控台 KPI 展示）。</summary>
     SctControlCountdown GetControlCountdown();
 }

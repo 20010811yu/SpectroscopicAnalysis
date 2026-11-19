@@ -6,7 +6,7 @@ namespace SpectroscopicAnalysis.Tests;
 
 /// <summary>
 /// SCT 策略引擎测试（引擎设计文档 §12）：优先级队列/去重合并/急停清队、
-/// 触发判断（按数量与时间插入控制样、切自动模式/定时标准化、合金切换/期限类型标准化）、
+/// 触发判断（按数量与时间插入检查样、切自动模式/定时标准化、合金切换/期限类型标准化）、
 /// 选样规则（LeastUsed/RoundRobin/合金匹配）、超差闭环（重测上限）、测高联动与厚度流转。
 /// </summary>
 public sealed class SctStrategyEngineTests
@@ -139,7 +139,7 @@ public sealed class SctStrategyEngineTests
     // ==================== 触发判断 ====================
 
     [Fact]
-    public void 触发_按数量插入控制样()
+    public void 触发_按数量插入检查样()
     {
         _policy.Current.ControlInsertMode = ControlInsertMode.ByCount;
         _policy.Current.ControlInsertCount = 3;
@@ -161,7 +161,7 @@ public sealed class SctStrategyEngineTests
     }
 
     [Fact]
-    public void 触发_按时间插入控制样与定时标准化()
+    public void 触发_按时间插入检查样与定时标准化()
     {
         _policy.Current.ControlInsertMode = ControlInsertMode.ByTime;
         _policy.Current.ControlInsertMinutes = 60;
@@ -266,7 +266,7 @@ public sealed class SctStrategyEngineTests
     }
 
     [Fact]
-    public void 选样_控制样轮换选最久未用且不做合金过滤()
+    public void 选样_检查样轮换选最久未用且不做合金过滤()
     {
         _policy.Current.ControlInsertCount = 1;
         _samples.Store.Add(MakeSample("CTL-A", SampleType.Control));
@@ -279,7 +279,7 @@ public sealed class SctStrategyEngineTests
         engine.NotifyAlloySwitched("3003");
         engine.NotifyAnalysisCompleted("P-001");
         Assert.True(engine.TryDequeue(out var task));
-        Assert.Equal("CTL-A", task.SampleId);                   // 控制样不关联合金，仅按轮换（最久未用）选取
+        Assert.Equal("CTL-A", task.SampleId);                   // 检查样不关联合金，仅按轮换（最久未用）选取
     }
 
     // ==================== 超差闭环 ====================

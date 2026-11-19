@@ -18,7 +18,7 @@ public sealed class SamplesRegisterTests
         vm.RegSampleId = "REG-001";
         vm.RegSampleName = "注册测试样品";
         vm.RegSampleType = SampleType.SettingUp;
-        vm.RegAlloyType = null;   // 设置样/控制样不关联合金（仅 TypeStd 可挂）
+        vm.RegAlloyType = null;   // 控样/检查样不关联合金（仅 TypeStd 可挂）
         vm.RegRackPosition = "D01";
         vm.RegInitialThickness = "15.5";
         vm.RegMinThickness = "6.0";
@@ -43,7 +43,7 @@ public sealed class SamplesRegisterTests
         Assert.Equal(0, inserted.UsageCount);          // 入库初始化：使用次数 = 0
         Assert.Equal(SampleStatus.Normal, inserted.Status); // 入库初始化：状态 = Normal
         Assert.True(inserted.IsActive);
-        Assert.Null(inserted.AlloyType); // 设置样不关联合金
+        Assert.Null(inserted.AlloyType); // 控样不关联合金
         Assert.Null(vm.RegisterError);
         Assert.False(vm.IsRegisterOpen); // 成功后关闭面板
     }
@@ -53,7 +53,7 @@ public sealed class SamplesRegisterTests
     {
         var repo = new FakeSampleRepository();
         var vm = CreateValidForm(repo);
-        vm.RegAlloyType = "6xxx";   // 设置样不允许挂合金
+        vm.RegAlloyType = "6xxx";   // 控样不允许挂合金
 
         await vm.RegisterCommand.ExecuteAsync(null);
 
@@ -258,7 +258,7 @@ public sealed class SamplesRegisterTests
     {
         var engine = new FakeSctStrategyEngine();
         var repo = new FakeSampleRepository();
-        var vm = CreateValidForm(repo, engine);   // 设置样
+        var vm = CreateValidForm(repo, engine);   // 控样
         await vm.RegisterCommand.ExecuteAsync(null);
 
         var prodRepo = new FakeProductionSampleRepository();

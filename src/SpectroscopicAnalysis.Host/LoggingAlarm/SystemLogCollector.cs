@@ -12,6 +12,9 @@ public sealed class SystemLogCollector : ISystemLogCollector, IDisposable
     /// <summary>文件日志保留天数。</summary>
     private const int RetainedDays = 7;
 
+    /// <summary>单文件最大行数（含分隔线；约 2000 条日志/天）。</summary>
+    private const int MaxLines = 4000;
+
     /// <summary>共用置顶写入器（时间倒序 + 分隔线 + 行数封顶 + 过期清理）。</summary>
     private readonly DeviceInterface.DeviceLogFileWriter _writer;
 
@@ -27,7 +30,7 @@ public sealed class SystemLogCollector : ISystemLogCollector, IDisposable
             Path.Combine(AppContext.BaseDirectory, "logs", "system"),
             filePrefix: "system",
             retainedDays: RetainedDays,
-            maxLines: DeviceInterface.DeviceLogFileWriterDefaults.MaxLines);
+            maxLines: MaxLines);
     }
 
     /// <inheritdoc />

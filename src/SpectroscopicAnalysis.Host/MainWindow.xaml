@@ -72,10 +72,52 @@
                     <!-- 导航（ICommand 绑定，无 code-behind 逻辑；Children 非空为分组项，展开后显示二级子菜单） -->
                     <ItemsControl Grid.Row="0" ItemsSource="{Binding NavItems}" Margin="8,12">
                         <ItemsControl.Resources>
-                            <!-- 导航项模板（含二级分组支持；内层子菜单复用同一模板，子项为普通项走按钮分支） -->
-                            <DataTemplate x:Key="NavItemTemplate">
+                            <!-- 叶子导航项按钮模板（分组子菜单与顶层项共用） -->
+                            <DataTemplate x:Key="NavLeafTemplate">
+                                <Button Command="{Binding DataContext.NavigateToCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                        CommandParameter="{Binding}"
+                                        Content="{Binding Title}"
+                                        Margin="0,0,0,4">
+                                    <Button.Style>
+                                        <Style TargetType="Button">
+                                            <Setter Property="Background" Value="Transparent" />
+                                            <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Secondary}" />
+                                            <Setter Property="FontSize" Value="{DynamicResource FontSize.Body}" />
+                                            <Setter Property="FontFamily" Value="Microsoft YaHei UI" />
+                                            <Setter Property="HorizontalContentAlignment" Value="Left" />
+                                            <Setter Property="Padding" Value="12,10" />
+                                            <Setter Property="Cursor" Value="Hand" />
+                                            <Setter Property="Template">
+                                                <Setter.Value>
+                                                    <ControlTemplate TargetType="Button">
+                                                        <Border x:Name="Bd" Background="{TemplateBinding Background}" CornerRadius="6" Padding="{TemplateBinding Padding}">
+                                                            <ContentPresenter VerticalAlignment="Center" />
+                                                        </Border>
+                                                        <ControlTemplate.Triggers>
+                                                            <Trigger Property="IsMouseOver" Value="True">
+                                                                <Setter TargetName="Bd" Property="Background" Value="{DynamicResource Brush.Bg.Page}" />
+                                                            </Trigger>
+                                                        </ControlTemplate.Triggers>
+                                                    </ControlTemplate>
+                                                </Setter.Value>
+                                            </Setter>
+                                            <Style.Triggers>
+                                                <!-- 选中项高亮（NavItem.IsSelected 由 MainViewModel 维护） -->
+                                                <DataTrigger Binding="{Binding IsSelected}" Value="True">
+                                                    <Setter Property="Background" Value="{DynamicResource Brush.Primary}" />
+                                                    <Setter Property="Foreground" Value="White" />
+                                                    <Setter Property="FontWeight" Value="SemiBold" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Button.Style>
+                                </Button>
+                            </DataTemplate>
+                        </ItemsControl.Resources>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
                                 <Grid>
-                                    <!-- 分组项：Expander（Children 非空可见） -->
+                                    <!-- 分组项：Expander（Children 非空可见），子项缩进复用叶子模板 -->
                                     <Expander IsExpanded="{Binding IsExpanded, Mode=TwoWay}" ExpandDirection="Down" Margin="0,0,0,4"
                                               Visibility="{Binding Children, Converter={StaticResource NullToVisibility}}">
                                         <Expander.Header>
@@ -83,53 +125,13 @@
                                                        Foreground="{DynamicResource Brush.Text.Secondary}" Padding="12,10" />
                                         </Expander.Header>
                                         <ItemsControl ItemsSource="{Binding Children}" Margin="12,0,0,0"
-                                                      ItemTemplate="{StaticResource NavItemTemplate}" />
+                                                      ItemTemplate="{StaticResource NavLeafTemplate}" />
                                     </Expander>
                                     <!-- 普通项：导航按钮（Children 为 null 可见） -->
-                                    <Button Command="{Binding DataContext.NavigateToCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                                            CommandParameter="{Binding}"
-                                            Content="{Binding Title}"
-                                            Margin="0,0,0,4"
-                                            Visibility="{Binding Children, Converter={StaticResource NullToVisibility.Inverse}}">
-                                        <Button.Style>
-                                            <Style TargetType="Button">
-                                                <Setter Property="Background" Value="Transparent" />
-                                                <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Secondary}" />
-                                                <Setter Property="FontSize" Value="{DynamicResource FontSize.Body}" />
-                                                <Setter Property="FontFamily" Value="Microsoft YaHei UI" />
-                                                <Setter Property="HorizontalContentAlignment" Value="Left" />
-                                                <Setter Property="Padding" Value="12,10" />
-                                                <Setter Property="Cursor" Value="Hand" />
-                                                <Setter Property="Template">
-                                                    <Setter.Value>
-                                                        <ControlTemplate TargetType="Button">
-                                                            <Border x:Name="Bd" Background="{TemplateBinding Background}" CornerRadius="6" Padding="{TemplateBinding Padding}">
-                                                                <ContentPresenter VerticalAlignment="Center" />
-                                                            </Border>
-                                                            <ControlTemplate.Triggers>
-                                                                <Trigger Property="IsMouseOver" Value="True">
-                                                                    <Setter TargetName="Bd" Property="Background" Value="{DynamicResource Brush.Bg.Page}" />
-                                                                </Trigger>
-                                                            </ControlTemplate.Triggers>
-                                                        </ControlTemplate>
-                                                    </Setter.Value>
-                                                </Setter>
-                                                <Style.Triggers>
-                                                    <!-- 选中项高亮（NavItem.IsSelected 由 MainViewModel 维护） -->
-                                                    <DataTrigger Binding="{Binding IsSelected}" Value="True">
-                                                        <Setter Property="Background" Value="{DynamicResource Brush.Primary}" />
-                                                        <Setter Property="Foreground" Value="White" />
-                                                        <Setter Property="FontWeight" Value="SemiBold" />
-                                                    </DataTrigger>
-                                                </Style.Triggers>
-                                            </Style>
-                                        </Button.Style>
-                                    </Button>
+                                    <ContentControl ContentTemplate="{StaticResource NavLeafTemplate}" Content="{Binding}" Margin="0"
+                                                    Visibility="{Binding Children, Converter={StaticResource NullToVisibility.Inverse}}" />
                                 </Grid>
                             </DataTemplate>
-                        </ItemsControl.Resources>
-                        <ItemsControl.ItemTemplate>
-                            <StaticResource ResourceKey="NavItemTemplate" />
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
 

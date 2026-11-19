@@ -84,25 +84,40 @@
                                         <ControlTemplate TargetType="Expander">
                                             <StackPanel>
                                                 <ToggleButton IsChecked="{Binding IsExpanded, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}"
-                                                              Cursor="Hand" HorizontalContentAlignment="Left"
-                                                              Focusable="False" FocusVisualStyle="{x:Null}"
+                                                              Cursor="Hand" Focusable="False" FocusVisualStyle="{x:Null}"
                                                               Content="{TemplateBinding Header}">
-                                                    <ToggleButton.Template>
-                                                        <ControlTemplate TargetType="ToggleButton">
-                                                            <Border x:Name="Bd" Background="Transparent" CornerRadius="6" Padding="12,10">
-                                                                <DockPanel LastChildFill="True">
-                                                                    <TextBlock DockPanel.Dock="Right" Text="▾" Margin="8,0,0,0" VerticalAlignment="Center"
-                                                                               FontSize="{DynamicResource FontSize.Body}" FontFamily="Microsoft YaHei UI" />
-                                                                    <ContentPresenter VerticalAlignment="Center" />
-                                                                </DockPanel>
-                                                            </Border>
-                                                            <ControlTemplate.Triggers>
-                                                                <Trigger Property="IsMouseOver" Value="True">
-                                                                    <Setter TargetName="Bd" Property="Background" Value="{DynamicResource Brush.Bg.Page}" />
-                                                                </Trigger>
-                                                            </ControlTemplate.Triggers>
-                                                        </ControlTemplate>
-                                                    </ToggleButton.Template>
+                                                    <!-- 显式样式覆盖 HandyControl 隐式样式注入的固定尺寸（否则头文字被裁切且不与一级菜单左对齐） -->
+                                                    <ToggleButton.Style>
+                                                        <Style TargetType="ToggleButton">
+                                                            <Setter Property="Background" Value="Transparent" />
+                                                            <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Secondary}" />
+                                                            <Setter Property="FontSize" Value="{DynamicResource FontSize.Body}" />
+                                                            <Setter Property="FontFamily" Value="Microsoft YaHei UI" />
+                                                            <Setter Property="FontWeight" Value="Normal" />
+                                                            <Setter Property="Padding" Value="12,10" />
+                                                            <Setter Property="Height" Value="NaN" />
+                                                            <Setter Property="HorizontalContentAlignment" Value="Left" />
+                                                            <Setter Property="VerticalContentAlignment" Value="Center" />
+                                                            <Setter Property="Template">
+                                                                <Setter.Value>
+                                                                    <ControlTemplate TargetType="ToggleButton">
+                                                                        <Border x:Name="Bd" Background="{TemplateBinding Background}" CornerRadius="6" Padding="{TemplateBinding Padding}">
+                                                                            <DockPanel LastChildFill="True">
+                                                                                <TextBlock DockPanel.Dock="Right" Text="▾" Margin="8,0,0,0" VerticalAlignment="Center" />
+                                                                                <ContentPresenter HorizontalAlignment="Left" VerticalAlignment="Center"
+                                                                                                  RecognizesAccessKey="True" />
+                                                                            </DockPanel>
+                                                                        </Border>
+                                                                        <ControlTemplate.Triggers>
+                                                                            <Trigger Property="IsMouseOver" Value="True">
+                                                                                <Setter TargetName="Bd" Property="Background" Value="{DynamicResource Brush.Bg.Page}" />
+                                                                            </Trigger>
+                                                                        </ControlTemplate.Triggers>
+                                                                    </ControlTemplate>
+                                                                </Setter.Value>
+                                                            </Setter>
+                                                        </Style>
+                                                    </ToggleButton.Style>
                                                 </ToggleButton>
                                                 <ContentPresenter x:Name="ExpandSite" ContentSource="Content"
                                                                   Visibility="{Binding IsExpanded, RelativeSource={RelativeSource TemplatedParent}, Converter={StaticResource BoolToVisibility}}" />

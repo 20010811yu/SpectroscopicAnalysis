@@ -78,7 +78,6 @@ public partial class MainWindow : Window
         SctViewModel => new SctPage(),
         CoefficientsViewModel => new CoefficientsPage(),
         AlarmsViewModel => new AlarmsPage(),
-        LaserMarkingViewModel => new LaserMarkingPage(),
         SettingsViewModel => new SettingsPage(),
         _ => throw new ArgumentException($"未登记的页面 ViewModel：{viewModel.GetType().Name}"),
     };

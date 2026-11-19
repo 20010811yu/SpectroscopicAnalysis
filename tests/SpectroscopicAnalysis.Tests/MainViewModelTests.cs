@@ -21,8 +21,7 @@ public sealed class MainViewModelTests
             new FakeUiDispatcher(), new FakeDialogService(), new FakeErrorCollector()),
         new CoefficientsViewModel(new FakeCoefficientRepository(), new FakeOperationLogRepository(), new FakeUiDispatcher(), new FakeErrorCollector()),
         new AlarmsViewModel(),
-        new SettingsViewModel(),
-        new LaserMarkingViewModel(new FakeLaserMarkingService()));
+        new SettingsViewModel());
 
     [Fact]
     public void 构造后_默认落在生产监控且分组展开()

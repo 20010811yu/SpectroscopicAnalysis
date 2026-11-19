@@ -55,8 +55,7 @@ public sealed partial class MainViewModel : ObservableObject
         SctViewModel sct,
         CoefficientsViewModel coefficients,
         AlarmsViewModel alarms,
-        SettingsViewModel settings,
-        LaserMarkingViewModel laserMarking)
+        SettingsViewModel settings)
     {
         // 二级分组「主控台 · 生产监控」：生产监控（当前任务/KPI/任务队列）+ 主控台（运行日志/报警面板）
         var consoleGroup = new NavItem
@@ -75,7 +74,6 @@ public sealed partial class MainViewModel : ObservableObject
             new() { Title = "样品档案", Target = samples },
             new() { Title = "SCT 管理", Target = sct },
             new() { Title = "系数管理", Target = coefficients },
-            new() { Title = "激光打标", Target = laserMarking },
             new() { Title = "日志报警", Target = alarms },
             new() { Title = "设置", Target = settings },
         };

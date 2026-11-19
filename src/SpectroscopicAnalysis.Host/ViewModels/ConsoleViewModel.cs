@@ -41,6 +41,7 @@ public sealed partial class ConsoleViewModel : ObservableObject, IPageLifecycle
         _production = production;
         _ui = ui;
         _laserMarking = laserMarking;
+        Laser = laserMarking;
     }
 
     // ==================== 报警面板 ====================
@@ -173,16 +174,10 @@ public sealed partial class ConsoleViewModel : ObservableObject, IPageLifecycle
         });
     }
 
-    // ==================== 激光打标面板（只读透传） ====================
+    // ==================== 激光打标面板（完整功能：方式切换/内容编辑/重新加载，原独立页面能力并入） ====================
 
-    /// <summary>打标方式（激光打标页 ViewModel 单例透传）。</summary>
-    public string MarkingMode => _laserMarking.MarkingMode;
-
-    /// <summary>打标文本内容。</summary>
-    public string MarkingContent => _laserMarking.MarkingContent;
-
-    /// <summary>打标内容状态文本。</summary>
-    public string MarkingStatus => _laserMarking.SaveStatus;
+    /// <summary>激光打标 ViewModel（DI 单例；面板直接绑定其属性与命令，编辑/切换即时生效）。</summary>
+    public LaserMarkingViewModel Laser { get; }
 
     // ==================== 生命周期与定时刷新 ====================
 
@@ -221,10 +216,11 @@ public sealed partial class ConsoleViewModel : ObservableObject, IPageLifecycle
         _ = Task.Run(RefreshRack);
     }
 
-    /// <summary>导航进入时刷新一轮并启动定时器。</summary>
+    /// <summary>导航进入时刷新一轮并启动定时器（打标内容随导航重载，保持与文件一致）。</summary>
     public void OnNavigatedTo()
     {
         RefreshAll();
+        _laserMarking.OnNavigatedTo();
         StartRefreshTimer();
     }
 }

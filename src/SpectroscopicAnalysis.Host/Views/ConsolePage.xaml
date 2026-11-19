@@ -69,16 +69,18 @@
 
                 <!-- 列2：货架示意（5 行×8 列，占用=蓝底显示架位号，空闲=描边；示意外架位单独计数） -->
                 <Border Grid.Column="2" Style="{StaticResource Card}" Margin="6,0,0,0">
-                    <StackPanel>
+                    <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Grid.Column="0" Margin="0,0,12,0">
                         <DockPanel Margin="0,0,0,8" LastChildFill="False">
                             <TextBlock DockPanel.Dock="Right" Style="{StaticResource Text.Caption}" VerticalAlignment="Center"
                                        Text="{Binding RackOutOfRangeCount, StringFormat='示意范围外占用 {0} 位'}" />
                             <TextBlock Text="货架示意（A–E × 1–8）" Style="{StaticResource Text.CardTitle}" VerticalAlignment="Center" />
                         </DockPanel>
-                        <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
-                            <TextBlock Text="图例：" Style="{StaticResource Text.Caption}" VerticalAlignment="Center" Margin="0,0,8,0" />
-                            <TextBlock Text="蓝=可用　黄=需测高　红=禁用　灰=空位" Style="{StaticResource Text.Caption}" VerticalAlignment="Center" />
-                        </StackPanel>
+
                         <ItemsControl ItemsSource="{Binding RackRows}">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
@@ -146,6 +148,40 @@
                         <TextBlock Style="{StaticResource Text.Caption}" Margin="0,4,0,0"
                                    Text="{Binding RackOccupiedCount, StringFormat='占用 {0} / {1} 位'}" />
                     </StackPanel>
+
+                    <!-- 图例：模块右侧纵向排列（色块 + 语义） -->
+                    <StackPanel Grid.Column="1" Orientation="Vertical" VerticalAlignment="Center">
+                        <StackPanel.Resources>
+                            <Style x:Key="LegendItem" TargetType="StackPanel">
+                                <Setter Property="Orientation" Value="Horizontal" />
+                                <Setter Property="Margin" Value="0,3,0,3" />
+                            </Style>
+                            <Style x:Key="LegendSwatch" TargetType="Border">
+                                <Setter Property="Width" Value="14" />
+                                <Setter Property="Height" Value="14" />
+                                <Setter Property="CornerRadius" Value="3" />
+                                <Setter Property="VerticalAlignment" Value="Center" />
+                                <Setter Property="Margin" Value="0,0,6,0" />
+                            </Style>
+                        </StackPanel.Resources>
+                        <StackPanel Style="{StaticResource LegendItem}">
+                            <Border Style="{StaticResource LegendSwatch}" Background="{DynamicResource Brush.Badge.Info.Bg}" />
+                            <TextBlock Text="可用" Style="{StaticResource Text.Caption}" VerticalAlignment="Center" />
+                        </StackPanel>
+                        <StackPanel Style="{StaticResource LegendItem}">
+                            <Border Style="{StaticResource LegendSwatch}" Background="{DynamicResource Brush.Badge.Warning.Bg}" />
+                            <TextBlock Text="需测高" Style="{StaticResource Text.Caption}" VerticalAlignment="Center" />
+                        </StackPanel>
+                        <StackPanel Style="{StaticResource LegendItem}">
+                            <Border Style="{StaticResource LegendSwatch}" Background="{DynamicResource Brush.Badge.Failed.Bg}" />
+                            <TextBlock Text="禁用" Style="{StaticResource Text.Caption}" VerticalAlignment="Center" />
+                        </StackPanel>
+                        <StackPanel Style="{StaticResource LegendItem}">
+                            <Border Style="{StaticResource LegendSwatch}" Background="{DynamicResource Brush.Badge.Idle.Bg}" />
+                            <TextBlock Text="空位" Style="{StaticResource Text.Caption}" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </StackPanel>
+                    </Grid>
                 </Border>
             </Grid>
 

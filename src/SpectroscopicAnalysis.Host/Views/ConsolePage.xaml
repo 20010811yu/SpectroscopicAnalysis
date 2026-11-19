@@ -1,0 +1,144 @@
+<UserControl x:Class="SpectroscopicAnalysis.Host.Views.ConsolePage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <StackPanel Margin="16">
+
+            <!-- 标题行 -->
+            <DockPanel Margin="{DynamicResource Spacing.CardGap}">
+                <TextBlock Text="主控台" Style="{StaticResource Text.PageTitle}" VerticalAlignment="Center" />
+            </DockPanel>
+
+            <!-- 运行日志（按日期筛选）：SCT 操作日志，时间列末列、按操作时间倒序，无记录时隐藏表格只留占位说明 -->
+            <Border Style="{StaticResource Card}" Margin="{DynamicResource Spacing.CardGap}">
+                <StackPanel>
+                    <DockPanel Margin="0,0,0,8" LastChildFill="False">
+                        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+                            <TextBlock Text="操作日期" Style="{StaticResource Text.Caption}" VerticalAlignment="Center" Margin="0,0,8,0" />
+                            <DatePicker SelectedDate="{Binding SelectedDate}" MinWidth="140" />
+                        </StackPanel>
+                        <TextBlock Text="运行日志（按日期）" Style="{StaticResource Text.CardTitle}" VerticalAlignment="Center" />
+                    </DockPanel>
+                    <!-- 类型筛选：按样品类型过滤日志（无样品归属的日志仅在"全部"下显示） -->
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                        <Button Content="全部" Command="{Binding SetFilterCommand}" CommandParameter="All" Margin="0,0,8,0">
+                            <Button.Style>
+                                <Style TargetType="Button" BasedOn="{StaticResource ModeBtn}">
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding FilterKey}" Value="All">
+                                            <Setter Property="Background" Value="{DynamicResource Brush.Primary}" />
+                                            <Setter Property="Foreground" Value="White" />
+                                            <Setter Property="FontWeight" Value="SemiBold" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Button.Style>
+                        </Button>
+                        <Button Content="设置样" Command="{Binding SetFilterCommand}" CommandParameter="SettingUp" Margin="0,0,8,0">
+                            <Button.Style>
+                                <Style TargetType="Button" BasedOn="{StaticResource ModeBtn}">
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding FilterKey}" Value="SettingUp">
+                                            <Setter Property="Background" Value="{DynamicResource Brush.Primary}" />
+                                            <Setter Property="Foreground" Value="White" />
+                                            <Setter Property="FontWeight" Value="SemiBold" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Button.Style>
+                        </Button>
+                        <Button Content="控制样" Command="{Binding SetFilterCommand}" CommandParameter="Control" Margin="0,0,8,0">
+                            <Button.Style>
+                                <Style TargetType="Button" BasedOn="{StaticResource ModeBtn}">
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding FilterKey}" Value="Control">
+                                            <Setter Property="Background" Value="{DynamicResource Brush.Primary}" />
+                                            <Setter Property="Foreground" Value="White" />
+                                            <Setter Property="FontWeight" Value="SemiBold" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Button.Style>
+                        </Button>
+                        <Button Content="类型标准化样" Command="{Binding SetFilterCommand}" CommandParameter="TypeStd" Margin="0,0,8,0">
+                            <Button.Style>
+                                <Style TargetType="Button" BasedOn="{StaticResource ModeBtn}">
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding FilterKey}" Value="TypeStd">
+                                            <Setter Property="Background" Value="{DynamicResource Brush.Primary}" />
+                                            <Setter Property="Foreground" Value="White" />
+                                            <Setter Property="FontWeight" Value="SemiBold" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Button.Style>
+                        </Button>
+                        <Button Content="生产样" Command="{Binding SetFilterCommand}" CommandParameter="Production" Margin="0">
+                            <Button.Style>
+                                <Style TargetType="Button" BasedOn="{StaticResource ModeBtn}">
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding FilterKey}" Value="Production">
+                                            <Setter Property="Background" Value="{DynamicResource Brush.Primary}" />
+                                            <Setter Property="Foreground" Value="White" />
+                                            <Setter Property="FontWeight" Value="SemiBold" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Button.Style>
+                        </Button>
+                    </StackPanel>
+                    <TextBlock Text="所选日期暂无运行日志记录" Style="{StaticResource Text.Caption}"
+                               Visibility="{Binding HasLogs, Converter={StaticResource BoolToVisibility.Inverse}}" Margin="0,0,0,8" />
+                    <DataGrid ItemsSource="{Binding LogRows}" Height="484" AutoGenerateColumns="False"
+                              IsReadOnly="True" CanUserAddRows="False" CanUserSortColumns="False"
+                              PreviewMouseWheel="ProductionGrid_PreviewMouseWheel"
+                              HeadersVisibility="Column" GridLinesVisibility="Horizontal"
+                              BorderThickness="0" Background="Transparent"
+                              RowBackground="Transparent" AlternatingRowBackground="Transparent"
+                              Visibility="{Binding HasLogs, Converter={StaticResource BoolToVisibility}}"
+                              RowStyle="{StaticResource GridRow}" CellStyle="{StaticResource GridCell}"
+                              ColumnHeaderStyle="{StaticResource GridColumnHeader}"
+                              FontSize="{DynamicResource FontSize.Body}">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="样品" Binding="{Binding SampleIdText}" FontFamily="Consolas" Width="1*" MinWidth="70" ElementStyle="{StaticResource GridCellText}" />
+                            <DataGridTextColumn Header="操作类型" Binding="{Binding OperationTypeText}" Width="0.9*" MinWidth="60" ElementStyle="{StaticResource GridCellText}" />
+                            <DataGridTextColumn Header="触发原因" Binding="{Binding TriggerReasonText}" Width="1.4*" MinWidth="70" ElementStyle="{StaticResource GridCellText}" />
+                            <DataGridTextColumn Header="结果状态" Binding="{Binding ResultStatusText}" Width="0.9*" MinWidth="60" ElementStyle="{StaticResource GridCellText}" />
+                            <DataGridTextColumn Header="时间" Binding="{Binding OperationTimeText}" FontFamily="Consolas" Width="1*" MinWidth="70" ElementStyle="{StaticResource GridCellText}" />
+                        </DataGrid.Columns>
+                    </DataGrid>
+                    <!-- 分页脚（内存切片分页，每页 10 条；右下角） -->
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,8,0,0"
+                                Visibility="{Binding HasLogs, Converter={StaticResource BoolToVisibility}}">
+                        <Button Content="首页" Command="{Binding FirstPageCommand}" Style="{StaticResource PrimaryBtn}" Margin="0,0,8,0" />
+                        <Button Content="上一页" Command="{Binding PrevPageCommand}" Style="{StaticResource PrimaryBtn}" Margin="8,0,0,0" />
+                        <TextBlock Text="{Binding PageDisplay}" VerticalAlignment="Center" Margin="8,0"
+                                   Style="{StaticResource Text.Caption}" />
+                        <TextBox Width="48" Height="26" Text="{Binding PageJumpInput, UpdateSourceTrigger=PropertyChanged}"
+                                 VerticalContentAlignment="Center" TextAlignment="Center" Margin="4,0,0,0" />
+                        <Button Content="跳转" Command="{Binding JumpToPageCommand}" Style="{StaticResource PrimaryBtn}" Margin="8,0,0,0" />
+                        <Button Content="下一页" Command="{Binding NextPageCommand}" Style="{StaticResource PrimaryBtn}" Margin="8,0,0,0" />
+                        <TextBlock Text="{Binding TotalCount, StringFormat='共 {0} 条'}" Style="{StaticResource Text.Caption}" VerticalAlignment="Center" Margin="8,0,0,0" />
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+
+            <!-- 报警面板卡（四级静态示例） -->
+            <Border Style="{StaticResource Card}">
+                <StackPanel>
+                    <TextBlock Text="报警面板" Style="{StaticResource Text.CardTitle}" Margin="0,0,0,8" />
+                    <Border Style="{StaticResource Badge.Base}" Background="{DynamicResource Brush.Badge.Warning.Bg}" HorizontalAlignment="Left" Margin="0,0,0,6" Padding="12,6">
+                        <TextBlock Text="⚠ 5001 控制样 CTL-002 偏差 +2.4σ，接近控制限" Style="{StaticResource Text.Caption}" Foreground="{DynamicResource Brush.Badge.Warning.Fg}" />
+                    </Border>
+                    <Border Style="{StaticResource Badge.Base}" Background="{DynamicResource Brush.Badge.Info.Bg}" HorizontalAlignment="Left" Margin="0,0,0,6" Padding="12,6">
+                        <TextBlock Text="ℹ 任务 #10085 归档完成（A-12）" Style="{StaticResource Text.Caption}" Foreground="{DynamicResource Brush.Badge.Info.Fg}" />
+                    </Border>
+                    <Border Style="{StaticResource Badge.Base}" Background="{DynamicResource Brush.Badge.Failed.Bg}" HorizontalAlignment="Left" Padding="12,6" Opacity="0.55">
+                        <TextBlock Text="✖ 1001 机器人抓取失败（已确认）" Style="{StaticResource Text.Caption}" Foreground="{DynamicResource Brush.Badge.Failed.Fg}" />
+                    </Border>
+                </StackPanel>
+            </Border>
+
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

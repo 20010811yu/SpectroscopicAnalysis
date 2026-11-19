@@ -1,4 +1,5 @@
 using CommunityToolkit.Mvvm.ComponentModel;
+using System.Linq;
 using SpectroscopicAnalysis.Host.ViewModels;
 using SpectroscopicAnalysis.Host.Vision;
 
@@ -10,7 +11,8 @@ namespace SpectroscopicAnalysis.Tests;
 public sealed class MainViewModelTests
 {
     private static MainViewModel CreateMain() => new(
-        new DashboardViewModel(new FakeSctOperationLogRepository(), new FakeSampleRepository(), new FakeProductionSampleRepository(), new FakeSctStrategyEngine(), new FakeWorkflowOrchestrator(), new FakeUiDispatcher(), new FakeErrorCollector(), new FakeDialogService(), new FakeSampleRegistrationService()),
+        new ProductionMonitorViewModel(new FakeSampleRepository(), new FakeProductionSampleRepository(), new FakeSctStrategyEngine(), new FakeWorkflowOrchestrator(), new FakeUiDispatcher(), new FakeErrorCollector(), new FakeDialogService(), new FakeSampleRegistrationService()),
+        new ConsoleViewModel(new FakeSctOperationLogRepository(), new FakeSampleRepository(), new FakeProductionSampleRepository(), new FakeUiDispatcher(), new FakeErrorCollector()),
         new SamplesViewModel(new FakeSampleRepository(), new FakeProductionSampleRepository(), new FakeCertifiedValueRepository(), new FakeControlLimitRepository(),
             new FakeCoefficientRepository(), new FakeOperationLogRepository(), new FakeSctStrategyEngine(),
             new FakeUiDispatcher(), new FakeDialogService(), new FakeErrorCollector()),
@@ -22,14 +24,31 @@ public sealed class MainViewModelTests
         new LaserMarkingViewModel(new FakeLaserMarkingService()));
 
     [Fact]
-    public void 构造后_默认落在主控台且首项选中()
+    public void 构造后_默认落在生产监控且分组展开()
     {
         var main = CreateMain();
 
-        Assert.IsType<DashboardViewModel>(main.CurrentViewModel);
-        Assert.NotNull(main.SelectedNav);
-        Assert.Equal("主控台 · 生产监控", main.SelectedNav.Title);
-        Assert.True(main.NavItems[0].IsSelected);
+        Assert.IsType<ProductionMonitorViewModel>(main.CurrentViewModel);
+        var group = main.NavItems[0];
+        Assert.Equal("主控台 · 生产监控", group.Title);      // 首项为二级分组
+        Assert.NotNull(group.Children);
+        Assert.Equal(2, group.Children.Count);
+        Assert.True(group.Children[0].IsSelected);           // 默认选中「生产监控」子项
+        Assert.Equal("生产监控", group.Children[0].Title);
+        Assert.True(group.IsExpanded);                       // 子项导航自动展开分组
+    }
+
+    [Fact]
+    public void NavigateTo_二级子项切换对应页面()
+    {
+        var main = CreateMain();
+        var consoleItem = main.NavItems[0].Children!.Single(n => n.Title == "主控台");
+
+        main.NavigateToCommand.Execute(consoleItem);
+
+        Assert.IsType<ConsoleViewModel>(main.CurrentViewModel);
+        Assert.True(consoleItem.IsSelected);
+        Assert.False(main.NavItems[0].Children![0].IsSelected); // 生产监控子项取消选中
     }
 
     [Fact]
@@ -42,7 +61,7 @@ public sealed class MainViewModelTests
 
         Assert.IsType<SctViewModel>(main.CurrentViewModel);
         Assert.True(target.IsSelected);
-        Assert.False(main.NavItems[0].IsSelected); // 原选中项取消
+        Assert.False(main.NavItems[0].Children![0].IsSelected); // 原选中项（生产监控子项）取消
     }
 
     [Fact]
@@ -50,7 +69,7 @@ public sealed class MainViewModelTests
     {
         var main = CreateMain();
         main.NavigateToCommand.Execute(null); // 不应抛异常，状态不变
-        Assert.IsType<DashboardViewModel>(main.CurrentViewModel);
+        Assert.IsType<ProductionMonitorViewModel>(main.CurrentViewModel);
     }
 
     [Theory]

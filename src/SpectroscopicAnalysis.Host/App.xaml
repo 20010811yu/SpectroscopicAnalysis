@@ -17,10 +17,15 @@
             <!-- 转换器（字典主体项） -->
             <converters:BoolToVisibilityConverter x:Key="BoolToVisibility" />
             <converters:BoolToVisibilityConverter x:Key="BoolToVisibility.Inverse" Inverse="True" />
+            <converters:NullToVisibilityConverter x:Key="NullToVisibility" />
+            <converters:NullToVisibilityConverter x:Key="NullToVisibility.Inverse" Inverse="True" />
 
             <!-- VM → View 映射（MainViewModel.CurrentViewModel 经 ContentControl 渲染） -->
-            <DataTemplate DataType="{x:Type vm:DashboardViewModel}">
-                <views:DashboardPage />
+            <DataTemplate DataType="{x:Type vm:ProductionMonitorViewModel}">
+                <views:ProductionMonitorPage />
+            </DataTemplate>
+            <DataTemplate DataType="{x:Type vm:ConsoleViewModel}">
+                <views:ConsolePage />
             </DataTemplate>
             <DataTemplate DataType="{x:Type vm:SamplesViewModel}">
                 <views:SamplesPage />

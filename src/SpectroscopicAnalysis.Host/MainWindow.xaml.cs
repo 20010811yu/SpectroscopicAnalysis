@@ -72,7 +72,8 @@ public partial class MainWindow : Window
     /// <summary>VM→View 映射（与 App.xaml 的 DataTemplate 一一对应；新增页面两处同步登记）。</summary>
     private static UserControl CreatePage(ObservableObject viewModel) => viewModel switch
     {
-        DashboardViewModel => new DashboardPage(),
+        ProductionMonitorViewModel => new ProductionMonitorPage(),
+        ConsoleViewModel => new ConsolePage(),
         SamplesViewModel => new SamplesPage(),
         SctViewModel => new SctPage(),
         CoefficientsViewModel => new CoefficientsPage(),

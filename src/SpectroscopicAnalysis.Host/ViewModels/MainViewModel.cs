@@ -4,19 +4,26 @@ using CommunityToolkit.Mvvm.Input;
 
 namespace SpectroscopicAnalysis.Host.ViewModels;
 
-/// <summary>侧栏导航项（框架阶段：标题 + 目标 ViewModel + 选中态）。</summary>
+/// <summary>侧栏导航项（标题 + 目标 ViewModel + 选中态；Children 非空时为分组项，自身不可导航）。</summary>
 public sealed partial class NavItem : ObservableObject
 {
     [ObservableProperty]
     private bool _isSelected;
 
+    /// <summary>分组是否展开（仅 Children 非空时有意义；导航到子项时自动展开）。</summary>
+    [ObservableProperty]
+    private bool _isExpanded;
+
     public required string Title { get; init; }
 
     public required ObservableObject Target { get; init; }
+
+    /// <summary>二级子菜单（null = 普通导航项）。</summary>
+    public IReadOnlyList<NavItem>? Children { get; init; }
 }
 
 /// <summary>
-/// 主窗口 ViewModel：导航切换 + 缩放档位（界面规范 5.3：100%/125%/150%）。
+/// 主窗口 ViewModel：导航切换（含二级菜单分组）+ 缩放档位（界面规范 5.3：100%/125%/150%）。
 /// 严格 MVVM：不引用任何 WPF 类型（开发规范 3.3）。
 /// </summary>
 public sealed partial class MainViewModel : ObservableObject
@@ -38,11 +45,12 @@ public sealed partial class MainViewModel : ObservableObject
     [ObservableProperty]
     private string _clockText = DateTime.Now.ToString("yyyy-MM-dd HH:mm");
 
-    /// <summary>导航项（静态六项，无需变更通知）。</summary>
+    /// <summary>导航项（静态七项，无需变更通知；首项为二级分组）。</summary>
     public ReadOnlyObservableCollection<NavItem> NavItems { get; }
 
     public MainViewModel(
-        DashboardViewModel dashboard,
+        ProductionMonitorViewModel productionMonitor,
+        ConsoleViewModel console,
         SamplesViewModel samples,
         SctViewModel sct,
         CoefficientsViewModel coefficients,
@@ -50,9 +58,20 @@ public sealed partial class MainViewModel : ObservableObject
         SettingsViewModel settings,
         LaserMarkingViewModel laserMarking)
     {
+        // 二级分组「主控台 · 生产监控」：生产监控（当前任务/KPI/任务队列）+ 主控台（运行日志/报警面板）
+        var consoleGroup = new NavItem
+        {
+            Title = "主控台 · 生产监控",
+            Target = productionMonitor,     // 分组头不可点击导航；Target 仅作占位
+            Children =
+            [
+                new() { Title = "生产监控", Target = productionMonitor },
+                new() { Title = "主控台", Target = console },
+            ],
+        };
         var items = new ObservableCollection<NavItem>
         {
-            new() { Title = "主控台 · 生产监控", Target = dashboard },
+            consoleGroup,
             new() { Title = "样品档案", Target = samples },
             new() { Title = "SCT 管理", Target = sct },
             new() { Title = "系数管理", Target = coefficients },
@@ -62,8 +81,8 @@ public sealed partial class MainViewModel : ObservableObject
         };
         NavItems = new ReadOnlyObservableCollection<NavItem>(items);
 
-        // 默认落在主控台
-        NavigateTo(items[0]);
+        // 默认落在生产监控（分组的第一个子项）
+        NavigateTo(consoleGroup.Children[0]);
         StartClock();
     }
 
@@ -90,12 +109,12 @@ public sealed partial class MainViewModel : ObservableObject
             }
             catch (OperationCanceledException)
             {
-                // 宿主关闭取消定时器，属正常退出路径
+                // 宿主关闭取消定时器，属正常关闭路径
             }
         });
     }
 
-    /// <summary>导航命令（页面跳转属框架行为，业务逻辑在各页面 VM 内）。</summary>
+    /// <summary>导航命令（页面跳转属框架行为，业务逻辑在各页面 VM 内；子项导航自动展开所属分组）。</summary>
     [RelayCommand]
     private void NavigateTo(NavItem? item)
     {
@@ -112,6 +131,15 @@ public sealed partial class MainViewModel : ObservableObject
         CurrentViewModel = item.Target;
         SelectedNav = item;
         item.IsSelected = true;
+
+        // 子项导航：自动展开所属分组，保证菜单层级可见
+        foreach (var group in NavItems)
+        {
+            if (group.Children is not null && group.Children.Contains(item))
+            {
+                group.IsExpanded = true;
+            }
+        }
 
         // 页面生命周期：进入页面时加载该页数据（实现者按需）
         (item.Target as IPageLifecycle)?.OnNavigatedTo();

@@ -97,7 +97,8 @@ public partial class App
                 services.AddSingleton<SampleManager.ISampleRegistrationService, SampleManager.SampleRegistrationService>();
                 // 校正计算引擎（纯计算：线性模型 + IEC 干扰迭代；干扰系数由调用方提供）
                 services.AddSingleton<Correction.ICorrectionEngine, Correction.CorrectionEngine>();
-                services.AddSingleton<ViewModels.DashboardViewModel>();
+                services.AddSingleton<ViewModels.ProductionMonitorViewModel>();
+                services.AddSingleton<ViewModels.ConsoleViewModel>();
                 services.AddSingleton<ViewModels.SamplesViewModel>();
                 services.AddSingleton<ViewModels.SctViewModel>();
                 services.AddSingleton<ViewModels.CoefficientsViewModel>();

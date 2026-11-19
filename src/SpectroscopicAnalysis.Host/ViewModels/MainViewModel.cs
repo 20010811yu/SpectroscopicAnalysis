@@ -43,7 +43,7 @@ public sealed partial class MainViewModel : ObservableObject
 
     /// <summary>顶栏实时时钟文本（顶栏状态区展示；后台定时刷新，MVVM 无 WPF 定时器依赖）。</summary>
     [ObservableProperty]
-    private string _clockText = DateTime.Now.ToString("yyyy-MM-dd HH:mm");
+    private string _clockText = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
 
     /// <summary>导航项（静态七项，无需变更通知；首项为二级分组）。</summary>
     public ReadOnlyObservableCollection<NavItem> NavItems { get; }
@@ -97,7 +97,7 @@ public sealed partial class MainViewModel : ObservableObject
             {
                 while (await timer.WaitForNextTickAsync())
                 {
-                    var text = DateTime.Now.ToString("yyyy-MM-dd HH:mm");
+                    var text = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
                     // 分钟未变化时不触发通知，避免无谓的 UI 刷新
                     if (text != ClockText)
                     {

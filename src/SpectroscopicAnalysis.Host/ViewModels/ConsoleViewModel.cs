@@ -86,7 +86,7 @@ public sealed partial class ConsoleViewModel : ObservableObject, IPageLifecycle
             .Select(a => new AlarmRowItem
             {
                 AlarmId = a.AlarmId,
-                TimeText = a.Time.ToString("HH:mm:ss"),
+                TimeText = a.Time.ToString("yyyy-MM-dd HH:mm:ss"),
                 ErrorCodeText = a.ErrorCode.ToString(),
                 MessageText = a.Message,
                 SampleIdText = string.IsNullOrEmpty(a.SampleId) ? "—" : a.SampleId,
@@ -107,7 +107,7 @@ public sealed partial class ConsoleViewModel : ObservableObject, IPageLifecycle
         SystemLogRows = new ObservableCollection<SystemLogRowItem>(_systemLog.GetEntries()
             .Select(e => new SystemLogRowItem
             {
-                TimeText = e.Time.ToString("HH:mm:ss"),
+                TimeText = e.Time.ToString("yyyy-MM-dd HH:mm:ss"),
                 CategoryText = e.Category,
                 MessageText = e.Message,
                 Level = e.Level,

@@ -17,4 +17,16 @@ public interface ILaserMarkingService
     /// 返回 null 表示成功；否则为失败原因描述。
     /// </summary>
     Task<string?> SwitchMarkingModeAsync(string mode, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 记录打印开始（全流程日志「激光打标」类目，格式：时间 + 打印内容 + 打印方式 + 打印开始）。
+    /// 打标指令下发流程（工作流触达 EzCad2 打印）实现后调用。
+    /// </summary>
+    void LogPrintStarted(string content, string mode);
+
+    /// <summary>
+    /// 记录打印结束（全流程日志「激光打标」类目，格式：时间 + 打印结束 + 打印结果）；
+    /// 失败时追加一条：时间 + 失败原因。
+    /// </summary>
+    void LogPrintFinished(bool success, string? failReason = null);
 }

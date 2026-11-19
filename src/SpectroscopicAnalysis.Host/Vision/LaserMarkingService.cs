@@ -62,7 +62,6 @@ public class LaserMarkingService : ILaserMarkingService
             File.WriteAllText(tempPath, content);
             File.Move(tempPath, _contentFilePath, overwrite: true);
             _logger.LogInformation("打标文本已写回：{ContentFilePath}", _contentFilePath);
-            _systemLog.Log("设备操作", "打标文本已写回");
             return true;
         }
         catch (Exception ex)
@@ -90,7 +89,20 @@ public class LaserMarkingService : ILaserMarkingService
         }
 
         _logger.LogInformation("切换打标方式：{Mode}（工程文件 {EzdPath}）", mode, ezdPath);
-        _systemLog.Log("激光打标", $"切换打标方式：{mode}");
         return await _ezCad2Controller.SwitchEzdFileAsync(ezdPath, cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public void LogPrintStarted(string content, string mode) =>
+        _systemLog.Log("激光打标", $"{content}（{mode}）打印开始");
+
+    /// <inheritdoc />
+    public void LogPrintFinished(bool success, string? failReason = null)
+    {
+        _systemLog.Log("激光打标", success ? "打印结束：完成" : "打印结束：失败", success ? "Info" : "Failed");
+        if (!success)
+        {
+            _systemLog.Log("激光打标", $"失败原因：{failReason ?? "未知"}", "Failed");
+        }
     }
 }

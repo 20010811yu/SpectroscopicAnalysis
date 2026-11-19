@@ -19,4 +19,8 @@ internal sealed class FakeLaserMarkingService : ILaserMarkingService
 
     public Task<string?> SwitchMarkingModeAsync(string mode, CancellationToken cancellationToken = default) =>
         Task.FromResult(SwitchError);
+
+    public void LogPrintStarted(string content, string mode) { }
+
+    public void LogPrintFinished(bool success, string? failReason = null) { }
 }

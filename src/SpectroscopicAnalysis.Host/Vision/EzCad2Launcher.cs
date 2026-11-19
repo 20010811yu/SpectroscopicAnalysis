@@ -47,7 +47,6 @@ public class EzCad2Launcher : BackgroundService, IEzCad2Controller
     private readonly EzCad2Options _options;
     private readonly ILogger<EzCad2Launcher> _logger;
     private readonly IErrorCollector _errorCollector;
-    private readonly LoggingAlarm.ISystemLogCollector _systemLog;
 
     /// <summary>宿主应用停止令牌：ExecuteAsync 的 stoppingToken 在部分宿主版本关机时不会取消，
     /// 守护循环必须额外监听 ApplicationStopping 才能在上位机退出时及时结束（否则 base.StopAsync 永久等待导致卡死）。</summary>
@@ -62,9 +61,8 @@ public class EzCad2Launcher : BackgroundService, IEzCad2Controller
     /// <summary>启动时记录的主窗口句柄；隐藏窗口后 Process.MainWindowHandle 会返回 0，关闭时须用本句柄。</summary>
     private IntPtr _mainWindowHandle;
 
-    public EzCad2Launcher(IConfiguration configuration, IHostApplicationLifetime appLifetime, ILogger<EzCad2Launcher> logger, IErrorCollector errorCollector, LoggingAlarm.ISystemLogCollector systemLog)
+    public EzCad2Launcher(IConfiguration configuration, IHostApplicationLifetime appLifetime, ILogger<EzCad2Launcher> logger, IErrorCollector errorCollector)
     {
-        _systemLog = systemLog;
         _options = configuration.GetSection("EzCad2").Get<EzCad2Options>() ?? new EzCad2Options();
         _appStopping = appLifetime.ApplicationStopping;
         _hideWindow = _options.HideWindow;
@@ -204,7 +202,6 @@ public class EzCad2Launcher : BackgroundService, IEzCad2Controller
         {
             await Task.Run(() => Launch(cancellationToken, ezdPath), cancellationToken);
             _logger.LogInformation("已切换 EzCad2 工程文件：{EzdPath}", ezdPath);
-        _systemLog.Log("激光打标", $"EzCad2 工程已切换：{Path.GetFileName(ezdPath)}");
             return null;
         }
         catch (Exception ex)
@@ -233,7 +230,6 @@ public class EzCad2Launcher : BackgroundService, IEzCad2Controller
         ShutdownExistingProcesses();
 
         _logger.LogInformation("自动启动 EzCad2：{ExePath} {Arguments}", exePath, arguments);
-        _systemLog.Log("激光打标", $"自动启动 EzCad2（工程 {Path.GetFileNameWithoutExtension(arguments)}）");
 
         // 不用 using：进程对象须存活到 StopAsync 联动关闭，Dispose 后再访问其成员会抛 ObjectDisposedException
         var process = new Process
@@ -263,7 +259,6 @@ public class EzCad2Launcher : BackgroundService, IEzCad2Controller
         StartShowEventWatcher(process.Id, _options.WaitForWindowTimeoutMs, stoppingToken);
 
         _logger.LogInformation("EzCad2 已启动，窗口已隐藏且不在任务栏显示");
-        _systemLog.Log("激光打标", "EzCad2 启动完成（隐藏窗口常驻）");
     }
 
     /// <summary>

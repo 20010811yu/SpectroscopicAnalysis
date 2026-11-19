@@ -27,7 +27,7 @@ public interface IGetSafetyStatus
     Task<SafetyStatus> GetSafetyStatusAsync(CancellationToken ct);
 }
 
-/// <summary>光谱仪（Host PC ↔ GNR，TCP，协议号 100–140）。</summary>
+/// <summary>光谱仪（Host PC ↔ GNR，TCP/IP Socket + JSON，协议号 100–161，依据 v1.3 正式版）。</summary>
 public interface ISpectrometer
 {
     /// <summary>触发激发。</summary>

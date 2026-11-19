@@ -58,7 +58,7 @@ UI → Workflow（本文） → SctStrategy 引擎 / SampleManager / Correction 
 | 3 | 下发抓取任务（含抓取高度） | 预检通过（§7.2）+ RobotLock | ISendTask（ID_CYCLE=1） | Preparing→Milling | 1001 抓取失败→报警暂停 |
 | 4 | 视觉选点坐标（可选） | Vision 服务可用 | Vision 模块接口 | —（附加信息） | 1002 未检测到样品→走默认位 |
 | 5 | **SCT 插入判断** | — | 引擎 `TryDequeue` | 有 SCT 任务 → 挂起生产，转 §6 | — |
-| 6 | 触发 GNR 激发并读取结果 | SparkStandLock + SparkStandReady | ISpectrometer（协议 100–140） | Analyzing | 2001 下压异常/通信失败→重试→报警 |
+| 6 | 触发 GNR 激发并读取结果 | SparkStandLock + SparkStandReady | ISpectrometer（协议 100–161，v1.3） | Analyzing | 2001 下压异常/通信失败→重试→报警 |
 | 7 | 系数修正与合格判定 | — | Correction 计算（CoefficientLock 读锁） | — | 超差→按策略/报警 |
 | 8 | 归档管理 | 分析完成 | SampleArchiveLock；标签打印指令；档案与轨迹更新 | Archiving→Completed | 5004 写库失败→事务回滚 |
 | 9 | 循环下一件 | — | 回到第 2 步；同时 `NotifyAnalysisCompleted` 回喂引擎 | →Idle | — |
@@ -161,7 +161,7 @@ public interface IGetSafetyStatus
     Task<SafetyStatus> GetSafetyStatusAsync(CancellationToken ct);
 }
 
-/// <summary>光谱仪（TCP，协议号 100–140）。</summary>
+/// <summary>光谱仪（TCP，协议号 100–161，v1.3）。</summary>
 public interface ISpectrometer
 {
     Task TriggerSparkAsync(string sampleId, CancellationToken ct);    // 触发激发
@@ -233,7 +233,7 @@ public interface IWorkflowOrchestrator : IAsyncDisposable
 ## 13. 不在本期范围（另行设计）
 
 - Modbus 寄存器映射表、报文与连接管理具体实现（DeviceInterface 的 ModbusTcp 实现）；
-- GNR 协议号 100–140 报文解析；
+- GNR 协议号 100–161（v1.3）报文解析；
 - Vision 视觉选点算法（Workflow 只留接口挂点）；
 - Dashboard"当前任务/任务队列"卡片绑定 `WorkflowSnapshot`（Workflow 实现后另行落地）；
 - SctStrategyEngine 本体实现（见引擎设计文档）。

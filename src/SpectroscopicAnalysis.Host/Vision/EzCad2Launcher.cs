@@ -204,7 +204,7 @@ public class EzCad2Launcher : BackgroundService, IEzCad2Controller
         {
             await Task.Run(() => Launch(cancellationToken, ezdPath), cancellationToken);
             _logger.LogInformation("已切换 EzCad2 工程文件：{EzdPath}", ezdPath);
-        _systemLog.Log("VM方案加载", $"EzCad2 工程已切换：{Path.GetFileName(ezdPath)}");
+        _systemLog.Log("激光打标", $"EzCad2 工程已切换：{Path.GetFileName(ezdPath)}");
             return null;
         }
         catch (Exception ex)
@@ -233,7 +233,7 @@ public class EzCad2Launcher : BackgroundService, IEzCad2Controller
         ShutdownExistingProcesses();
 
         _logger.LogInformation("自动启动 EzCad2：{ExePath} {Arguments}", exePath, arguments);
-        _systemLog.Log("VM方案加载", $"自动启动 EzCad2（工程 {Path.GetFileNameWithoutExtension(arguments)}）");
+        _systemLog.Log("激光打标", $"自动启动 EzCad2（工程 {Path.GetFileNameWithoutExtension(arguments)}）");
 
         // 不用 using：进程对象须存活到 StopAsync 联动关闭，Dispose 后再访问其成员会抛 ObjectDisposedException
         var process = new Process
@@ -263,7 +263,7 @@ public class EzCad2Launcher : BackgroundService, IEzCad2Controller
         StartShowEventWatcher(process.Id, _options.WaitForWindowTimeoutMs, stoppingToken);
 
         _logger.LogInformation("EzCad2 已启动，窗口已隐藏且不在任务栏显示");
-        _systemLog.Log("VM方案加载", "EzCad2 启动完成（隐藏窗口常驻）");
+        _systemLog.Log("激光打标", "EzCad2 启动完成（隐藏窗口常驻）");
     }
 
     /// <summary>

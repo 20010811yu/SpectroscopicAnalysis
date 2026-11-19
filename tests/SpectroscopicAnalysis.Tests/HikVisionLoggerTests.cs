@@ -1,3 +1,4 @@
+using SpectroscopicAnalysis.Host.LoggingAlarm;
 using SpectroscopicAnalysis.Host.Vision;
 
 namespace SpectroscopicAnalysis.Tests;
@@ -8,7 +9,7 @@ public sealed class HikVisionLoggerTests
     [Fact]
     public void 构造并写入日志_不抛异常()
     {
-        using var logger = new HikVisionLogger();
+        using var logger = new HikVisionLogger(new SystemLogCollector());
 
         logger.Log(HikVisionLogLevel.Info, "冒烟测试：海康VM日志通道可用");
         logger.Log(HikVisionLogLevel.Error, "冒烟测试：错误级别写入");

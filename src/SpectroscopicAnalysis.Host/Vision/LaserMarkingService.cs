@@ -90,7 +90,7 @@ public class LaserMarkingService : ILaserMarkingService
         }
 
         _logger.LogInformation("切换打标方式：{Mode}（工程文件 {EzdPath}）", mode, ezdPath);
-        _systemLog.Log("VM方案加载", $"切换打标方式：{mode}");
+        _systemLog.Log("激光打标", $"切换打标方式：{mode}");
         return await _ezCad2Controller.SwitchEzdFileAsync(ezdPath, cancellationToken);
     }
 }

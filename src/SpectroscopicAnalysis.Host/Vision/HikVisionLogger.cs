@@ -30,8 +30,12 @@ public sealed class HikVisionLogger : IHikVisionLogger, IDisposable
     /// <summary>共用置顶写入器（时间倒序 + 分隔线 + 行数封顶 + 过期清理）。</summary>
     private readonly DeviceInterface.DeviceLogFileWriter _writer;
 
-    public HikVisionLogger()
+    /// <summary>全流程系统日志（海康 VM 事件同步进主控台「运行日志」面板，类目「海康VM」）。</summary>
+    private readonly LoggingAlarm.ISystemLogCollector _systemLog;
+
+    public HikVisionLogger(LoggingAlarm.ISystemLogCollector systemLog)
     {
+        _systemLog = systemLog;
         _writer = new DeviceInterface.DeviceLogFileWriter(
             Path.Combine(AppContext.BaseDirectory, "logs", "hikvm"),
             filePrefix: "hikvm",
@@ -40,8 +44,18 @@ public sealed class HikVisionLogger : IHikVisionLogger, IDisposable
     }
 
     /// <inheritdoc />
-    public void Log(string level, string content) =>
+    public void Log(string level, string content)
+    {
         _writer.Write($"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] [{level}] {content}");
+        // 同步进全流程日志：VM 方案加载/图像处理等海康视觉事件在主控台可见（级别映射着色）
+        var sysLevel = level switch
+        {
+            HikVisionLogLevel.Warn => "Warning",
+            HikVisionLogLevel.Error => "Failed",
+            _ => "Info",
+        };
+        _systemLog.Log("海康VM", content, sysLevel);
+    }
 
     /// <summary>无需释放资源（保留 IDisposable 与旧实现兼容）。</summary>
     public void Dispose()

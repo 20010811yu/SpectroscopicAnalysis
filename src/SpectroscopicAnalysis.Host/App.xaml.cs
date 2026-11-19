@@ -158,6 +158,7 @@ public partial class App
         var systemLog = _host.Services.GetRequiredService<LoggingAlarm.ISystemLogCollector>();
         systemLog.Log("应用", "上位机启动（Generic Host 就绪）");
         systemLog.Log("PLC连接", "设备网关为 Stub 模拟器（Modbus TCP 实现接入后切换）", "Warning");
+        systemLog.Log("VM方案加载", "海康 VM 视觉方案加载流程待集成（集成后此处记录方案文件加载）", "Warning");
 
         // 建库（幂等，轻量）——失败记录并终止启动（启动期硬失败）
         var dbInitializer = _host.Services.GetRequiredService<DbInitializer>();

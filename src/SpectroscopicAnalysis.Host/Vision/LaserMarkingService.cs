@@ -105,4 +105,18 @@ public class LaserMarkingService : ILaserMarkingService
             _systemLog.Log("激光打标", $"失败原因：{failReason ?? "未知"}", "Failed");
         }
     }
+
+    /// <inheritdoc />
+    public void LogModeChanged(string oldMode, string newMode, bool success, string? error = null)
+    {
+        _systemLog.Log("激光打标", $"打印方式变更：{oldMode} → {newMode}", success ? "Info" : "Failed");
+        if (!success)
+        {
+            _systemLog.Log("激光打标", $"变更失败原因：{error ?? "未知"}", "Failed");
+        }
+    }
+
+    /// <inheritdoc />
+    public void LogContentChanged(string oldContent, string newContent) =>
+        _systemLog.Log("激光打标", $"打印内容变更：{oldContent} → {newContent}");
 }

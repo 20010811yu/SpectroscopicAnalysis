@@ -29,4 +29,13 @@ public interface ILaserMarkingService
     /// 失败时追加一条：时间 + 失败原因。
     /// </summary>
     void LogPrintFinished(bool success, string? failReason = null);
+
+    /// <summary>
+    /// 记录打印方式变更（全流程日志「激光打标」类目，格式：打印方式变更：{旧} → {新}）；
+    /// 变更失败时追加一条：变更失败原因：{error}。
+    /// </summary>
+    void LogModeChanged(string oldMode, string newMode, bool success, string? error = null);
+
+    /// <summary>记录打印内容变更（全流程日志「激光打标」类目，格式：打印内容变更：{旧} → {新}）。</summary>
+    void LogContentChanged(string oldContent, string newContent);
 }

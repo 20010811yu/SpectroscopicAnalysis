@@ -23,4 +23,8 @@ internal sealed class FakeLaserMarkingService : ILaserMarkingService
     public void LogPrintStarted(string content, string mode) { }
 
     public void LogPrintFinished(bool success, string? failReason = null) { }
+
+    public void LogModeChanged(string oldMode, string newMode, bool success, string? error = null) { }
+
+    public void LogContentChanged(string oldContent, string newContent) { }
 }

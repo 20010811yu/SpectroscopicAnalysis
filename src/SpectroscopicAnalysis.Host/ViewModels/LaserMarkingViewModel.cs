@@ -67,8 +67,14 @@ public sealed partial class LaserMarkingViewModel : ObservableObject, IPageLifec
             return;
         }
 
+        var oldContent = _laserMarkingService.ReadMarkingContent();
         // 编辑内容写回 txt（服务层原子替换写入）；结果状态提示由页面展示
-        SaveStatus = _laserMarkingService.WriteMarkingContent(value) ? "已保存" : "保存失败";
+        var saved = _laserMarkingService.WriteMarkingContent(value);
+        SaveStatus = saved ? "已保存" : "保存失败";
+        if (saved)
+        {
+            _laserMarkingService.LogContentChanged(oldContent, value);   // 全流程日志：打印内容变更
+        }
     }
 
     /// <summary>打标方式切换（用户下拉选择）：联动 EzCad2 隐藏式重新加载对应工程文件。</summary>
@@ -81,15 +87,16 @@ public sealed partial class LaserMarkingViewModel : ObservableObject, IPageLifec
 
         _isSwitchingMode = true;
         SaveStatus = $"正在切换为{value}…";
-        _ = SwitchModeAsync(value);
+        _ = SwitchModeAsync(MarkingMode, value);
     }
 
-    private async Task SwitchModeAsync(string mode)
+    private async Task SwitchModeAsync(string oldMode, string newMode)
     {
         try
         {
-            var error = await _laserMarkingService.SwitchMarkingModeAsync(mode);
-            SaveStatus = error is null ? $"已切换为{mode}" : $"切换失败：{error}";
+            var error = await _laserMarkingService.SwitchMarkingModeAsync(newMode);
+            SaveStatus = error is null ? $"已切换为{newMode}" : $"切换失败：{error}";
+            _laserMarkingService.LogModeChanged(oldMode, newMode, error is null, error);   // 全流程日志：打印方式变更
         }
         finally
         {

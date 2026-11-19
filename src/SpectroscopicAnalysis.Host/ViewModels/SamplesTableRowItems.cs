@@ -84,15 +84,25 @@ public sealed class SystemLogRowItem
     public string Level { get; init; } = "Info";
 }
 
-/// <summary>货架示意库位（主控台「货架示意」模块；5 行×8 列）。</summary>
+/// <summary>货架示意库位（主控台「货架示意」模块；5 行×8 列）。颜色按样品状态区分。</summary>
 public sealed class RackSlotItem
 {
+    /// <summary>库位状态：Empty（灰）/ Normal（蓝=可用）/ NeedMeasure（黄）/ Disabled（红）。</summary>
+    public const string StateEmpty = "Empty";
+    public const string StateNormal = "Normal";
+    public const string StateNeedMeasure = "NeedMeasure";
+    public const string StateDisabled = "Disabled";
+
     /// <summary>架位编号（A01…E08）。</summary>
     public string PositionCode { get; init; } = string.Empty;
     /// <summary>占用样品编号（空闲为空串）。</summary>
     public string SampleIdText { get; init; } = string.Empty;
-    /// <summary>是否被样品占用（视图着色区分）。</summary>
+    /// <summary>是否被样品占用（占位计数用）。</summary>
     public bool IsOccupied { get; init; }
+    /// <summary>库位状态（驱动格子底色）。</summary>
+    public string SlotState { get; init; } = StateEmpty;
+    /// <summary>状态中文（ToolTip 用）。</summary>
+    public string StateText { get; init; } = "空位";
 }
 
 /// <summary>货架示意行（一行 8 个库位）。</summary>

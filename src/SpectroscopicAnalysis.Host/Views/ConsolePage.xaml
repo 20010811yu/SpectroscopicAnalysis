@@ -75,6 +75,10 @@
                                        Text="{Binding RackOutOfRangeCount, StringFormat='示意范围外占用 {0} 位'}" />
                             <TextBlock Text="货架示意（A–E × 1–8）" Style="{StaticResource Text.CardTitle}" VerticalAlignment="Center" />
                         </DockPanel>
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                            <TextBlock Text="图例：" Style="{StaticResource Text.Caption}" VerticalAlignment="Center" Margin="0,0,8,0" />
+                            <TextBlock Text="蓝=可用　黄=需测高　红=禁用　灰=空位" Style="{StaticResource Text.Caption}" VerticalAlignment="Center" />
+                        </StackPanel>
                         <ItemsControl ItemsSource="{Binding RackRows}">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
@@ -93,12 +97,21 @@
                                                             ToolTip="{Binding SampleIdText}">
                                                         <Border.Style>
                                                             <Style TargetType="Border">
-                                                                <Setter Property="Background" Value="Transparent" />
+                                                                <Setter Property="Background" Value="{DynamicResource Brush.Badge.Idle.Bg}" />
                                                                 <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border.Default}" />
                                                                 <Style.Triggers>
-                                                                    <DataTrigger Binding="{Binding IsOccupied}" Value="True">
+                                                                    <!-- 库位状态着色：蓝=可用 / 黄=需测高 / 红=禁用 / 灰=空位 -->
+                                                                    <DataTrigger Binding="{Binding SlotState}" Value="Normal">
                                                                         <Setter Property="Background" Value="{DynamicResource Brush.Badge.Info.Bg}" />
                                                                         <Setter Property="BorderBrush" Value="{DynamicResource Brush.Badge.Info.Bg}" />
+                                                                    </DataTrigger>
+                                                                    <DataTrigger Binding="{Binding SlotState}" Value="NeedMeasure">
+                                                                        <Setter Property="Background" Value="{DynamicResource Brush.Badge.Warning.Bg}" />
+                                                                        <Setter Property="BorderBrush" Value="{DynamicResource Brush.Badge.Warning.Bg}" />
+                                                                    </DataTrigger>
+                                                                    <DataTrigger Binding="{Binding SlotState}" Value="Disabled">
+                                                                        <Setter Property="Background" Value="{DynamicResource Brush.Badge.Failed.Bg}" />
+                                                                        <Setter Property="BorderBrush" Value="{DynamicResource Brush.Badge.Failed.Bg}" />
                                                                     </DataTrigger>
                                                                 </Style.Triggers>
                                                             </Style>
@@ -108,8 +121,14 @@
                                                                 <Style TargetType="TextBlock" BasedOn="{StaticResource Text.Caption}">
                                                                     <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Secondary}" />
                                                                     <Style.Triggers>
-                                                                        <DataTrigger Binding="{Binding IsOccupied}" Value="True">
+                                                                        <DataTrigger Binding="{Binding SlotState}" Value="Normal">
                                                                             <Setter Property="Foreground" Value="{DynamicResource Brush.Badge.Info.Fg}" />
+                                                                        </DataTrigger>
+                                                                        <DataTrigger Binding="{Binding SlotState}" Value="NeedMeasure">
+                                                                            <Setter Property="Foreground" Value="{DynamicResource Brush.Badge.Warning.Fg}" />
+                                                                        </DataTrigger>
+                                                                        <DataTrigger Binding="{Binding SlotState}" Value="Disabled">
+                                                                            <Setter Property="Foreground" Value="{DynamicResource Brush.Badge.Failed.Fg}" />
                                                                         </DataTrigger>
                                                                     </Style.Triggers>
                                                                 </Style>

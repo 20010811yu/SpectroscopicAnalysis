@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using SpectroscopicAnalysis.Host.Data.Models;
 using SpectroscopicAnalysis.Host.Data.Repositories;
 using SpectroscopicAnalysis.Host.LoggingAlarm;
 using SpectroscopicAnalysis.Host.Ui;
@@ -134,20 +135,29 @@ public sealed partial class ConsoleViewModel : ObservableObject, IPageLifecycle
     /// <summary>刷新货架占用（档案查询在后台线程，避免 UI 卡顿；公开供测试确定性刷新）。</summary>
     public void RefreshRack()
     {
-        // SampleID → 架位映射（SCT 标样优先，生产样兜底；同一架位以先到者为准，注册时已保证架位唯一）
-        var occupancy = new Dictionary<string, string>();
+        // SampleID → (样品号, 库位状态) 映射（SCT 标样优先，生产样兜底；注册时已保证架位唯一）。
+        // 库位状态按样品状态区分：禁用=红、需测高=黄、可用=蓝；生产样无状态机，占用即视为可用。
+        var occupancy = new Dictionary<string, (string SampleId, string State, string StateText)>();
         foreach (var s in _samples.GetAll())
         {
-            if (!string.IsNullOrEmpty(s.RackPosition))
+            if (string.IsNullOrEmpty(s.RackPosition))
             {
-                occupancy.TryAdd(s.RackPosition, s.SampleId);
+                continue;
             }
+
+            var (state, text) = s.Status switch
+            {
+                SampleStatus.Disabled => (RackSlotItem.StateDisabled, "禁用"),
+                SampleStatus.NeedMeasure => (RackSlotItem.StateNeedMeasure, "需测高"),
+                _ => (RackSlotItem.StateNormal, "可用"),
+            };
+            occupancy.TryAdd(s.RackPosition, (s.SampleId, state, text));
         }
         foreach (var p in _production.GetAll())
         {
             if (!string.IsNullOrEmpty(p.RackPosition))
             {
-                occupancy.TryAdd(p.RackPosition, p.SampleId);
+                occupancy.TryAdd(p.RackPosition, (p.SampleId, RackSlotItem.StateNormal, "可用"));
             }
         }
 
@@ -158,9 +168,16 @@ public sealed partial class ConsoleViewModel : ObservableObject, IPageLifecycle
             for (var col = 1; col <= RackColumnsCount; col++)
             {
                 var code = $"{rowLabel}{col:00}";
-                slots.Add(occupancy.Remove(code, out var sampleId)
-                    ? new RackSlotItem { PositionCode = code, SampleIdText = sampleId, IsOccupied = true }
-                    : new RackSlotItem { PositionCode = code, SampleIdText = string.Empty, IsOccupied = false });
+                slots.Add(occupancy.Remove(code, out var slot)
+                    ? new RackSlotItem
+                    {
+                        PositionCode = code,
+                        SampleIdText = slot.SampleId,
+                        IsOccupied = true,
+                        SlotState = slot.State,
+                        StateText = slot.StateText,
+                    }
+                    : new RackSlotItem { PositionCode = code, SampleIdText = string.Empty, IsOccupied = false, SlotState = RackSlotItem.StateEmpty, StateText = "空位" });
             }
             rows.Add(new RackRowItem { RowLabel = rowLabel, Slots = slots });
         }

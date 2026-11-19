@@ -84,6 +84,16 @@ public sealed class ConsoleViewModelTests
             SampleId = "TS-002", SampleName = "标样2", SampleType = SampleType.Control,
             AlloyType = "AL", RackPosition = "B12", Status = SampleStatus.Normal,   // 超出 5×8 示意范围
         });
+        samples.Store.Add(new SctSample
+        {
+            SampleId = "TS-003", SampleName = "标样3", SampleType = SampleType.TypeStd,
+            AlloyType = "AL", RackPosition = "A02", Status = SampleStatus.Disabled,
+        });
+        samples.Store.Add(new SctSample
+        {
+            SampleId = "TS-004", SampleName = "标样4", SampleType = SampleType.SettingUp,
+            AlloyType = "AL", RackPosition = "A03", Status = SampleStatus.NeedMeasure,
+        });
         var production = new FakeProductionSampleRepository();
         production.Store.Add(new ProductionSample
         {
@@ -97,11 +107,18 @@ public sealed class ConsoleViewModelTests
 
         Assert.Equal(5, vm.RackRows.Count);
         Assert.All(vm.RackRows, r => Assert.Equal(8, r.Slots.Count));
-        Assert.Equal("TS-001", vm.RackRows[0].Slots[0].SampleIdText);           // A01 占用
-        Assert.True(vm.RackRows[0].Slots[0].IsOccupied);
-        Assert.False(vm.RackRows[0].Slots[1].IsOccupied);                        // A02 空闲
-        Assert.Equal("P-100", vm.RackRows[2].Slots[2].SampleIdText);            // C03 占用
-        Assert.Equal(2, vm.RackOccupiedCount);
+
+        // 库位状态着色：可用=Normal（蓝）/ 需测高（黄）/ 禁用（红）/ 空位（灰）
+        Assert.Equal(RackSlotItem.StateNormal, vm.RackRows[0].Slots[0].SlotState);        // A01 可用
+        Assert.Equal(RackSlotItem.StateDisabled, vm.RackRows[0].Slots[1].SlotState);      // A02 禁用
+        Assert.True(vm.RackRows[0].Slots[1].IsOccupied);
+        Assert.Equal(RackSlotItem.StateNeedMeasure, vm.RackRows[0].Slots[2].SlotState);   // A03 需测高
+        Assert.Equal(RackSlotItem.StateEmpty, vm.RackRows[0].Slots[3].SlotState);         // A04 空位
+        Assert.False(vm.RackRows[0].Slots[3].IsOccupied);
+        Assert.Equal(RackSlotItem.StateNormal, vm.RackRows[2].Slots[2].SlotState);        // C03 生产样占位=可用
+        Assert.Equal("P-100", vm.RackRows[2].Slots[2].SampleIdText);
+
+        Assert.Equal(4, vm.RackOccupiedCount);
         Assert.Equal(1, vm.RackOutOfRangeCount);                                 // B12 示意外
         Assert.Equal(40, vm.RackTotalCount);
     }

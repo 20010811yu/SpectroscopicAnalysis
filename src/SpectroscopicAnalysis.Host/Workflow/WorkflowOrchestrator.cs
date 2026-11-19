@@ -399,8 +399,19 @@ public sealed class WorkflowOrchestrator : IWorkflowOrchestrator
             SctTaskType.Standardize or SctTaskType.TypeStandardize => "标准化",
             _ => "设备操作",
         };
+        // 消息正文用中文类型名：控样→标准化 / 检查样→校正检查 / 类型标准化样→类型标准化
+        var typeText = operationType switch
+        {
+            SctTaskType.ControlCheck => "校正检查",
+            SctTaskType.Standardize => "标准化",
+            SctTaskType.TypeStandardize => "类型标准化",
+            SctTaskType.HeightMeasure => "测高",
+            SctTaskType.Production => "生产分析",
+            SctTaskType.Archive => "归档",
+            _ => operationType,
+        };
         _systemLog.Log(category,
-            string.IsNullOrEmpty(sampleId) ? $"{operationType}：{reason}" : $"{operationType}（样品 {sampleId}）：{reason}",
+            string.IsNullOrEmpty(sampleId) ? $"{typeText}：{reason}" : $"{typeText}（样品 {sampleId}）：{reason}",
             resultStatus == "Fail" ? "Failed" : "Info");
         try
         {

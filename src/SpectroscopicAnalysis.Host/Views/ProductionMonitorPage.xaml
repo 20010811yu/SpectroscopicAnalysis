@@ -201,7 +201,7 @@
                             <TextBlock Text="操作日期" Style="{StaticResource Text.Caption}" VerticalAlignment="Center" Margin="0,0,8,0" />
                             <DatePicker SelectedDate="{Binding SelectedDate}" MinWidth="140" />
                         </StackPanel>
-                        <TextBlock Text="运行日志（按日期）" Style="{StaticResource Text.CardTitle}" VerticalAlignment="Center" />
+                        <TextBlock Text="生产日志（按日期）" Style="{StaticResource Text.CardTitle}" VerticalAlignment="Center" />
                     </DockPanel>
                     <!-- 类型筛选：按样品类型过滤日志（无样品归属的日志仅在"全部"下显示） -->
                     <StackPanel Orientation="Horizontal" Margin="0,0,0,8">

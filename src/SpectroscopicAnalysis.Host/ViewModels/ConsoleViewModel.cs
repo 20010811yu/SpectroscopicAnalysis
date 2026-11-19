@@ -42,6 +42,8 @@ public sealed partial class ConsoleViewModel : ObservableObject, IPageLifecycle
         _ui = ui;
         _laserMarking = laserMarking;
         Laser = laserMarking;
+        // 日志写入即时刷新（事件驱动；Log 可能在任意线程，经 IUiDispatcher 切回 UI 线程）
+        systemLog.EntryLogged += () => _ui.Invoke(RefreshSystemLogs);
     }
 
     // ==================== 报警面板 ====================

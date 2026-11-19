@@ -22,6 +22,9 @@ public sealed class SystemLogEntry
 /// </summary>
 public interface ISystemLogCollector
 {
+    /// <summary>日志写入事件（任意线程触发；订阅方自行取快照并负责切回 UI 线程）——面板即时刷新用。</summary>
+    event Action EntryLogged;
+
     /// <summary>写入一条全流程日志（线程安全；时间戳取写入时刻本地时间）。</summary>
     void Log(string category, string message, string level = "Info");
 

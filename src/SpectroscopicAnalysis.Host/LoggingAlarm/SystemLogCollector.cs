@@ -13,6 +13,9 @@ public sealed class SystemLogCollector : ISystemLogCollector
     private readonly List<SystemLogEntry> _entries = new();
 
     /// <inheritdoc />
+    public event Action? EntryLogged;
+
+    /// <inheritdoc />
     public void Log(string category, string message, string level = "Info")
     {
         lock (_gate)
@@ -29,6 +32,9 @@ public sealed class SystemLogCollector : ISystemLogCollector
                 _entries.RemoveAt(0);
             }
         }
+
+        // 锁外触发写入通知（订阅方自行取快照；实时面板刷新用）
+        EntryLogged?.Invoke();
     }
 
     /// <inheritdoc />

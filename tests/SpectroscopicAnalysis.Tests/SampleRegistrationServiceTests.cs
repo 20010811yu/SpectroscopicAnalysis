@@ -13,7 +13,7 @@ public sealed class SampleRegistrationServiceTests
     private readonly FakeSctStrategyEngine _engine = new();
     private readonly FakeErrorCollector _errors = new();
 
-    private SampleRegistrationService Create() => new(_samples, _production, _engine, _errors);
+    private SampleRegistrationService Create() => new(_samples, _production, _engine, _errors, new SystemLogCollector());
 
     private static SampleRegisterForm MakeProductionForm(string id = "P-001") => new()
     {

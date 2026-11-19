@@ -15,17 +15,20 @@ public sealed class SampleRegistrationService : ISampleRegistrationService
     private readonly IProductionSampleRepository _production;
     private readonly ISctStrategyEngine _engine;
     private readonly IErrorCollector _errors;
+    private readonly LoggingAlarm.ISystemLogCollector _systemLog;
 
     public SampleRegistrationService(
         ISctSampleRepository samples,
         IProductionSampleRepository production,
         ISctStrategyEngine engine,
-        IErrorCollector errors)
+        IErrorCollector errors,
+        LoggingAlarm.ISystemLogCollector systemLog)
     {
         _samples = samples;
         _production = production;
         _engine = engine;
         _errors = errors;
+        _systemLog = systemLog;
     }
 
     /// <inheritdoc />
@@ -104,6 +107,7 @@ public sealed class SampleRegistrationService : ISampleRegistrationService
                 _ => SctTaskType.Production,
             };
         _engine.SubmitTask(taskType, form.SampleId.Trim(), "样品注册自动入队");
+        _systemLog.Log("UI操作", $"样品注册：{form.SampleId.Trim()}（{form.SampleName}，{form.SampleType}）");
         return null;
     }
 

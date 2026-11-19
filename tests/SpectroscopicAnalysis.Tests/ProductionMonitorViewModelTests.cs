@@ -2,6 +2,7 @@ using SpectroscopicAnalysis.Host.Data.Models;
 using SpectroscopicAnalysis.Host.Data.Repositories;
 using SpectroscopicAnalysis.Host.SampleManager;
 using SpectroscopicAnalysis.Host.SctStrategy;
+using SpectroscopicAnalysis.Host.LoggingAlarm;
 using SpectroscopicAnalysis.Host.ViewModels;
 
 namespace SpectroscopicAnalysis.Tests;
@@ -41,7 +42,7 @@ public sealed class ProductionMonitorViewModelTests
         var samplesRepo = new FakeSampleRepository();
         var engine = new SctStrategyEngine(new FakeSctPolicyStore(), samplesRepo,
             new FakeSctOperationLogRepository(), new FakeErrorCollector());
-        var registration = new SampleRegistrationService(samplesRepo, productionRepo, engine, new FakeErrorCollector());
+        var registration = new SampleRegistrationService(samplesRepo, productionRepo, engine, new FakeErrorCollector(), new SystemLogCollector());
         var vm = new ProductionMonitorViewModel(new FakeSctOperationLogRepository(), samplesRepo, productionRepo, engine,
             new FakeWorkflowOrchestrator(), new FakeUiDispatcher(), new FakeErrorCollector(), dialogs, registration);
 

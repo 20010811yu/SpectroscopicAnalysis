@@ -91,6 +91,7 @@ public partial class App
 
                 // UI 层：调度抽象（MVVM 分层要求）+ 页面 ViewModel（单例，导航共享状态）
                 services.AddSingleton<Ui.IUiDispatcher, Ui.UiDispatcher>();
+                services.AddSingleton<LoggingAlarm.ISystemLogCollector, LoggingAlarm.SystemLogCollector>();
                 services.AddSingleton<IErrorCollector, ErrorCollector>();
                 services.AddSingleton<Ui.IDialogService, Ui.DialogService>();
                 // 样品注册服务（样品档案页与主控台共用：校验/查重/入库/自动入队）
@@ -152,6 +153,11 @@ public partial class App
         };
 
         _host.Start();
+
+        // 全流程日志开场：应用启动 + 设备网关模式（Stub；PLC/GNR 真实实现接入后自动为真实链路）
+        var systemLog = _host.Services.GetRequiredService<LoggingAlarm.ISystemLogCollector>();
+        systemLog.Log("应用", "上位机启动（Generic Host 就绪）");
+        systemLog.Log("PLC连接", "设备网关为 Stub 模拟器（Modbus TCP 实现接入后切换）", "Warning");
 
         // 建库（幂等，轻量）——失败记录并终止启动（启动期硬失败）
         var dbInitializer = _host.Services.GetRequiredService<DbInitializer>();

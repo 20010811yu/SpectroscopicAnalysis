@@ -32,7 +32,7 @@ public sealed class WorkflowOrchestratorTests
     {
         var engine = new SctStrategyEngine(_policy, _samples, _logs, _errors);
         var orchestrator = new WorkflowOrchestrator(
-            engine, _gateway, _gateway, _gateway, _gateway, _logs, _errors, FastOptions());
+            engine, _gateway, _gateway, _gateway, _gateway, _logs, _errors, new SystemLogCollector(), FastOptions());
         return (engine, orchestrator);
     }
 

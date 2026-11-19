@@ -11,6 +11,8 @@ public sealed class ErrorCollector : IErrorCollector
     /// <summary>内存报警表封顶条数（超过后淘汰最旧；防长期运行内存膨胀）。</summary>
     private const int MaxAlarms = 500;
 
+    private readonly ISystemLogCollector _systemLog;
+
     /// <summary>报警表自增标识。</summary>
     private long _alarmIdSeed;
 
@@ -19,6 +21,11 @@ public sealed class ErrorCollector : IErrorCollector
 
     /// <summary>报警记录（追加序；快照时倒序输出最新在前）。</summary>
     private readonly List<AlarmRecord> _alarms = new();
+
+    public ErrorCollector(ISystemLogCollector systemLog)
+    {
+        _systemLog = systemLog;
+    }
 
     public void Collect(int errorCode, string message, string? sampleId = null, Exception? exception = null)
     {
@@ -37,6 +44,11 @@ public sealed class ErrorCollector : IErrorCollector
                 _alarms.RemoveAt(0);
             }
         }
+
+        // 报警同步写入全流程日志（报警类目，Failed 级别）——主控台「运行日志」面板联动
+        _systemLog.Log("报警",
+            string.IsNullOrEmpty(sampleId) ? $"{errorCode} {message}" : $"{errorCode} {message}（样品 {sampleId}）",
+            "Failed");
 
         Log.ForContext("ErrorCode", errorCode)
             .ForContext("SampleID", sampleId ?? "-")

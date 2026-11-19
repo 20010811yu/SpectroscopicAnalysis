@@ -58,3 +58,47 @@ public sealed class OperationLogRowItem
     /// <summary>原始操作时间串（日期过滤/排序用；不绑定 UI）。</summary>
     public string RawOperationTime { get; init; } = string.Empty;
 }
+
+
+/// <summary>报警行（主控台「报警面板」，来源 ErrorCollector 内存报警表快照，最新在前）。</summary>
+public sealed class AlarmRowItem
+{
+    public long AlarmId { get; init; }
+    public string TimeText { get; init; } = string.Empty;
+    public string ErrorCodeText { get; init; } = string.Empty;
+    public string MessageText { get; init; } = string.Empty;
+    /// <summary>样品上下文（无关联显示 —）。</summary>
+    public string SampleIdText { get; init; } = "—";
+    /// <summary>是否已确认（视图淡化徽章并隐藏确认按钮）。</summary>
+    public bool IsAcknowledged { get; init; }
+}
+
+/// <summary>全流程日志行（主控台「运行日志」面板，来源 SystemLogCollector 快照，最新在前）。</summary>
+public sealed class SystemLogRowItem
+{
+    public string TimeText { get; init; } = string.Empty;
+    /// <summary>类目（应用/PLC连接/VM方案加载/设备操作/报警 等）。</summary>
+    public string CategoryText { get; init; } = string.Empty;
+    public string MessageText { get; init; } = string.Empty;
+    /// <summary>等级（Info/Warning/Failed；视图按等级着色）。</summary>
+    public string Level { get; init; } = "Info";
+}
+
+/// <summary>货架示意库位（主控台「货架示意」模块；5 行×8 列）。</summary>
+public sealed class RackSlotItem
+{
+    /// <summary>架位编号（A01…E08）。</summary>
+    public string PositionCode { get; init; } = string.Empty;
+    /// <summary>占用样品编号（空闲为空串）。</summary>
+    public string SampleIdText { get; init; } = string.Empty;
+    /// <summary>是否被样品占用（视图着色区分）。</summary>
+    public bool IsOccupied { get; init; }
+}
+
+/// <summary>货架示意行（一行 8 个库位）。</summary>
+public sealed class RackRowItem
+{
+    /// <summary>行标识（A–E）。</summary>
+    public string RowLabel { get; init; } = string.Empty;
+    public List<RackSlotItem> Slots { get; init; } = new();
+}

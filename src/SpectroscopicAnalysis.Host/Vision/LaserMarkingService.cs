@@ -17,9 +17,11 @@ public class LaserMarkingService : ILaserMarkingService
     private readonly IEzCad2Controller _ezCad2Controller;
     private readonly ILogger<LaserMarkingService> _logger;
     private readonly IErrorCollector _errorCollector;
+    private readonly LoggingAlarm.ISystemLogCollector _systemLog;
 
-    public LaserMarkingService(IConfiguration configuration, IEzCad2Controller ezCad2Controller, ILogger<LaserMarkingService> logger, IErrorCollector errorCollector)
+    public LaserMarkingService(IConfiguration configuration, IEzCad2Controller ezCad2Controller, ILogger<LaserMarkingService> logger, IErrorCollector errorCollector, LoggingAlarm.ISystemLogCollector systemLog)
     {
+        _systemLog = systemLog;
         _contentFilePath = configuration["LaserMarking:ContentFilePath"] ?? @"D:\Desktop\2.txt";
         // 文本打印用 EzCad2:EzdFilePath（启动默认工程）；条码打印为独立配置
         _textEzdFilePath = configuration["EzCad2:EzdFilePath"] ?? @"D:\Desktop\261117\2.ezd";
@@ -60,6 +62,7 @@ public class LaserMarkingService : ILaserMarkingService
             File.WriteAllText(tempPath, content);
             File.Move(tempPath, _contentFilePath, overwrite: true);
             _logger.LogInformation("打标文本已写回：{ContentFilePath}", _contentFilePath);
+            _systemLog.Log("设备操作", "打标文本已写回");
             return true;
         }
         catch (Exception ex)
@@ -87,6 +90,7 @@ public class LaserMarkingService : ILaserMarkingService
         }
 
         _logger.LogInformation("切换打标方式：{Mode}（工程文件 {EzdPath}）", mode, ezdPath);
+        _systemLog.Log("VM方案加载", $"切换打标方式：{mode}");
         return await _ezCad2Controller.SwitchEzdFileAsync(ezdPath, cancellationToken);
     }
 }

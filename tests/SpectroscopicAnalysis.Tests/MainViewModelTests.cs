@@ -1,5 +1,6 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using System.Linq;
+using SpectroscopicAnalysis.Host.LoggingAlarm;
 using SpectroscopicAnalysis.Host.ViewModels;
 using SpectroscopicAnalysis.Host.Vision;
 
@@ -12,7 +13,7 @@ public sealed class MainViewModelTests
 {
     private static MainViewModel CreateMain() => new(
         new ProductionMonitorViewModel(new FakeSctOperationLogRepository(), new FakeSampleRepository(), new FakeProductionSampleRepository(), new FakeSctStrategyEngine(), new FakeWorkflowOrchestrator(), new FakeUiDispatcher(), new FakeErrorCollector(), new FakeDialogService(), new FakeSampleRegistrationService()),
-        new ConsoleViewModel(new FakeErrorCollector()),
+        new ConsoleViewModel(new FakeErrorCollector(), new SystemLogCollector(), new FakeSampleRepository(), new FakeProductionSampleRepository(), new FakeUiDispatcher(), new LaserMarkingViewModel(new FakeLaserMarkingService())),
         new SamplesViewModel(new FakeSampleRepository(), new FakeProductionSampleRepository(), new FakeCertifiedValueRepository(), new FakeControlLimitRepository(),
             new FakeCoefficientRepository(), new FakeOperationLogRepository(), new FakeSctStrategyEngine(),
             new FakeUiDispatcher(), new FakeDialogService(), new FakeErrorCollector()),

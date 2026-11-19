@@ -19,6 +19,7 @@ public sealed class WorkflowOrchestrator : IWorkflowOrchestrator
     private readonly ISpectrometer _spectrometer;
     private readonly ISctOperationLogRepository _logs;
     private readonly IErrorCollector _errors;
+    private readonly LoggingAlarm.ISystemLogCollector _systemLog;
     private readonly WorkflowOptions _options;
 
     private readonly object _gate = new();
@@ -43,6 +44,7 @@ public sealed class WorkflowOrchestrator : IWorkflowOrchestrator
         ISpectrometer spectrometer,
         ISctOperationLogRepository logs,
         IErrorCollector errors,
+        LoggingAlarm.ISystemLogCollector systemLog,
         WorkflowOptions? options = null)
     {
         _engine = engine;
@@ -52,6 +54,7 @@ public sealed class WorkflowOrchestrator : IWorkflowOrchestrator
         _spectrometer = spectrometer;
         _logs = logs;
         _errors = errors;
+        _systemLog = systemLog;
         _options = options ?? new WorkflowOptions();
     }
 
@@ -389,6 +392,10 @@ public sealed class WorkflowOrchestrator : IWorkflowOrchestrator
     /// <summary>轨迹审计（任务清单第 12 节：每步动作留痕）。</summary>
     private void WriteTrace(string? sampleId, string operationType, string reason, string resultStatus)
     {
+        // 全流程日志联动：设备操作类目（任务级轨迹，主控台「运行日志」面板数据源之一）
+        _systemLog.Log("设备操作",
+            string.IsNullOrEmpty(sampleId) ? $"{operationType}：{reason}" : $"{operationType}（样品 {sampleId}）：{reason}",
+            resultStatus == "Fail" ? "Failed" : "Info");
         try
         {
             _logs.Insert(new SctOperationLog

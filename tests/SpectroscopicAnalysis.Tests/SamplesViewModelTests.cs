@@ -97,7 +97,7 @@ internal sealed class FakeDialogService : IDialogService
 internal sealed class FakeErrorCollector : IErrorCollector
 {
     /// <summary>真实实现承载报警表（计数/确认逻辑与生产一致）。</summary>
-    private readonly ErrorCollector _inner = new();
+    private readonly ErrorCollector _inner = new(new SystemLogCollector());
 
     public List<(int Code, string Message, string? SampleId)> Collected { get; } = new();
 

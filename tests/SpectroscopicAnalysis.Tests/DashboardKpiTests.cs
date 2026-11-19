@@ -11,7 +11,7 @@ public sealed class ErrorCollectorTests
     [Fact]
     public void Collect_后未确认计数递增且快照最新在前()
     {
-        var collector = new ErrorCollector();
+        var collector = new ErrorCollector(new SystemLogCollector());
 
         collector.Collect(ErrorCodes.UnhandledException, "错误A", "S1");
         collector.Collect(ErrorCodes.EmergencyStop, "错误B");
@@ -27,7 +27,7 @@ public sealed class ErrorCollectorTests
     [Fact]
     public void Acknowledge_单条确认后计数递减()
     {
-        var collector = new ErrorCollector();
+        var collector = new ErrorCollector(new SystemLogCollector());
         collector.Collect(ErrorCodes.UnhandledException, "错误A");
         collector.Collect(ErrorCodes.UnhandledException, "错误B");
 
@@ -41,7 +41,7 @@ public sealed class ErrorCollectorTests
     [Fact]
     public void AcknowledgeAll_全部确认后未确认计数归零()
     {
-        var collector = new ErrorCollector();
+        var collector = new ErrorCollector(new SystemLogCollector());
         collector.Collect(ErrorCodes.UnhandledException, "错误A");
         collector.Collect(ErrorCodes.UnhandledException, "错误B");
 
@@ -53,7 +53,7 @@ public sealed class ErrorCollectorTests
     [Fact]
     public async Task 报警表封顶后淘汰最旧()
     {
-        var collector = new ErrorCollector();
+        var collector = new ErrorCollector(new SystemLogCollector());
         for (var i = 0; i < 501; i++)
         {
             collector.Collect(ErrorCodes.UnhandledException, $"错误{i}");

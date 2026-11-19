@@ -1,16 +1,34 @@
+using System.IO;
+
 namespace SpectroscopicAnalysis.Host.LoggingAlarm;
 
 /// <summary>
-/// 全流程系统日志实现：内存环形表（封顶淘汰最旧，防长期运行内存膨胀；进程重启清零）。
+/// 全流程系统日志实现：内存环形表（封顶淘汰最旧，防长期运行内存膨胀；进程重启清零）
+/// + 文件留痕（logs\system\system-YYYYMMDD.log，按天文件名、保留最近 7 天——参照 PLC 通信日志模式）。
 /// 线程安全：Log 可能在任意线程（后台 I/O、托管服务）触发。
 /// </summary>
-public sealed class SystemLogCollector : ISystemLogCollector
+public sealed class SystemLogCollector : ISystemLogCollector, IDisposable
 {
+    /// <summary>文件日志保留天数。</summary>
+    private const int RetainedDays = 7;
+
+    /// <summary>共用置顶写入器（时间倒序 + 分隔线 + 行数封顶 + 过期清理）。</summary>
+    private readonly DeviceInterface.DeviceLogFileWriter _writer;
+
     /// <summary>日志表封顶条数。</summary>
     private const int MaxEntries = 500;
 
     private readonly object _gate = new();
     private readonly List<SystemLogEntry> _entries = new();
+
+    public SystemLogCollector()
+    {
+        _writer = new DeviceInterface.DeviceLogFileWriter(
+            Path.Combine(AppContext.BaseDirectory, "logs", "system"),
+            filePrefix: "system",
+            retainedDays: RetainedDays,
+            maxLines: DeviceInterface.DeviceLogFileWriterDefaults.MaxLines);
+    }
 
     /// <inheritdoc />
     public event Action? EntryLogged;
@@ -33,8 +51,16 @@ public sealed class SystemLogCollector : ISystemLogCollector
             }
         }
 
+        // 文件留痕（时间毫秒级，参照 PLC 通信日志格式）
+        _writer.Write($"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] [{category}] [{level}] {message}");
+
         // 锁外触发写入通知（订阅方自行取快照；实时面板刷新用）
         EntryLogged?.Invoke();
+    }
+
+    /// <summary>无需释放资源（保留 IDisposable 与 PLC 通信日志实现对称）。</summary>
+    public void Dispose()
+    {
     }
 
     /// <inheritdoc />

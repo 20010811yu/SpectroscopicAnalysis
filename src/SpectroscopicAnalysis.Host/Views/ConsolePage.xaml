@@ -185,8 +185,15 @@
                 </Border>
             </Grid>
 
+            <!-- 运行日志（全流程） + 报警面板：同一容器左右排列 -->
+            <Grid Margin="{DynamicResource Spacing.CardGap}">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="1.2*" MinWidth="360" />
+                    <ColumnDefinition Width="1*" MinWidth="300" />
+                </Grid.ColumnDefinitions>
+
             <!-- 全流程运行日志：SystemLogCollector（应用/PLC连接/VM方案加载/设备操作/报警），最新在前 -->
-            <Border Style="{StaticResource Card}" Margin="{DynamicResource Spacing.CardGap}">
+            <Border Grid.Column="0" Style="{StaticResource Card}" Margin="0,0,6,0">
                 <StackPanel>
                     <TextBlock Text="运行日志（全流程）" Style="{StaticResource Text.CardTitle}" Margin="0,0,0,8" />
                     <TextBlock Text="暂无日志记录" Style="{StaticResource Text.Caption}"
@@ -228,8 +235,9 @@
             </Border>
 
 
+
             <!-- 报警面板（ErrorCollector 内存报警表，最新在前；单条/全部确认） -->
-            <Border Style="{StaticResource Card}" Margin="{DynamicResource Spacing.CardGap}">
+            <Border Grid.Column="1" Style="{StaticResource Card}" Margin="6,0,0,0">
                 <StackPanel>
                     <DockPanel Margin="0,0,0,8" LastChildFill="False">
                         <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
@@ -282,6 +290,8 @@
                 </StackPanel>
             </Border>
 
+
+            </Grid>
 
         </StackPanel>
     </ScrollViewer>

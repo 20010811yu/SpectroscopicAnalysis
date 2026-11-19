@@ -72,6 +72,44 @@
                     <!-- 导航（ICommand 绑定，无 code-behind 逻辑；Children 非空为分组项，展开后显示二级子菜单） -->
                     <ItemsControl Grid.Row="0" ItemsSource="{Binding NavItems}" Margin="8,12">
                         <ItemsControl.Resources>
+                            <!-- 分组展开头样式：透明底无边框，头文字左对齐（与一级菜单一致），悬停同款底色 -->
+                            <Style x:Key="NavGroupExpander" TargetType="Expander">
+                                <Setter Property="Background" Value="Transparent" />
+                                <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Secondary}" />
+                                <Setter Property="FontSize" Value="{DynamicResource FontSize.Body}" />
+                                <Setter Property="FontFamily" Value="Microsoft YaHei UI" />
+                                <Setter Property="HorizontalContentAlignment" Value="Left" />
+                                <Setter Property="Template">
+                                    <Setter.Value>
+                                        <ControlTemplate TargetType="Expander">
+                                            <StackPanel>
+                                                <ToggleButton IsChecked="{Binding IsExpanded, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}"
+                                                              Cursor="Hand" HorizontalContentAlignment="Left"
+                                                              Content="{TemplateBinding Header}">
+                                                    <ToggleButton.Template>
+                                                        <ControlTemplate TargetType="ToggleButton">
+                                                            <Border x:Name="Bd" Background="Transparent" CornerRadius="6" Padding="12,10">
+                                                                <DockPanel LastChildFill="True">
+                                                                    <TextBlock DockPanel.Dock="Right" Text="▾" Margin="8,0,0,0" VerticalAlignment="Center"
+                                                                               FontSize="{DynamicResource FontSize.Body}" FontFamily="Microsoft YaHei UI" />
+                                                                    <ContentPresenter VerticalAlignment="Center" />
+                                                                </DockPanel>
+                                                            </Border>
+                                                            <ControlTemplate.Triggers>
+                                                                <Trigger Property="IsMouseOver" Value="True">
+                                                                    <Setter TargetName="Bd" Property="Background" Value="{DynamicResource Brush.Bg.Page}" />
+                                                                </Trigger>
+                                                            </ControlTemplate.Triggers>
+                                                        </ControlTemplate>
+                                                    </ToggleButton.Template>
+                                                </ToggleButton>
+                                                <ContentPresenter x:Name="ExpandSite" ContentSource="Content"
+                                                                  Visibility="{Binding IsExpanded, RelativeSource={RelativeSource TemplatedParent}, Converter={StaticResource BoolToVisibility}}" />
+                                            </StackPanel>
+                                        </ControlTemplate>
+                                    </Setter.Value>
+                                </Setter>
+                            </Style>
                             <!-- 叶子导航项按钮模板（分组子菜单与顶层项共用） -->
                             <DataTemplate x:Key="NavLeafTemplate">
                                 <Button Command="{Binding DataContext.NavigateToCommand, RelativeSource={RelativeSource AncestorType=Window}}"
@@ -117,13 +155,10 @@
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
                                 <Grid>
-                                    <!-- 分组项：Expander（Children 非空可见），子项缩进复用叶子模板 -->
-                                    <Expander IsExpanded="{Binding IsExpanded, Mode=TwoWay}" ExpandDirection="Down" Margin="0,0,0,4"
-                                              Visibility="{Binding Children, Converter={StaticResource NullToVisibility}}">
-                                        <Expander.Header>
-                                            <TextBlock Text="{Binding Title}" FontSize="{DynamicResource FontSize.Body}" FontFamily="Microsoft YaHei UI"
-                                                       Foreground="{DynamicResource Brush.Text.Secondary}" Padding="12,10" />
-                                        </Expander.Header>
+                                    <!-- 分组项：无背景 Expander（与其他一级菜单样式一致：透明底、文字左对齐、悬停同款底色） -->
+                                    <Expander IsExpanded="{Binding IsExpanded, Mode=TwoWay}" Margin="0,0,0,4"
+                                              Visibility="{Binding Children, Converter={StaticResource NullToVisibility}}"
+                                              Style="{StaticResource NavGroupExpander}">
                                         <ItemsControl ItemsSource="{Binding Children}" Margin="12,0,0,0"
                                                       ItemTemplate="{StaticResource NavLeafTemplate}" />
                                     </Expander>

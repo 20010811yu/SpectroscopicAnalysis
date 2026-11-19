@@ -65,8 +65,8 @@ public sealed partial class MainViewModel : ObservableObject
             Target = productionMonitor,     // 分组头不可点击导航；Target 仅作占位
             Children =
             [
-                new() { Title = "生产监控", Target = productionMonitor },
                 new() { Title = "主控台", Target = console },
+                new() { Title = "生产监控", Target = productionMonitor },
             ],
         };
         var items = new ObservableCollection<NavItem>
@@ -81,8 +81,8 @@ public sealed partial class MainViewModel : ObservableObject
         };
         NavItems = new ReadOnlyObservableCollection<NavItem>(items);
 
-        // 默认落在生产监控（分组的第一个子项）
-        NavigateTo(consoleGroup.Children[0]);
+        // 默认落在生产监控（保持原主页面不变）
+        NavigateTo(consoleGroup.Children.First(c => c.Title == "生产监控"));
         StartClock();
     }
 

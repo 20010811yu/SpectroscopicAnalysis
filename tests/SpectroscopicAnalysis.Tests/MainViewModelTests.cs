@@ -33,8 +33,9 @@ public sealed class MainViewModelTests
         Assert.Equal("主控台 · 生产监控", group.Title);      // 首项为二级分组
         Assert.NotNull(group.Children);
         Assert.Equal(2, group.Children.Count);
-        Assert.True(group.Children[0].IsSelected);           // 默认选中「生产监控」子项
-        Assert.Equal("生产监控", group.Children[0].Title);
+        Assert.True(group.Children[1].IsSelected);           // 默认选中「生产监控」子项（子项顺序：主控台在前）
+        Assert.Equal("生产监控", group.Children[1].Title);
+        Assert.Equal("主控台", group.Children[0].Title);
         Assert.True(group.IsExpanded);                       // 子项导航自动展开分组
     }
 
@@ -48,7 +49,7 @@ public sealed class MainViewModelTests
 
         Assert.IsType<ConsoleViewModel>(main.CurrentViewModel);
         Assert.True(consoleItem.IsSelected);
-        Assert.False(main.NavItems[0].Children![0].IsSelected); // 生产监控子项取消选中
+        Assert.False(main.NavItems[0].Children![1].IsSelected); // 生产监控子项取消选中
     }
 
     [Fact]
@@ -61,7 +62,7 @@ public sealed class MainViewModelTests
 
         Assert.IsType<SctViewModel>(main.CurrentViewModel);
         Assert.True(target.IsSelected);
-        Assert.False(main.NavItems[0].Children![0].IsSelected); // 原选中项（生产监控子项）取消
+        Assert.False(main.NavItems[0].Children![1].IsSelected); // 原选中项（生产监控子项）取消
     }
 
     [Fact]

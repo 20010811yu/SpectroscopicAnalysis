@@ -4,8 +4,6 @@ using System.ComponentModel;
 using System.Windows;
 using System.Windows.Controls;
 using CommunityToolkit.Mvvm.ComponentModel;
-using System.Windows.Controls.Primitives;
-using SpectroscopicAnalysis.Host.LoggingAlarm;
 using SpectroscopicAnalysis.Host.ViewModels;
 using SpectroscopicAnalysis.Host.Views;
 
@@ -23,54 +21,10 @@ public partial class MainWindow : Window
 
     private MainViewModel? _navSource;
 
-    /// <summary>全流程日志（软件上任何按钮操作统一在此留痕）。</summary>
-    private readonly ISystemLogCollector _systemLog;
-
-    /// <summary>页面 VM 类型 → 中文名（操作留痕标注来源页面）。</summary>
-    private static readonly Dictionary<string, string> PageTitles = new()
+    public MainWindow()
     {
-        [nameof(ViewModels.ConsoleViewModel)] = "主控台",
-        [nameof(ViewModels.ProductionMonitorViewModel)] = "生产监控",
-        [nameof(ViewModels.SamplesViewModel)] = "样品档案",
-        [nameof(ViewModels.SctViewModel)] = "SCT 管理",
-        [nameof(ViewModels.CoefficientsViewModel)] = "系数管理",
-        [nameof(ViewModels.AlarmsViewModel)] = "日志报警",
-        [nameof(ViewModels.SettingsViewModel)] = "设置",
-    };
-
-    public MainWindow(ISystemLogCollector systemLog)
-    {
-        _systemLog = systemLog;
         InitializeComponent();
         DataContextChanged += OnDataContextChanged;
-        // 全局按钮操作留痕：冒泡阶段捕获主窗口内所有按钮点击（含已处理事件），统一写全流程日志
-        AddHandler(ButtonBase.ClickEvent, new RoutedEventHandler(OnAnyButtonClick), handledEventsToo: true);
-    }
-
-    /// <summary>任何按钮点击 → 全流程日志「UI操作」类目（内容为按钮文本，附来源页面）。</summary>
-    private void OnAnyButtonClick(object sender, RoutedEventArgs e)
-    {
-        if (e.OriginalSource is not FrameworkElement { } fe || fe is not ButtonBase button)
-        {
-            return;
-        }
-
-        var text = button.Content switch
-        {
-            string str => str,
-            FrameworkElement { } el => el.Tag as string ?? string.Empty,
-            _ => string.Empty,
-        };
-        if (string.IsNullOrWhiteSpace(text))
-        {
-            return;
-        }
-
-        var page = (PageHost.Content as FrameworkElement)?.DataContext?.GetType().Name is { } typeName
-                   && PageTitles.TryGetValue(typeName, out var title)
-            ? title
-            : "主窗口";
-        _systemLog.Log("UI操作", $"{page}：{text}");
     }
 
     private void OnDataContextChanged(object sender, DependencyPropertyChangedEventArgs e)

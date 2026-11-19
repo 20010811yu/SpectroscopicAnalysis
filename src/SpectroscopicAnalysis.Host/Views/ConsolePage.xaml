@@ -10,71 +10,16 @@
                 <TextBlock Text="主控台" Style="{StaticResource Text.PageTitle}" VerticalAlignment="Center" />
             </DockPanel>
 
-            <!-- 顶行双列：左报警面板，右 GNR 光谱仪 + 激光打标（纵向堆叠） -->
+            <!-- 顶行三列：GNR 光谱仪(占位) | 激光打标面板 | 货架示意(5×8) -->
             <Grid Margin="{DynamicResource Spacing.CardGap}">
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="1.2*" MinWidth="320" />
-                    <ColumnDefinition Width="1*" MinWidth="260" />
+                    <ColumnDefinition Width="1*" MinWidth="240" />
+                    <ColumnDefinition Width="1*" MinWidth="240" />
+                    <ColumnDefinition Width="1.4*" MinWidth="360" />
                 </Grid.ColumnDefinitions>
 
-                <!-- 左列：报警面板（ErrorCollector 内存报警表，最新在前；单条/全部确认） -->
-                <Border Grid.Column="0" Style="{StaticResource Card}" Margin="0,0,6,0">
-                    <StackPanel>
-                        <DockPanel Margin="0,0,0,8" LastChildFill="False">
-                            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
-                                <TextBlock Text="{Binding UnackAlarmCount, StringFormat='未确认 {0}'}" Style="{StaticResource Text.Caption}"
-                                           VerticalAlignment="Center" Margin="0,0,8,0" />
-                                <Button Content="全部确认" Command="{Binding AckAllAlarmsCommand}" Style="{StaticResource SecondaryBtn}" Padding="10,5" />
-                            </StackPanel>
-                            <TextBlock Text="报警面板" Style="{StaticResource Text.CardTitle}" VerticalAlignment="Center" />
-                        </DockPanel>
-                        <TextBlock Text="暂无报警记录" Style="{StaticResource Text.Caption}"
-                                   Visibility="{Binding HasAlarms, Converter={StaticResource BoolToVisibility.Inverse}}" />
-                        <ScrollViewer VerticalScrollBarVisibility="Auto" MaxHeight="360"
-                                      Visibility="{Binding HasAlarms, Converter={StaticResource BoolToVisibility}}">
-                            <ItemsControl ItemsSource="{Binding AlarmRows}">
-                                <ItemsControl.ItemTemplate>
-                                    <DataTemplate>
-                                        <Border Margin="0,0,0,6" Padding="12,6" HorizontalAlignment="Stretch">
-                                            <Border.Style>
-                                                <Style TargetType="Border" BasedOn="{StaticResource Badge.Base}">
-                                                    <Setter Property="Background" Value="{DynamicResource Brush.Badge.Failed.Bg}" />
-                                                    <Style.Triggers>
-                                                        <DataTrigger Binding="{Binding IsAcknowledged}" Value="True">
-                                                            <Setter Property="Opacity" Value="0.55" />
-                                                        </DataTrigger>
-                                                    </Style.Triggers>
-                                                </Style>
-                                            </Border.Style>
-                                            <DockPanel LastChildFill="True">
-                                                <Button DockPanel.Dock="Right" Content="确认" VerticalAlignment="Center" Margin="8,0,0,0" Padding="8,2"
-                                                        Command="{Binding DataContext.AckAlarmCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
-                                                        CommandParameter="{Binding AlarmId}"
-                                                        Visibility="{Binding IsAcknowledged, Converter={StaticResource BoolToVisibility.Inverse}}" />
-                                                <TextBlock Style="{StaticResource Text.Caption}" TextWrapping="Wrap" VerticalAlignment="Center"
-                                                           Foreground="{DynamicResource Brush.Badge.Failed.Fg}">
-                                                    <TextBlock.Text>
-                                                        <MultiBinding StringFormat="✖ {0}  错误码 {1}  {2}（样品 {3}）">
-                                                            <Binding Path="TimeText" />
-                                                            <Binding Path="ErrorCodeText" />
-                                                            <Binding Path="MessageText" />
-                                                            <Binding Path="SampleIdText" />
-                                                        </MultiBinding>
-                                                    </TextBlock.Text>
-                                                </TextBlock>
-                                            </DockPanel>
-                                        </Border>
-                                    </DataTemplate>
-                                </ItemsControl.ItemTemplate>
-                            </ItemsControl>
-                        </ScrollViewer>
-                    </StackPanel>
-                </Border>
-
-                <!-- 右列：GNR 光谱仪（静态占位）+ 激光打标面板 纵向堆叠 -->
-                <StackPanel Grid.Column="1" Margin="6,0,0,0">
-                    <!-- GNR 光谱仪：真实协议（100 STATUS_REQUEST）接入前为静态占位 -->
-                    <Border Style="{StaticResource Card}" Margin="0,0,0,6">
+                <!-- 列0：GNR 光谱仪（静态占位，真实协议 100 接入后联动） -->
+                    <Border Grid.Column="0" Style="{StaticResource Card}" Margin="0,0,6,0">
                         <StackPanel>
                             <DockPanel Margin="0,0,0,8" LastChildFill="False">
                                 <Border DockPanel.Dock="Right" Style="{StaticResource Badge.Base}" Background="{DynamicResource Brush.Badge.Running.Bg}">
@@ -103,8 +48,8 @@
                         </StackPanel>
                     </Border>
 
-                    <!-- 激光打标面板：打标页 ViewModel 单例只读透传 -->
-                    <Border Style="{StaticResource Card}">
+                <!-- 列1：激光打标面板（打标页 ViewModel 单例只读透传） -->
+                    <Border Grid.Column="1" Style="{StaticResource Card}" Margin="6,0,6,0">
                         <StackPanel>
                             <TextBlock Text="激光打标" Style="{StaticResource Text.CardTitle}" Margin="0,0,0,8" />
                             <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
@@ -123,70 +68,69 @@
                             <TextBlock Text="编辑请前往「激光打标」页面" Style="{StaticResource Text.Caption}" Margin="0,8,0,0" />
                         </StackPanel>
                     </Border>
-                </StackPanel>
-            </Grid>
 
-            <!-- 货架示意（5 行×8 列）：占用=蓝底显示架位号，空闲=描边；示意外架位单独计数 -->
-            <Border Style="{StaticResource Card}" Margin="{DynamicResource Spacing.CardGap}">
-                <StackPanel>
-                    <DockPanel Margin="0,0,0,8" LastChildFill="False">
-                        <TextBlock DockPanel.Dock="Right" Style="{StaticResource Text.Caption}" VerticalAlignment="Center"
-                                   Text="{Binding RackOutOfRangeCount, StringFormat='示意范围外占用 {0} 位'}" />
-                        <TextBlock Text="货架示意（A–E × 1–8）" Style="{StaticResource Text.CardTitle}" VerticalAlignment="Center" />
-                    </DockPanel>
-                    <ItemsControl ItemsSource="{Binding RackRows}">
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate>
-                                <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
-                                    <TextBlock Text="{Binding RowLabel}" Style="{StaticResource Text.Caption}" Width="20"
-                                               VerticalAlignment="Center" HorizontalAlignment="Center" />
-                                    <ItemsControl ItemsSource="{Binding Slots}">
-                                        <ItemsControl.ItemsPanel>
-                                            <ItemsPanelTemplate>
-                                                <UniformGrid Columns="8" />
-                                            </ItemsPanelTemplate>
-                                        </ItemsControl.ItemsPanel>
-                                        <ItemsControl.ItemTemplate>
-                                            <DataTemplate>
-                                                <Border Margin="0,0,6,0" Padding="8,4" CornerRadius="4" BorderThickness="1" MinWidth="56"
-                                                        ToolTip="{Binding SampleIdText}">
-                                                    <Border.Style>
-                                                        <Style TargetType="Border">
-                                                            <Setter Property="Background" Value="Transparent" />
-                                                            <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border.Default}" />
-                                                            <Style.Triggers>
-                                                                <DataTrigger Binding="{Binding IsOccupied}" Value="True">
-                                                                    <Setter Property="Background" Value="{DynamicResource Brush.Badge.Info.Bg}" />
-                                                                    <Setter Property="BorderBrush" Value="{DynamicResource Brush.Badge.Info.Bg}" />
-                                                                </DataTrigger>
-                                                            </Style.Triggers>
-                                                        </Style>
-                                                    </Border.Style>
-                                                    <TextBlock HorizontalAlignment="Center">
-                                                        <TextBlock.Style>
-                                                            <Style TargetType="TextBlock" BasedOn="{StaticResource Text.Caption}">
-                                                                <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Secondary}" />
+                <!-- 列2：货架示意（5 行×8 列，占用=蓝底显示架位号，空闲=描边；示意外架位单独计数） -->
+                <Border Grid.Column="2" Style="{StaticResource Card}" Margin="6,0,0,0">
+                    <StackPanel>
+                        <DockPanel Margin="0,0,0,8" LastChildFill="False">
+                            <TextBlock DockPanel.Dock="Right" Style="{StaticResource Text.Caption}" VerticalAlignment="Center"
+                                       Text="{Binding RackOutOfRangeCount, StringFormat='示意范围外占用 {0} 位'}" />
+                            <TextBlock Text="货架示意（A–E × 1–8）" Style="{StaticResource Text.CardTitle}" VerticalAlignment="Center" />
+                        </DockPanel>
+                        <ItemsControl ItemsSource="{Binding RackRows}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
+                                        <TextBlock Text="{Binding RowLabel}" Style="{StaticResource Text.Caption}" Width="20"
+                                                   VerticalAlignment="Center" HorizontalAlignment="Center" />
+                                        <ItemsControl ItemsSource="{Binding Slots}">
+                                            <ItemsControl.ItemsPanel>
+                                                <ItemsPanelTemplate>
+                                                    <UniformGrid Columns="8" />
+                                                </ItemsPanelTemplate>
+                                            </ItemsControl.ItemsPanel>
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate>
+                                                    <Border Margin="0,0,6,0" Padding="8,4" CornerRadius="4" BorderThickness="1" MinWidth="56"
+                                                            ToolTip="{Binding SampleIdText}">
+                                                        <Border.Style>
+                                                            <Style TargetType="Border">
+                                                                <Setter Property="Background" Value="Transparent" />
+                                                                <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border.Default}" />
                                                                 <Style.Triggers>
                                                                     <DataTrigger Binding="{Binding IsOccupied}" Value="True">
-                                                                        <Setter Property="Foreground" Value="{DynamicResource Brush.Badge.Info.Fg}" />
+                                                                        <Setter Property="Background" Value="{DynamicResource Brush.Badge.Info.Bg}" />
+                                                                        <Setter Property="BorderBrush" Value="{DynamicResource Brush.Badge.Info.Bg}" />
                                                                     </DataTrigger>
                                                                 </Style.Triggers>
                                                             </Style>
-                                                        </TextBlock.Style>
-                                                        <Run Text="{Binding PositionCode, Mode=OneWay}" />
-                                                    </TextBlock>
-                                                </Border>
-                                            </DataTemplate>
-                                        </ItemsControl.ItemTemplate>
-                                    </ItemsControl>
-                                </StackPanel>
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
-                    <TextBlock Style="{StaticResource Text.Caption}" Margin="0,4,0,0"
-                               Text="{Binding RackOccupiedCount, StringFormat='占用 {0} / {1} 位'}" />
-                </StackPanel>
-            </Border>
+                                                        </Border.Style>
+                                                        <TextBlock HorizontalAlignment="Center">
+                                                            <TextBlock.Style>
+                                                                <Style TargetType="TextBlock" BasedOn="{StaticResource Text.Caption}">
+                                                                    <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Secondary}" />
+                                                                    <Style.Triggers>
+                                                                        <DataTrigger Binding="{Binding IsOccupied}" Value="True">
+                                                                            <Setter Property="Foreground" Value="{DynamicResource Brush.Badge.Info.Fg}" />
+                                                                        </DataTrigger>
+                                                                    </Style.Triggers>
+                                                                </Style>
+                                                            </TextBlock.Style>
+                                                            <Run Text="{Binding PositionCode, Mode=OneWay}" />
+                                                        </TextBlock>
+                                                    </Border>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </StackPanel>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                        <TextBlock Style="{StaticResource Text.Caption}" Margin="0,4,0,0"
+                                   Text="{Binding RackOccupiedCount, StringFormat='占用 {0} / {1} 位'}" />
+                    </StackPanel>
+                </Border>
+            </Grid>
 
             <!-- 全流程运行日志：SystemLogCollector（应用/PLC连接/VM方案加载/设备操作/报警），最新在前 -->
             <Border Style="{StaticResource Card}" Margin="{DynamicResource Spacing.CardGap}">
@@ -229,6 +173,62 @@
                     </ScrollViewer>
                 </StackPanel>
             </Border>
+
+
+            <!-- 报警面板（ErrorCollector 内存报警表，最新在前；单条/全部确认） -->
+            <Border Style="{StaticResource Card}" Margin="{DynamicResource Spacing.CardGap}">
+                <StackPanel>
+                    <DockPanel Margin="0,0,0,8" LastChildFill="False">
+                        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+                            <TextBlock Text="{Binding UnackAlarmCount, StringFormat='未确认 {0}'}" Style="{StaticResource Text.Caption}"
+                                       VerticalAlignment="Center" Margin="0,0,8,0" />
+                            <Button Content="全部确认" Command="{Binding AckAllAlarmsCommand}" Style="{StaticResource SecondaryBtn}" Padding="10,5" />
+                        </StackPanel>
+                        <TextBlock Text="报警面板" Style="{StaticResource Text.CardTitle}" VerticalAlignment="Center" />
+                    </DockPanel>
+                    <TextBlock Text="暂无报警记录" Style="{StaticResource Text.Caption}"
+                               Visibility="{Binding HasAlarms, Converter={StaticResource BoolToVisibility.Inverse}}" />
+                    <ScrollViewer VerticalScrollBarVisibility="Auto" MaxHeight="360"
+                                  Visibility="{Binding HasAlarms, Converter={StaticResource BoolToVisibility}}">
+                        <ItemsControl ItemsSource="{Binding AlarmRows}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Margin="0,0,0,6" Padding="12,6" HorizontalAlignment="Stretch">
+                                        <Border.Style>
+                                            <Style TargetType="Border" BasedOn="{StaticResource Badge.Base}">
+                                                <Setter Property="Background" Value="{DynamicResource Brush.Badge.Failed.Bg}" />
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding IsAcknowledged}" Value="True">
+                                                        <Setter Property="Opacity" Value="0.55" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Border.Style>
+                                        <DockPanel LastChildFill="True">
+                                            <Button DockPanel.Dock="Right" Content="确认" VerticalAlignment="Center" Margin="8,0,0,0" Padding="8,2"
+                                                    Command="{Binding DataContext.AckAlarmCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                    CommandParameter="{Binding AlarmId}"
+                                                    Visibility="{Binding IsAcknowledged, Converter={StaticResource BoolToVisibility.Inverse}}" />
+                                            <TextBlock Style="{StaticResource Text.Caption}" TextWrapping="Wrap" VerticalAlignment="Center"
+                                                       Foreground="{DynamicResource Brush.Badge.Failed.Fg}">
+                                                <TextBlock.Text>
+                                                    <MultiBinding StringFormat="✖ {0}  错误码 {1}  {2}（样品 {3}）">
+                                                        <Binding Path="TimeText" />
+                                                        <Binding Path="ErrorCodeText" />
+                                                        <Binding Path="MessageText" />
+                                                        <Binding Path="SampleIdText" />
+                                                    </MultiBinding>
+                                                </TextBlock.Text>
+                                            </TextBlock>
+                                        </DockPanel>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+                </StackPanel>
+            </Border>
+
 
         </StackPanel>
     </ScrollViewer>

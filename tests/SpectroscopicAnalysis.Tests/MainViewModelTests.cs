@@ -29,13 +29,13 @@ public sealed class MainViewModelTests
     {
         var main = CreateMain();
 
-        Assert.IsType<ProductionMonitorViewModel>(main.CurrentViewModel);
+        Assert.IsType<ConsoleViewModel>(main.CurrentViewModel);
         var group = main.NavItems[0];
         Assert.Equal("主控台 · 生产监控", group.Title);      // 首项为二级分组
         Assert.NotNull(group.Children);
         Assert.Equal(2, group.Children.Count);
-        Assert.True(group.Children[1].IsSelected);           // 默认选中「生产监控」子项（子项顺序：主控台在前）
-        Assert.Equal("生产监控", group.Children[1].Title);
+        Assert.True(group.Children[0].IsSelected);           // 默认选中「主控台」子项（子项顺序：主控台在前）
+        Assert.Equal("主控台", group.Children[0].Title);
         Assert.Equal("主控台", group.Children[0].Title);
         Assert.True(group.IsExpanded);                       // 子项导航自动展开分组
     }
@@ -71,7 +71,7 @@ public sealed class MainViewModelTests
     {
         var main = CreateMain();
         main.NavigateToCommand.Execute(null); // 不应抛异常，状态不变
-        Assert.IsType<ProductionMonitorViewModel>(main.CurrentViewModel);
+        Assert.IsType<ConsoleViewModel>(main.CurrentViewModel);
     }
 
     [Theory]

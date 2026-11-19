@@ -81,8 +81,8 @@ public sealed partial class MainViewModel : ObservableObject
         };
         NavItems = new ReadOnlyObservableCollection<NavItem>(items);
 
-        // 默认落在生产监控（保持原主页面不变）
-        NavigateTo(consoleGroup.Children.First(c => c.Title == "生产监控"));
+        // 默认落在主控台
+        NavigateTo(consoleGroup.Children.First(c => c.Title == "主控台"));
         StartClock();
     }
 

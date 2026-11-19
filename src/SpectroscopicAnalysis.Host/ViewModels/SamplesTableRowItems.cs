@@ -58,3 +58,16 @@ public sealed class OperationLogRowItem
     /// <summary>原始操作时间串（日期过滤/排序用；不绑定 UI）。</summary>
     public string RawOperationTime { get; init; } = string.Empty;
 }
+
+/// <summary>报警行（主控台「报警模块」，来源 ErrorCollector 内存报警表快照，最新在前）。</summary>
+public sealed class AlarmRowItem
+{
+    public long AlarmId { get; init; }
+    public string TimeText { get; init; } = string.Empty;
+    public string ErrorCodeText { get; init; } = string.Empty;
+    public string MessageText { get; init; } = string.Empty;
+    /// <summary>样品上下文（无关联显示 —）。</summary>
+    public string SampleIdText { get; init; } = "—";
+    /// <summary>是否已确认（视图淡化徽章并隐藏确认按钮）。</summary>
+    public bool IsAcknowledged { get; init; }
+}

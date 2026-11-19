@@ -34,13 +34,14 @@ public sealed class DashboardViewModelTests
     internal static DashboardViewModel CreateVm(
         FakeSctOperationLogRepository? logs = null,
         FakeDialogService? dialogs = null,
-        FakeSampleRegistrationService? registration = null)
+        FakeSampleRegistrationService? registration = null,
+        FakeErrorCollector? errors = null)
     {
         var repo = logs ?? new FakeSctOperationLogRepository();
         var dialogSvc = dialogs ?? new FakeDialogService();
         var regSvc = registration ?? new FakeSampleRegistrationService();
         return new DashboardViewModel(repo, new FakeSampleRepository(), new FakeProductionSampleRepository(),
-            new FakeSctStrategyEngine(), new FakeWorkflowOrchestrator(), new FakeUiDispatcher(), new FakeErrorCollector(),
+            new FakeSctStrategyEngine(), new FakeWorkflowOrchestrator(), new FakeUiDispatcher(), errors ?? new FakeErrorCollector(),
             dialogSvc, regSvc);
     }
 
@@ -256,5 +257,58 @@ public sealed class DashboardViewModelTests
         {
             await task;
         }
+    }
+
+    // ==================== 报警模块（报警列表加载与确认） ====================
+
+    [Fact]
+    public void RefreshAlarms_加载报警快照并映射字段()
+    {
+        var errors = new FakeErrorCollector();
+        errors.Collect(1001, "机器人抓取失败", "P-001");
+        errors.Collect(5001, "控制样偏差超限");
+        var vm = CreateVm(errors: errors);
+
+        vm.RefreshAlarms();
+
+        Assert.True(vm.HasAlarms);
+        Assert.Equal(2, vm.AlarmRows.Count);            // 最新在前
+        Assert.Equal("5001", vm.AlarmRows[0].ErrorCodeText);
+        Assert.Equal("控制样偏差超限", vm.AlarmRows[0].MessageText);
+        Assert.Equal("—", vm.AlarmRows[0].SampleIdText); // 无样品上下文显示占位
+        Assert.Equal("P-001", vm.AlarmRows[1].SampleIdText);
+        Assert.All(vm.AlarmRows, r => Assert.False(r.IsAcknowledged));
+    }
+
+    [Fact]
+    public void AckAlarm_单条确认后列表与计数同步()
+    {
+        var errors = new FakeErrorCollector();
+        errors.Collect(1001, "机器人抓取失败", "P-001");
+        errors.Collect(1002, "激发通信失败");
+        var vm = CreateVm(errors: errors);
+        vm.RefreshAlarms();
+
+        var acked = vm.AlarmRows.First(r => r.ErrorCodeText == "1001");   // 任意确认一条
+        vm.AckAlarmCommand.Execute(acked.AlarmId.ToString());
+
+        Assert.Equal(1, vm.UnackAlarmCount);
+        Assert.True(vm.AlarmRows.Single(r => r.AlarmId == acked.AlarmId).IsAcknowledged);
+        Assert.False(vm.AlarmRows.Single(r => r.ErrorCodeText == "1002").IsAcknowledged);
+    }
+
+    [Fact]
+    public void AckAllAlarms_全部确认后未确认计数清零()
+    {
+        var errors = new FakeErrorCollector();
+        errors.Collect(1001, "抓取失败");
+        errors.Collect(1002, "激发失败");
+        var vm = CreateVm(errors: errors);
+        vm.RefreshAlarms();
+
+        vm.AckAllAlarmsCommand.Execute(null);
+
+        Assert.Equal(0, vm.UnackAlarmCount);
+        Assert.All(vm.AlarmRows, r => Assert.True(r.IsAcknowledged));
     }
 }

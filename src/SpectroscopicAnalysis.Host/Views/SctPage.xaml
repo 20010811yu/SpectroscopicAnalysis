@@ -174,8 +174,10 @@
                                 ToolTip="提交测高任务到策略引擎队列（需选中行）" Style="{StaticResource SecondaryBtn}" Margin="16,0,0,0" Padding="10,5" />
                         <Button Content="手动标准化" Command="{Binding TriggerStandardizationCommand}"
                                 ToolTip="提交标准化任务到策略引擎队列（需选中控样或类型标准化样）" Style="{StaticResource PrimaryBtn}" Margin="8,0,0,0" Padding="10,5" />
-                        <Button Content="手动控制检查" Command="{Binding TriggerControlCheckCommand}"
-                                ToolTip="提交控制检查任务到策略引擎队列（需选中检查样）" Style="{StaticResource PrimaryBtn}" Margin="8,0,0,0" Padding="10,5" />
+                        <Button Content="手动校正检查" Command="{Binding TriggerControlCheckCommand}"
+                                ToolTip="提交校正检查任务到策略引擎队列（需选中检查样或类型标准化样）" Style="{StaticResource PrimaryBtn}" Margin="8,0,0,0" Padding="10,5" />
+                        <Button Content="手动类型标准化" Command="{Binding TriggerTypeStandardizeCommand}"
+                                ToolTip="提交类型标准化任务到策略引擎队列（需选中检查样或类型标准化样）" Style="{StaticResource PrimaryBtn}" Margin="8,0,0,0" Padding="10,5" />
                     </StackPanel>
                 </DockPanel>
 

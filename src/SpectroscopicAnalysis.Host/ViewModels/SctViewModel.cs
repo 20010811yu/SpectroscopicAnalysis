@@ -835,7 +835,7 @@ public sealed partial class SctViewModel : ObservableObject, IPageLifecycle
         _ui.Invoke(() => PolicySavedMessage = $"✓ 标准化任务已提交队列（{row.SampleId}）");
     }
 
-    /// <summary>手动触发控制检查（提交 ControlCheck 任务；仅允许对检查样触发，须先选中行）。</summary>
+    /// <summary>手动触发校正检查（提交 ControlCheck 任务；检查样/类型标准化样均可，须先选中行）。</summary>
     [RelayCommand(CanExecute = nameof(CanTriggerAnalysis))]
     private void TriggerControlCheck()
     {
@@ -852,14 +852,41 @@ public sealed partial class SctViewModel : ObservableObject, IPageLifecycle
             return;
         }
 
-        if (row.SampleTypeKey != SampleType.Control)
+        if (row.SampleTypeKey is not (SampleType.Control or SampleType.TypeStd))
         {
-            TriggerError = "仅检查样可手动触发控制检查";
+            TriggerError = "仅检查样或类型标准化样可手动触发校正检查";
             return;
         }
 
         _strategyEngine.SubmitTask(SctTaskType.ControlCheck, row.SampleId, "人工触发");
-        _ui.Invoke(() => PolicySavedMessage = $"✓ 控制检查任务已提交队列（{row.SampleId}）");
+        _ui.Invoke(() => PolicySavedMessage = $"✓ 校正检查任务已提交队列（{row.SampleId}）");
+    }
+
+    /// <summary>手动触发类型标准化（提交 TypeStandardize 任务，显式携带选中样品——区别于自动触发的合金选样；检查样/类型标准化样均可，须先选中行）。</summary>
+    [RelayCommand(CanExecute = nameof(CanTriggerAnalysis))]
+    private void TriggerTypeStandardize()
+    {
+        TriggerError = null;
+        if (_strategyEngine is null)
+        {
+            return;
+        }
+
+        var row = SelectedSample;
+        if (row is null)
+        {
+            TriggerError = "请先在列表中选中目标样品";
+            return;
+        }
+
+        if (row.SampleTypeKey is not (SampleType.Control or SampleType.TypeStd))
+        {
+            TriggerError = "仅检查样或类型标准化样可手动触发类型标准化";
+            return;
+        }
+
+        _strategyEngine.SubmitTask(SctTaskType.TypeStandardize, row.SampleId, "人工触发");
+        _ui.Invoke(() => PolicySavedMessage = $"✓ 类型标准化任务已提交队列（{row.SampleId}）");
     }
 
     /// <summary>手动触发测高任务（提交 HeightMeasure 任务到任务队列，需选中目标标样）。</summary>

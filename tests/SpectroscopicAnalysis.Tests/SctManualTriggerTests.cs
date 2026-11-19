@@ -52,6 +52,55 @@ public sealed class SctManualTriggerTests
     }
 
     [Fact]
+    public async Task 类型标准化样_可触发校正检查()
+    {
+        _samples.Store.Add(MakeSample("TS-001", SampleType.TypeStd));
+        var engine = new SctStrategyEngine(_policy, _samples, _logs, _errors);
+        var vm = Create(engine);
+        await vm.LoadCommand.ExecuteAsync(null);
+
+        vm.SelectedSample = vm.SctSamples.First(s => s.SampleId == "TS-001");
+        Assert.True(vm.TriggerControlCheckCommand.CanExecute(null));
+        vm.TriggerControlCheckCommand.Execute(null);
+
+        Assert.True(engine.TryDequeue(out var t));
+        Assert.Equal(SctTaskType.ControlCheck, t.TaskType);
+        Assert.Equal("TS-001", t.SampleId);
+    }
+
+    [Fact]
+    public async Task 检查样_可触发类型标准化并带显式样品()
+    {
+        _samples.Store.Add(MakeSample("CTL-001", SampleType.Control));
+        var engine = new SctStrategyEngine(_policy, _samples, _logs, _errors);
+        var vm = Create(engine);
+        await vm.LoadCommand.ExecuteAsync(null);
+
+        vm.SelectedSample = vm.SctSamples.First(s => s.SampleId == "CTL-001");
+        Assert.True(vm.TriggerTypeStandardizeCommand.CanExecute(null));
+        vm.TriggerTypeStandardizeCommand.Execute(null);
+
+        Assert.True(engine.TryDequeue(out var t));
+        Assert.Equal(SctTaskType.TypeStandardize, t.TaskType);
+        Assert.Equal("CTL-001", t.SampleId);
+    }
+
+    [Fact]
+    public async Task 控样_触发类型标准化被拒()
+    {
+        _samples.Store.Add(MakeSample("SUS-001"));
+        var engine = new SctStrategyEngine(_policy, _samples, _logs, _errors);
+        var vm = Create(engine);
+        await vm.LoadCommand.ExecuteAsync(null);
+
+        vm.SelectedSample = vm.SctSamples.First(s => s.SampleId == "SUS-001");
+        vm.TriggerTypeStandardizeCommand.Execute(null);
+
+        Assert.False(engine.TryDequeue(out _));
+        Assert.Equal("仅检查样或类型标准化样可手动触发类型标准化", vm.TriggerError);
+    }
+
+    [Fact]
     public async Task 测高触发_未选中行禁用_选中后入队带目标样品()
     {
         _samples.Store.Add(MakeSample("SUS-001"));

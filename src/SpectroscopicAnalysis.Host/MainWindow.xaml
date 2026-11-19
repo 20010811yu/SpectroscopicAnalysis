@@ -85,6 +85,7 @@
                                             <StackPanel>
                                                 <ToggleButton IsChecked="{Binding IsExpanded, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}"
                                                               Cursor="Hand" HorizontalContentAlignment="Left"
+                                                              Focusable="False" FocusVisualStyle="{x:Null}"
                                                               Content="{TemplateBinding Header}">
                                                     <ToggleButton.Template>
                                                         <ControlTemplate TargetType="ToggleButton">

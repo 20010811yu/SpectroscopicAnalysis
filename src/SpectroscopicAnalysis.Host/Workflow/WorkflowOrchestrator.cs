@@ -392,8 +392,14 @@ public sealed class WorkflowOrchestrator : IWorkflowOrchestrator
     /// <summary>轨迹审计（任务清单第 12 节：每步动作留痕）。</summary>
     private void WriteTrace(string? sampleId, string operationType, string reason, string resultStatus)
     {
-        // 全流程日志联动：设备操作类目（任务级轨迹，主控台「运行日志」面板数据源之一）
-        _systemLog.Log("设备操作",
+        // 全流程日志联动：按任务类型区分类目（控制样/标准化；其余归设备操作），主控台「运行日志」面板数据源之一
+        var category = operationType switch
+        {
+            SctTaskType.ControlCheck => "控制样",
+            SctTaskType.Standardize or SctTaskType.TypeStandardize => "标准化",
+            _ => "设备操作",
+        };
+        _systemLog.Log(category,
             string.IsNullOrEmpty(sampleId) ? $"{operationType}：{reason}" : $"{operationType}（样品 {sampleId}）：{reason}",
             resultStatus == "Fail" ? "Failed" : "Info");
         try

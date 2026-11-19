@@ -323,7 +323,6 @@ public sealed partial class DashboardViewModel : ObservableObject, IPageLifecycl
                     QueuePendingCount = _engine.GetQueuedTasks().Count;
                     UnackAlarmCount = _errors.UnacknowledgedCount;
                     ControlCountdownText = text;
-                    RefreshAlarms();
                 });
             }
             catch (Exception ex)
@@ -332,60 +331,6 @@ public sealed partial class DashboardViewModel : ObservableObject, IPageLifecycl
                 _errors.Collect(ErrorCodes.UnhandledException, "主控台 KPI 刷新失败", null, ex);
             }
         });
-    }
-
-    // ==================== 报警模块（ErrorCollector 内存报警表快照，最新在前） ====================
-
-    [ObservableProperty]
-    private ObservableCollection<AlarmRowItem> _alarmRows = new();
-
-    /// <summary>是否存在报警（控制占位说明与列表的可见性）。</summary>
-    public bool HasAlarms => AlarmRows.Count > 0;
-
-    /// <summary>刷新报警列表（调用方须已在 UI 线程；数据源为内存快照，直接同步映射；公开供导航/测试确定性刷新）。</summary>
-    public void RefreshAlarms()
-    {
-        var rows = _errors.GetAlarms()
-            .Select(a => new AlarmRowItem
-            {
-                AlarmId = a.AlarmId,
-                TimeText = a.Time.ToString("HH:mm:ss"),
-                ErrorCodeText = a.ErrorCode.ToString(),
-                MessageText = a.Message,
-                SampleIdText = string.IsNullOrEmpty(a.SampleId) ? "—" : a.SampleId,
-                IsAcknowledged = a.IsAcknowledged,
-            })
-            .ToList();
-        AlarmRows = new ObservableCollection<AlarmRowItem>(rows);
-        OnPropertyChanged(nameof(HasAlarms));
-    }
-
-    /// <summary>确认单条报警（刷新列表与未确认计数）。</summary>
-    [RelayCommand]
-    private void AckAlarm(string alarmId)
-    {
-        if (!long.TryParse(alarmId, out var id))
-        {
-            return;
-        }
-
-        _errors.Acknowledge(id);
-        RefreshAlarmState();
-    }
-
-    /// <summary>确认全部报警。</summary>
-    [RelayCommand]
-    private void AckAllAlarms()
-    {
-        _errors.AcknowledgeAll();
-        RefreshAlarmState();
-    }
-
-    /// <summary>确认后同步列表、徽章与 KPI 未确认计数。</summary>
-    private void RefreshAlarmState()
-    {
-        RefreshAlarms();
-        UnackAlarmCount = _errors.UnacknowledgedCount;
     }
 
     // ==================== 样品注册（弹窗） ====================
@@ -452,7 +397,6 @@ public sealed partial class DashboardViewModel : ObservableObject, IPageLifecycl
         RefreshQueue();
         RefreshKpis();
         LoadCommand.Execute(null);
-        RefreshAlarms();
         StartKpiTimer();
     }
 

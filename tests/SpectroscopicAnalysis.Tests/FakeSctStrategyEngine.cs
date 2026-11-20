@@ -20,9 +20,14 @@ internal sealed class FakeSctStrategyEngine : ISctStrategyEngine
         return false;
     }
 
-    public IReadOnlyList<SctTask> GetQueuedTasks() => Array.Empty<SctTask>();
+    public IReadOnlyList<SctTask> GetQueuedTasks() => RecentTasks
+        .Where(t => t.Status == SctTaskStatus.Queued)
+        .ToList();
 
-    public IReadOnlyList<SctTask> GetRecentTasks() => Array.Empty<SctTask>();
+    /// <summary>GetRecentTasks 返回值（测试可预置：验证任务队列展示过滤与排序）。</summary>
+    public List<SctTask> RecentTasks { get; } = new();
+
+    public IReadOnlyList<SctTask> GetRecentTasks() => RecentTasks;
 
     public void CompleteTask(int taskId, bool success, string? error)
     {

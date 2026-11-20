@@ -13,12 +13,13 @@ public sealed class ProductionMonitorViewModelTests
     private static ProductionMonitorViewModel CreateVm(
         FakeDialogService? dialogs = null,
         FakeSampleRegistrationService? registration = null,
-        FakeSctOperationLogRepository? logs = null)
+        FakeSctOperationLogRepository? logs = null,
+        FakeSctStrategyEngine? engine = null)
     {
         var dialogSvc = dialogs ?? new FakeDialogService();
         var regSvc = registration ?? new FakeSampleRegistrationService();
         return new ProductionMonitorViewModel(logs ?? new FakeSctOperationLogRepository(), new FakeSampleRepository(),
-            new FakeProductionSampleRepository(), new FakeSctStrategyEngine(), new FakeWorkflowOrchestrator(),
+            new FakeProductionSampleRepository(), engine ?? new FakeSctStrategyEngine(), new FakeWorkflowOrchestrator(),
             new FakeUiDispatcher(), new FakeErrorCollector(), dialogSvc, regSvc);
     }
 
@@ -79,6 +80,38 @@ public sealed class ProductionMonitorViewModelTests
         Assert.False(form.Confirmed);
         Assert.Equal("样品编号已存在", form.RegisterError);
     }
+
+    /// <summary>等待 fire-and-forget 的队列/KPI 刷新完成（后台取数 + Dispatcher 回 UI，轮询直到两者非默认值或超时）。</summary>
+    [Fact]
+    public async Task Load_任务队列_仅显示等待与进行中且按时间正序()
+    {
+        var engine = new FakeSctStrategyEngine();
+        engine.RecentTasks.AddRange(
+        [
+            MakeTask(1, "P-003", SctTaskStatus.Queued, new DateTime(2026, 11, 20, 9, 10, 0)),
+            MakeTask(2, "P-001", SctTaskStatus.Running, new DateTime(2026, 11, 20, 9, 9, 0)),
+            MakeTask(3, "P-004", SctTaskStatus.Queued, new DateTime(2026, 11, 20, 9, 11, 0)),
+            MakeTask(4, "P-002", SctTaskStatus.Completed, new DateTime(2026, 11, 20, 9, 8, 0)),   // 已完成不显示
+            MakeTask(5, "P-005", SctTaskStatus.Cancelled, new DateTime(2026, 11, 20, 9, 7, 0)),   // 已取消不显示
+        ]);
+        var vm = CreateVm(engine: engine);
+
+        vm.OnNavigatedTo();     // 队列刷新在导航进入时同步执行
+
+        Assert.Equal(3, vm.QueueItems.Count);                                   // 过滤后仅 3 条
+        Assert.Equal(["#2", "#1", "#3"], vm.QueueItems.Select(q => q.TaskIdText));   // 入队时间正序（执行中也在序列内）
+        Assert.DoesNotContain(vm.QueueItems, q => q.StatusText == "已完成");
+    }
+
+    private static SctTask MakeTask(int id, string sampleId, string status, DateTime enqueueTime) => new()
+    {
+        TaskId = id,
+        TaskType = SctTaskType.Production,
+        SampleId = sampleId,
+        Reason = "样品注册自动入队",
+        EnqueueTime = enqueueTime,
+        Status = status,
+    };
 
     /// <summary>等待 fire-and-forget 的队列/KPI 刷新完成（后台取数 + Dispatcher 回 UI，轮询直到两者非默认值或超时）。</summary>
     private static async Task WaitQueueAsync(ProductionMonitorViewModel vm)

@@ -189,7 +189,7 @@ public sealed partial class ProductionMonitorViewModel : ObservableObject, IPage
     /// <summary>页码变化时重切当前页切片。</summary>
     partial void OnQueuePageChanged(int value) => ShowQueuePage(value);
 
-    /// <summary>刷新任务队列快照：执行中任务（编排器 Snapshot）置顶 + 引擎排队任务；StateChanged/导航时同步。</summary>
+    /// <summary>刷新任务队列快照：仅等待（排队中）与进行中（执行中）任务，入队时间正序；StateChanged/导航时同步。</summary>
     private void RefreshQueue()
     {
         string TypeText(string taskType) => taskType switch
@@ -215,7 +215,12 @@ public sealed partial class ProductionMonitorViewModel : ObservableObject, IPage
             nameMap[p.SampleId] = p.SampleName;
         }
 
-        var items = _engine.GetRecentTasks().Select(t => new QueueTaskItem
+        // 只显示等待（排队中）与进行中（执行中）的任务，已完成/失败/已取消不进队列（历史看板归日志页）；
+        // 排序按入队时间正序（先来先执行，与引擎同优先级 FIFO 一致）
+        var items = _engine.GetRecentTasks()
+            .Where(t => t.Status is SctTaskStatus.Queued or SctTaskStatus.Running)
+            .OrderBy(t => t.EnqueueTime)
+            .Select(t => new QueueTaskItem
         {
             TaskIdText = $"#{t.TaskId}",
             TaskTypeText = TypeText(t.TaskType),

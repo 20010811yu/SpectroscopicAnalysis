@@ -1213,6 +1213,12 @@ public sealed partial class SamplesViewModel : ObservableObject, IPageLifecycle
         }
 
         FilterKey = key;
+        if (key == FilterAll)
+        {
+            // 点「全部」= 查看所有数据：清空当前表搜索框（setter 已按表路由触发刷新，HasSearchText 联动水印）
+            SearchText = string.Empty;
+        }
+
         // 切换类型筛选回到第 1 页
         RefreshView(resetPage: true);
     }

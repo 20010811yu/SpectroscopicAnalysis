@@ -300,6 +300,26 @@ public sealed class SamplesViewModelTests
     }
 
     [Fact]
+    public async Task SetFilter_全部时清空搜索框并显示所有数据()
+    {
+        var vm = CreateWith(
+            Make("SUS-001", SampleType.SettingUp),
+            Make("CTL-002", SampleType.Control),
+            Make("TS-6061-01", SampleType.TypeStd));
+        await vm.LoadCommand.ExecuteAsync(null);
+
+        vm.SearchText = "CTL";
+        vm.SearchCommand.Execute(null);     // 搜索过滤后仅剩 1 条
+        Assert.Single(vm.SctSamples);
+
+        vm.SetFilterCommand.Execute(SamplesViewModel.FilterAll);
+
+        Assert.Equal(string.Empty, vm.SearchText);      // 搜索框已清空
+        Assert.False(vm.HasSearchText);                 // 水印恢复
+        Assert.Equal(3, vm.SctSamples.Count);           // 表格显示所有数据
+    }
+
+    [Fact]
     public async Task Load_空库时台账为空()
     {
         var vm = CreateWith();

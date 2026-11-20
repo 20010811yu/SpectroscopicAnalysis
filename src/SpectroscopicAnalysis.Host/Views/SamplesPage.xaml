@@ -152,7 +152,12 @@
                 <!-- 统一搜索框：绑定按表路由的 SearchText，切表时内容与提示词随表切换 -->
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" DockPanel.Dock="Right" Margin="12,0,0,0">
                     <Grid Width="200" VerticalAlignment="Center">
-                        <TextBox Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}" />
+                        <TextBox Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}">
+                            <!-- 搜索框内回车即查询（与「查询」按钮同命令） -->
+                            <TextBox.InputBindings>
+                                <KeyBinding Key="Enter" Command="{Binding SearchCommand}" />
+                            </TextBox.InputBindings>
+                        </TextBox>
                         <!-- 水印提示词：随激活表切换，有关键词时隐藏 -->
                         <TextBlock Margin="4,0,0,0" VerticalAlignment="Center" IsHitTestVisible="False"
                                    Text="{Binding SearchHint}"

@@ -34,11 +34,11 @@ public sealed class SampleRegistrationService : ISampleRegistrationService
     /// <inheritdoc />
     public async Task<string?> RegisterAsync(SampleRegisterForm form)
     {
-        // 表单校验（同步纯逻辑，无需后台线程）
+        // 表单校验（同步纯逻辑，无需后台线程）：填写有误/未填写属用户输入问题，
+        // 仅弹窗内红字提示（RegisterError），不进错误链（不写日志与报警面板）
         var error = ValidateForm(form);
         if (error is not null)
         {
-            _errors.Collect(ErrorCodes.SampleRegisterRejected, error, form.SampleId.Trim());
             return error;
         }
 
@@ -75,7 +75,7 @@ public sealed class SampleRegistrationService : ISampleRegistrationService
         });
         if (dupError is not null)
         {
-            _errors.Collect(ErrorCodes.SampleRegisterRejected, dupError, form.SampleId.Trim());
+            // 编号/架位重复同属填写类错误：仅 UI 提示，不进错误链
             return dupError;
         }
 

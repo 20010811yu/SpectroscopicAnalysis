@@ -52,7 +52,7 @@ public sealed class SampleRegistrationServiceTests
     }
 
     [Fact]
-    public async Task 生产样_缺分析方法被拒并采集错误链()
+    public async Task 生产样_缺分析方法被拒且不进错误链()
     {
         var form = MakeProductionForm();
         form.AnalysisMethod = null;
@@ -61,7 +61,7 @@ public sealed class SampleRegistrationServiceTests
 
         Assert.Equal("请选择分析方法", error);
         Assert.Empty(_production.Store);
-        Assert.Contains(_errors.Collected, c => c.Code == ErrorCodes.SampleRegisterRejected);
+        Assert.Empty(_errors.Collected);        // 填写类错误仅 UI 提示，不写日志与报警面板
     }
 
     [Fact]
@@ -161,6 +161,7 @@ public sealed class SampleRegistrationServiceTests
         Assert.Contains("样品编号已存在：SUS-001", error);
         Assert.Contains("货架位置已占用：A-01", error);
         Assert.Single(_samples.Store);
+        Assert.Empty(_errors.Collected);        // 重复同属填写类错误，不进错误链
     }
 
     [Fact]

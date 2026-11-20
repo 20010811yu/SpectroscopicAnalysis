@@ -703,8 +703,8 @@ public sealed partial class SamplesViewModel : ObservableObject, IPageLifecycle
             });
             if (dupError is not null)
             {
+                // 编号/架位重复同属填写类错误：仅红字提示，不进错误链
                 RegisterError = dupError;
-                _errors.Collect(ErrorCodes.SampleRegisterRejected, dupError, RegSampleId.Trim());
                 return;
             }
 

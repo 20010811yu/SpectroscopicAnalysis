@@ -6,7 +6,9 @@ namespace SpectroscopicAnalysis.Host.LoggingAlarm;
 public static class ErrorCodes
 {
     // 5xxx 数据与业务校验
-    /// <summary>5003 样品入库校验失败（表单校验/编号或架位重复/厚度约束）。</summary>
+    /// <summary>[Deprecated] 5003 样品入库校验失败（表单校验/编号或架位重复/厚度约束）。
+    /// 填写类错误属用户输入问题，不再进错误链（仅 UI 提示，2026-11-20）；保留码段防复用。</summary>
+    [Obsolete("填写类错误不再报警，勿再使用；保留码段防复用")]
     public const int SampleRegisterRejected = 5003;
 
     /// <summary>5004 样品入库写库失败（SQLite 约束/I/O）。</summary>

@@ -314,6 +314,8 @@ public sealed partial class ProductionMonitorViewModel : ObservableObject, IPage
             // 注册成功：入库与入队已完成，刷新队列卡与 KPI（StateChanged 亦会触发，此处即时同步）
             RefreshQueue();
             RefreshKpis();
+            // 注册即写日志（入队审计），生产日志表同步重载，无需切页才更新
+            LoadCommand.Execute(null);
         }
     }
 

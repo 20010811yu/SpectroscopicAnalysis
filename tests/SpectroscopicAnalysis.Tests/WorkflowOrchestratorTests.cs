@@ -92,11 +92,13 @@ public sealed class WorkflowOrchestratorTests
         engine.SubmitTask(SctTaskType.Standardize, "SUS-001", "人工触发");
 
         await orchestrator.StartAsync(CancellationToken.None);
-        await WaitUntilAsync(() => _logs.Store.Any(l => l.TriggerReason == "任务完成"));
+        await WaitUntilAsync(() => _logs.Store.Any(l => l.TriggerReason == "人工触发"));
         await orchestrator.StopAsync(CancellationToken.None);
 
         Assert.Contains(_gateway.SentCycles, c => c.IdCycle == 2 && c.SampleId == "SUS-001");   // ID_CYCLE=2 标准化
-        Assert.Contains(_logs.Store, l => l.TriggerReason == "任务完成" && l.ResultStatus == "Success");
+        // 一行一任务：完成行触发原因=下发原因，且带开始时间（指令下发时刻）
+        Assert.Contains(_logs.Store, l => l.TriggerReason == "人工触发" && l.ResultStatus == "Success" && l.StartTime is not null);
+        Assert.Equal(1, _logs.Store.Count(l => l.OperationType == "Standardization" && l.TriggerReason == "人工触发"));   // 入队行已并入完成行
         // 引擎回喂：标准化完成记录时间 → 定时标准化不再立即到期
         engine.OnTick();
         Assert.False(engine.TryDequeue(out _));
@@ -113,12 +115,12 @@ public sealed class WorkflowOrchestratorTests
         _gateway.SparkSucceeds = false;
         engine.SubmitTask(SctTaskType.ControlCheck, "CTL-001", "人工触发");
         await orchestrator.StartAsync(CancellationToken.None);
-        await WaitUntilAsync(() => _gateway.SentCycles.Any(c => c.IdCycle == 2 && c.SampleId == "SUS-001"));
+        await WaitUntilAsync(() => _logs.Store.Any(l => l.OperationType == "Standardization" && l.TriggerReason == "检查样超差"));
         await orchestrator.StopAsync(CancellationToken.None);
 
-        // 闭环证据：超差日志 + 标准化任务入队日志（检查样超差）+ 标准化下发（ID_CYCLE=2，编排器自动消费）
+        // 闭环证据：超差日志 + 闭环标准化完成行（触发原因=下发原因「检查样超差」，入队行已并入完成行）+ 两次下发
         Assert.Contains(_logs.Store, l => l.OperationType == "ControlCheck" && l.IsPass == false);
-        Assert.Contains(_logs.Store, l => l.OperationType == "Standardization" && l.TriggerReason == "检查样超差");
+        Assert.Contains(_logs.Store, l => l.OperationType == "Standardization" && l.TriggerReason == "检查样超差" && l.StartTime is not null);
         Assert.Contains(_gateway.SentCycles, c => c.IdCycle == 3 && c.SampleId == "CTL-001");
     }
 

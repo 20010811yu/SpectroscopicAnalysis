@@ -108,9 +108,7 @@ public sealed class SctStrategyEngine : ISctStrategyEngine
                 IsRecheck = isRecheck,
             };
             _queue.Add(task);
-            // 入队即流程起点：开始时间 = 入队时刻（生产样即注册提交时刻），与任务 EnqueueTime 一致
-            WriteLog(taskType, sampleId, reason, resultStatus: "Success", isPass: null,
-                startTime: task.EnqueueTime.ToString("yyyy-MM-dd HH:mm:ss"));
+            // 入队不再单独写日志：入队时刻由编排完成行的 StartTime 承载（一行一任务，减少重复记录）
             return task.TaskId;
         }
     }

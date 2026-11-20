@@ -233,7 +233,8 @@ public sealed class WorkflowOrchestrator : IWorkflowOrchestrator
         }
 
         _engine.CompleteTask(task.TaskId, success: true, null);
-        WriteTrace(task.SampleId, task.TaskType, "任务完成", "Success",
+        // 一行一任务：触发原因携带任务下发原因（原入队行信息并入完成行，StartTime=入队/下发时刻）
+        WriteTrace(task.SampleId, task.TaskType, task.Reason, "Success",
             _currentTaskStartTime?.ToString("yyyy-MM-dd HH:mm:ss"));
     }
 

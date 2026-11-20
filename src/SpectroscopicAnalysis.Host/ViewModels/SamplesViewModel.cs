@@ -29,6 +29,12 @@ public sealed partial class SampleRowItem : ObservableObject
     public required string StatusText { get; init; }
     public required string LastHeightText { get; init; }
     public required string LastUseText { get; init; }
+
+    /// <summary>上次测高完整时间（yyyy-MM-dd HH:mm:ss；详情面板用，表格列仍显示短格式）。</summary>
+    public string LastHeightFullText { get; init; } = "—";
+
+    /// <summary>上次使用完整时间（yyyy-MM-dd HH:mm:ss；详情面板用，表格列仍显示短格式）。</summary>
+    public string LastUseFullText { get; init; } = "—";
 }
 
 /// <summary>生产样档案行展示模型（表 Production_Sample）。</summary>
@@ -514,8 +520,8 @@ public sealed partial class SamplesViewModel : ObservableObject, IPageLifecycle
         UsageText = s.UsageText,
         Status = s.Status,
         StatusText = s.StatusText,
-        LastUseText = s.LastUseText,
-        LastHeightText = s.LastHeightText,
+        LastUseText = s.LastUseFullText,      // 详情面板使用完整时间（表格列保持短格式）
+        LastHeightText = s.LastHeightFullText,
         CreatedText = "—",
         RemarkText = "—",
         FailureReasonText = string.Empty,
@@ -1487,5 +1493,7 @@ public sealed partial class SamplesViewModel : ObservableObject, IPageLifecycle
         },
         LastHeightText = s.LastHeightCheckTime?.ToString("MM-dd HH:mm") ?? "—",
         LastUseText = s.LastUseTime?.ToString("MM-dd HH:mm") ?? "—",
+        LastHeightFullText = s.LastHeightCheckTime?.ToString("yyyy-MM-dd HH:mm:ss") ?? "—",
+        LastUseFullText = s.LastUseTime?.ToString("yyyy-MM-dd HH:mm:ss") ?? "—",
     };
 }

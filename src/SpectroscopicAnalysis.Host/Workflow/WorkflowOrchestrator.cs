@@ -48,6 +48,7 @@ public sealed class WorkflowOrchestrator : IWorkflowOrchestrator
         ISctOperationLogRepository logs,
         IErrorCollector errors,
         LoggingAlarm.ISystemLogCollector systemLog,
+        SampleManager.ISampleDataChangeNotifier sampleDataChanged,
         WorkflowOptions? options = null)
     {
         _engine = engine;
@@ -58,8 +59,12 @@ public sealed class WorkflowOrchestrator : IWorkflowOrchestrator
         _logs = logs;
         _errors = errors;
         _systemLog = systemLog;
+        _sampleDataChanged = sampleDataChanged;
         _options = options ?? new WorkflowOptions();
     }
+
+    /// <summary>样品数据变更通知（任务回喂引擎更新样品档案后发布，样品台账类页面即时重载）。</summary>
+    private readonly SampleManager.ISampleDataChangeNotifier _sampleDataChanged;
 
     /// <inheritdoc />
     public WorkflowSnapshot Snapshot
@@ -236,6 +241,8 @@ public sealed class WorkflowOrchestrator : IWorkflowOrchestrator
         // 一行一任务：触发原因携带任务下发原因（原入队行信息并入完成行，StartTime=入队/下发时刻）
         WriteTrace(task.SampleId, task.TaskType, task.Reason, "Success",
             _currentTaskStartTime?.ToString("yyyy-MM-dd HH:mm:ss"));
+        // 任务执行链可能回喂引擎更新样品档案（使用次数/状态/厚度），通知台账类页面重载
+        _sampleDataChanged.NotifySampleDataChanged();
     }
 
     /// <summary>生产任务：Registered→…→Archiving（编排设计文档 §5；激发结果回喂引擎）。</summary>

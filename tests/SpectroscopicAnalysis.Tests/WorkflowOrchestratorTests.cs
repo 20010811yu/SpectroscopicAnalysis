@@ -1,6 +1,7 @@
 using SpectroscopicAnalysis.Host.Data.Models;
 using SpectroscopicAnalysis.Host.DeviceInterface;
 using SpectroscopicAnalysis.Host.LoggingAlarm;
+using SpectroscopicAnalysis.Host.SampleManager;
 using SpectroscopicAnalysis.Host.SctStrategy;
 using SpectroscopicAnalysis.Host.Workflow;
 
@@ -32,7 +33,8 @@ public sealed class WorkflowOrchestratorTests
     {
         var engine = new SctStrategyEngine(_policy, _samples, _logs, _errors);
         var orchestrator = new WorkflowOrchestrator(
-            engine, _gateway, _gateway, _gateway, _gateway, _logs, _errors, new SystemLogCollector(), FastOptions());
+            engine, _gateway, _gateway, _gateway, _gateway, _logs, _errors, new SystemLogCollector(),
+            new SampleDataChangeNotifier(), FastOptions());
         return (engine, orchestrator);
     }
 

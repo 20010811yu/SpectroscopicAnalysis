@@ -91,6 +91,9 @@ public sealed partial class SctViewModel : ObservableObject, IPageLifecycle
     /// <summary>策略引擎（手动触发提交任务；未注入时按钮保持禁用——测试兼容）。</summary>
     private readonly ISctStrategyEngine? _strategyEngine;
 
+    /// <summary>样品数据变更通知（维护操作写库后发布，样品档案等台账页面即时重载；未注入时为本地实例——测试兼容）。</summary>
+    private readonly SampleManager.ISampleDataChangeNotifier _sampleDataChanged;
+
     /// <summary>全部 SCT 标样（非生产样），未筛选。</summary>
     private List<SctRowItem> _allRows = new();
 
@@ -104,7 +107,8 @@ public sealed partial class SctViewModel : ObservableObject, IPageLifecycle
         IUiDispatcher ui,
         IDialogService dialogs,
         IErrorCollector errors,
-        ISctStrategyEngine? strategyEngine = null)
+        ISctStrategyEngine? strategyEngine = null,
+        SampleManager.ISampleDataChangeNotifier? sampleDataChanged = null)
     {
         _samples = samples;
         _logs = logs;
@@ -113,6 +117,9 @@ public sealed partial class SctViewModel : ObservableObject, IPageLifecycle
         _dialogs = dialogs;
         _errors = errors;
         _strategyEngine = strategyEngine;
+        _sampleDataChanged = sampleDataChanged ?? new SampleManager.SampleDataChangeNotifier();
+        // 订阅样品数据变更（编排任务回喂/其他页面维护操作），标样台账即时重载（事件任意线程触发，经 IUiDispatcher 回 UI）
+        _sampleDataChanged.SampleDataChanged += () => _ui.Invoke(() => LoadCommand.Execute(null));
         LoadPolicyToForm();
     }
 
@@ -572,6 +579,7 @@ public sealed partial class SctViewModel : ObservableObject, IPageLifecycle
             IsMeasureOpen = false;
         });
         await LoadCommand.ExecuteAsync(null);
+        _sampleDataChanged.NotifySampleDataChanged();   // 通知样品档案等台账页面重载
     }
 
     // ==================== 阈值调整 ====================
@@ -662,6 +670,7 @@ public sealed partial class SctViewModel : ObservableObject, IPageLifecycle
             IsThresholdOpen = false;
         });
         await LoadCommand.ExecuteAsync(null);
+        _sampleDataChanged.NotifySampleDataChanged();   // 通知样品档案等台账页面重载
     }
 
     // ==================== 启用 / 禁用（危险操作，二次确认） ====================
@@ -706,6 +715,7 @@ public sealed partial class SctViewModel : ObservableObject, IPageLifecycle
         }
 
         await LoadCommand.ExecuteAsync(null);
+        _sampleDataChanged.NotifySampleDataChanged();   // 通知样品档案等台账页面重载
     }
 
     /// <summary>维护类命令可用性：需选中行。</summary>

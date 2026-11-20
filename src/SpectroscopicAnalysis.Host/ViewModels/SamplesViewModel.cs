@@ -865,7 +865,8 @@ public sealed partial class SamplesViewModel : ObservableObject, IPageLifecycle
         ISctStrategyEngine strategyEngine,
         IUiDispatcher ui,
         IDialogService dialogs,
-        IErrorCollector errors)
+        IErrorCollector errors,
+        SampleManager.ISampleDataChangeNotifier? sampleDataChanged = null)
     {
         _samples = samples;
         _production = production;
@@ -877,6 +878,9 @@ public sealed partial class SamplesViewModel : ObservableObject, IPageLifecycle
         _ui = ui;
         _dialogs = dialogs;
         _errors = errors;
+        // 订阅样品数据变更（SCT 维护操作/编排任务回喂），当前激活表即时重载（LoadCommand 内含 IsLoading 防重入）
+        var notifier = sampleDataChanged ?? new SampleManager.SampleDataChangeNotifier();
+        notifier.SampleDataChanged += () => _ui.Invoke(() => LoadCommand.Execute(null));
     }
 
     /// <summary>导航进入时加载（导航路径为 fire-and-forget；测试可 await LoadCommand.ExecuteAsync 保证确定性）。</summary>

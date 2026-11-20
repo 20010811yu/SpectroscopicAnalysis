@@ -300,8 +300,7 @@ public sealed class SamplesViewModelTests
     }
 
     [Fact]
-    public async Task SetFilter_全部时清空搜索框并显示所有数据()
-    {
+    public async Task SetFilter_全部时清空搜索框并显示所有数据()    {
         var vm = CreateWith(
             Make("SUS-001", SampleType.SettingUp),
             Make("CTL-002", SampleType.Control),
@@ -317,6 +316,32 @@ public sealed class SamplesViewModelTests
         Assert.Equal(string.Empty, vm.SearchText);      // 搜索框已清空
         Assert.False(vm.HasSearchText);                 // 水印恢复
         Assert.Equal(3, vm.SctSamples.Count);           // 表格显示所有数据
+    }
+
+    [Fact]
+    public async Task SampleDataChanged_通知后台账即时重载()
+    {
+        var notifier = new SampleDataChangeNotifier();
+        var samples = new FakeSampleRepository();
+        samples.Store.Add(Make("SUS-001", SampleType.SettingUp));
+        var vm = new SamplesViewModel(samples, new FakeProductionSampleRepository(), new FakeCertifiedValueRepository(),
+            new FakeControlLimitRepository(), new FakeCoefficientRepository(), new FakeOperationLogRepository(),
+            new FakeSctStrategyEngine(), new FakeUiDispatcher(), new FakeDialogService(), new FakeErrorCollector(), notifier);
+        await vm.LoadCommand.ExecuteAsync(null);
+        Assert.Equal("9.8 / 12.0", vm.SctSamples.Single(r => r.SampleId == "SUS-001").ThicknessText);
+
+        // 模拟 SCT 管理页维护操作/任务回喂直接改库后发布通知（不经本页导航）
+        samples.Store.Single(s => s.SampleId == "SUS-001").CurrentThickness = 7.7;
+        notifier.NotifySampleDataChanged();
+
+        // 通知触发的重载在后台线程执行，轮询等待其落回 UI（与真实异步刷新语义一致）
+        var deadline = DateTime.UtcNow.AddSeconds(3);
+        while (DateTime.UtcNow < deadline && !vm.SctSamples.Any(r => r.ThicknessText.StartsWith("7.7")))
+        {
+            await Task.Delay(10);
+        }
+
+        Assert.Equal("7.7 / 12.0", vm.SctSamples.Single(r => r.SampleId == "SUS-001").ThicknessText);
     }
 
     [Fact]

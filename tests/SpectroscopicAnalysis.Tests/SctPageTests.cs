@@ -1,5 +1,6 @@
 using System.IO;
 using SpectroscopicAnalysis.Host.Data.Models;
+using SpectroscopicAnalysis.Host.SampleManager;
 using SpectroscopicAnalysis.Host.SctStrategy;
 using SpectroscopicAnalysis.Host.ViewModels;
 
@@ -133,6 +134,27 @@ public sealed class SctPageTests
         Assert.Equal("HeightMeasure", logs.Inserted[0].OperationType);
         Assert.Equal(9, logs.Inserted[0].ThicknessBefore);
         Assert.Equal(9.5, logs.Inserted[0].ThicknessAfter);
+    }
+
+    [Fact]
+    public async Task Measure_完成后发布样品数据变更通知()
+    {
+        var repo = new FakeSampleRepository();
+        repo.Store.Add(MakeSample("SUS-001", status: SampleStatus.NeedMeasure, thickness: 9, minThickness: 5));
+        var notifier = new SampleDataChangeNotifier();
+        var notified = 0;
+        notifier.SampleDataChanged += () => notified++;
+        var vm = new SctViewModel(repo, new FakeOperationLogRepository(), new FakeSctPolicyStore(),
+            new FakeUiDispatcher(), new FakeDialogService(), new FakeErrorCollector(),
+            strategyEngine: null, sampleDataChanged: notifier);
+        await vm.LoadCommand.ExecuteAsync(null);
+        vm.SelectedSample = vm.SctSamples[0];
+
+        vm.OpenMeasureCommand.Execute(null);
+        vm.MeasureThicknessText = "9.5";
+        await vm.ApplyMeasureCommand.ExecuteAsync(null);
+
+        Assert.Equal(1, notified);   // 维护写库后通知样品档案等台账页面重载
         Assert.False(vm.IsMeasureOpen);
     }
 

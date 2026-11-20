@@ -108,12 +108,8 @@ public sealed class WorkflowOrchestratorTests
         Assert.Contains("SUS-001", _samples.SparkedIds);
         Assert.Equal(usageBefore + 1, sample.UsageCount);
         Assert.NotNull(sample.LastUseTime);
-        // 激发结果归档：原始强度按协议原文落库（双存缺口补齐）
-        var result = _production.GetResults("SUS-001").Single();
-        Assert.Equal("1000", result.RawIntensity);
-        Assert.Equal(AnalysisResultStatus.Success, result.ResultStatus);
-        Assert.True(result.IsPass);
-        Assert.NotNull(result.OperationTime);
+        // Analysis_Result 仅归档生产样（表外键引用 Production_Sample）；SCT 样审计在 SCT_OperationLog
+        Assert.Empty(_production.GetResults("SUS-001"));
         // 引擎回喂：标准化完成记录时间 → 定时标准化不再立即到期
         engine.OnTick();
         Assert.False(engine.TryDequeue(out _));
@@ -195,6 +191,33 @@ public sealed class WorkflowOrchestratorTests
     }
 
     // ==================== Snapshot ====================
+
+    [Fact]
+    public async Task 生产任务_激发结果归档生产样()
+    {
+        _production.Store.Add(new ProductionSample
+        {
+            SampleId = "P-001",
+            SampleName = "生产样 1",
+            SampleType = "Production",
+            AssociatedMethod = "M-1",
+            Status = ProductionStatus.Pending,
+            CreatedTime = DateTime.Now,
+        });
+        var (engine, orchestrator) = Create();
+        engine.SubmitTask(SctTaskType.Production, "P-001", "样品注册自动入队");
+
+        await orchestrator.StartAsync(CancellationToken.None);
+        await WaitUntilAsync(() => _production.GetResults("P-001").Any());
+        await orchestrator.StopAsync(CancellationToken.None);
+
+        // 激发结果归档：原始强度按协议原文落库（Analysis_Result 外键引用 Production_Sample）
+        var result = _production.GetResults("P-001").Single();
+        Assert.Equal("1000", result.RawIntensity);
+        Assert.Equal(AnalysisResultStatus.Success, result.ResultStatus);
+        Assert.True(result.IsPass);
+        Assert.NotNull(result.OperationTime);
+    }
 
     [Fact]
     public void 快照_初始态与锁占用()

@@ -61,16 +61,12 @@ public sealed partial class ConsoleViewModel : ObservableObject, IPageLifecycle
     /// <summary>是否存在日志记录（控制占位说明与列表的可见性）。</summary>
     public bool HasSystemLogs => SystemLogRows.Count > 0;
 
-    /// <summary>确认单条报警（刷新列表与计数）。</summary>
+    /// <summary>确认单条报警（刷新列表与计数）。参数类型须与绑定源 AlarmId（long）一致——
+    /// string 参数会在绑定激活时收到 Int64 抛 ArgumentException（UI 线程未处理异常即崩溃）。</summary>
     [RelayCommand]
-    private void AckAlarm(string alarmId)
+    private void AckAlarm(long alarmId)
     {
-        if (!long.TryParse(alarmId, out var id))
-        {
-            return;
-        }
-
-        _errors.Acknowledge(id);
+        _errors.Acknowledge(alarmId);
         RefreshAlarms();
     }
 

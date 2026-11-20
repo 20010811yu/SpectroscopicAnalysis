@@ -391,11 +391,12 @@ public sealed class WorkflowOrchestrator : IWorkflowOrchestrator
     /// <summary>
     /// 激发结果归档（Analysis_Result，原始/校正双存缺口补齐）：原始强度按协议原文落库；
     /// 测定/校正浓度与系数版本待 GNR 真实协议的元素强度解析接入后回填（Stub 阶段为 null）。
-    /// 激发失败不归档（无结果数据，失败已由操作日志留痕）。归档失败进错误链，不阻断流程收尾。
+    /// 仅生产样归档——表外键引用 Production_Sample（任务清单：生产样分析归档）；SCT 样审计在 SCT_OperationLog。
+    /// 激发失败不归档（无结果数据）。归档失败进错误链，不阻断流程收尾。
     /// </summary>
     private void ArchiveSparkResult(string sampleId, SparkResult spark)
     {
-        if (!spark.Success)
+        if (!spark.Success || !_production.GetAll().Any(s => s.SampleId == sampleId))
         {
             return;
         }

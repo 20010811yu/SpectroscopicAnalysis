@@ -47,7 +47,7 @@ public sealed class ConsoleViewModelTests
         vm.OnNavigatedTo();
 
         var acked = vm.AlarmRows[0];
-        vm.AckAlarmCommand.Execute(acked.AlarmId.ToString());
+        vm.AckAlarmCommand.Execute(acked.AlarmId);   // 参数类型与 AlarmId（long）一致，绑定传 Int64 不再抛 ArgumentException
 
         Assert.Equal(1, vm.UnackAlarmCount);
         Assert.True(vm.AlarmRows.Single(r => r.AlarmId == acked.AlarmId).IsAcknowledged);

@@ -48,7 +48,24 @@ internal sealed class FakeSampleRepository : ISctSampleRepository
         Store.RemoveAll(s => s.SampleId == sampleId);
     }
 
-    public void UpdateAfterSpark(string sampleId, double currentThickness, string status, DateTime usedAt) { }
+    /// <summary>激发后持久化（与真实仓储语义一致：次数+1、厚度、状态、上次使用时间）。</summary>
+    public void UpdateAfterSpark(string sampleId, double currentThickness, string status, DateTime usedAt)
+    {
+        var sample = Store.FirstOrDefault(s => s.SampleId == sampleId);
+        if (sample is null)
+        {
+            return;
+        }
+
+        sample.UsageCount++;
+        sample.CurrentThickness = currentThickness;
+        sample.Status = status;
+        sample.LastUseTime = usedAt;
+        SparkedIds.Add(sampleId);
+    }
+
+    /// <summary>UpdateAfterSpark 调用记录（编排器激发落库断言用）。</summary>
+    public List<string> SparkedIds { get; } = new();
 }
 
 /// <summary>Fake 调度器：同步执行（保证测试确定性）。</summary>

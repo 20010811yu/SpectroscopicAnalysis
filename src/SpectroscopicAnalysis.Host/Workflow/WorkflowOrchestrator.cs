@@ -18,6 +18,7 @@ public sealed class WorkflowOrchestrator : IWorkflowOrchestrator
     private readonly IGetSafetyStatus _safety;
     private readonly ISpectrometer _spectrometer;
     private readonly ISctOperationLogRepository _logs;
+    private readonly ISctSampleRepository _samples;
     private readonly IErrorCollector _errors;
     private readonly LoggingAlarm.ISystemLogCollector _systemLog;
     private readonly WorkflowOptions _options;
@@ -46,6 +47,7 @@ public sealed class WorkflowOrchestrator : IWorkflowOrchestrator
         IGetSafetyStatus safety,
         ISpectrometer spectrometer,
         ISctOperationLogRepository logs,
+        ISctSampleRepository samples,
         IErrorCollector errors,
         LoggingAlarm.ISystemLogCollector systemLog,
         SampleManager.ISampleDataChangeNotifier sampleDataChanged,
@@ -57,6 +59,7 @@ public sealed class WorkflowOrchestrator : IWorkflowOrchestrator
         _safety = safety;
         _spectrometer = spectrometer;
         _logs = logs;
+        _samples = samples;
         _errors = errors;
         _systemLog = systemLog;
         _sampleDataChanged = sampleDataChanged;
@@ -298,6 +301,7 @@ public sealed class WorkflowOrchestrator : IWorkflowOrchestrator
             await _spectrometer.ReadResultAsync(ct);
             return true;
         }, ct);
+        PersistSparkUsage(sampleId);   // 激发成功：使用次数+1、上次使用时间落库（先于引擎回喂，阈值判定需最新次数）
 
         if (withCoeffUpdate)
         {
@@ -342,9 +346,36 @@ public sealed class WorkflowOrchestrator : IWorkflowOrchestrator
             await _spectrometer.TriggerSparkAsync(sampleId, ct);
             return await _spectrometer.ReadResultAsync(ct);
         }, ct);
+        if (spark.Success)
+        {
+            PersistSparkUsage(sampleId);   // 激发成功：使用次数+1、上次使用时间落库（先于引擎回喂）
+        }
 
         await EnterSubStateAsync(SctSubState.Returning, ct);
         return spark.Success;
+    }
+
+    /// <summary>
+    /// 激发成功后持久化使用记录（仓储事务：使用次数+1、上次使用时间；厚度/状态 Stub 阶段保持原值，
+    /// 真实激发后厚度待激发结果计算落地后回填）。生产样无 SCT 档案，跳过。
+    /// </summary>
+    private void PersistSparkUsage(string sampleId)
+    {
+        try
+        {
+            var sample = _samples.GetById(sampleId);
+            if (sample is null)
+            {
+                return;
+            }
+
+            _samples.UpdateAfterSpark(sampleId, sample.CurrentThickness, sample.Status, DateTime.Now);
+        }
+        catch (Exception ex)
+        {
+            // 档案更新失败不阻断流程收尾，但必须进错误链（禁止吞异常）
+            _errors.Collect(ErrorCodes.SctSampleMaintainFailed, "激发后样品档案更新失败", sampleId, ex);
+        }
     }
 
     /// <summary>测高任务：不激发，回读厚度回填策略引擎（编排设计文档 §6 特殊流）。</summary>

@@ -33,7 +33,7 @@ public sealed class WorkflowOrchestratorTests
     {
         var engine = new SctStrategyEngine(_policy, _samples, _logs, _errors);
         var orchestrator = new WorkflowOrchestrator(
-            engine, _gateway, _gateway, _gateway, _gateway, _logs, _errors, new SystemLogCollector(),
+            engine, _gateway, _gateway, _gateway, _gateway, _logs, _samples, _errors, new SystemLogCollector(),
             new SampleDataChangeNotifier(), FastOptions());
         return (engine, orchestrator);
     }
@@ -90,6 +90,7 @@ public sealed class WorkflowOrchestratorTests
     public async Task 标准化任务_ID_CYCLE映射与回喂引擎()
     {
         _samples.Store.Add(MakeSample("SUS-001"));
+        var usageBefore = _samples.GetById("SUS-001")!.UsageCount;
         var (engine, orchestrator) = Create();
         engine.SubmitTask(SctTaskType.Standardize, "SUS-001", "人工触发");
 
@@ -101,6 +102,11 @@ public sealed class WorkflowOrchestratorTests
         // 一行一任务：完成行触发原因=下发原因，且带开始时间（指令下发时刻）
         Assert.Contains(_logs.Store, l => l.TriggerReason == "人工触发" && l.ResultStatus == "Success" && l.StartTime is not null);
         Assert.Equal(1, _logs.Store.Count(l => l.OperationType == "Standardization" && l.TriggerReason == "人工触发"));   // 入队行已并入完成行
+        // 激发后档案落库：使用次数+1、上次使用时间刷新（修复台账「上次使用」不更新缺口）
+        var sample = _samples.GetById("SUS-001")!;
+        Assert.Contains("SUS-001", _samples.SparkedIds);
+        Assert.Equal(usageBefore + 1, sample.UsageCount);
+        Assert.NotNull(sample.LastUseTime);
         // 引擎回喂：标准化完成记录时间 → 定时标准化不再立即到期
         engine.OnTick();
         Assert.False(engine.TryDequeue(out _));

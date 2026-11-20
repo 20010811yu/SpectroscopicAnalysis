@@ -45,6 +45,10 @@ public sealed partial class MainViewModel : ObservableObject
     [ObservableProperty]
     private string _clockText = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
 
+    /// <summary>激光打标机在线状态（设备常驻栏状态点数据源）：EzCad2 进程存活 = 在线，未启动/已退出 = 掉线。</summary>
+    [ObservableProperty]
+    private bool _laserOnline;
+
     /// <summary>导航项（静态七项，无需变更通知；首项为二级分组）。</summary>
     public ReadOnlyObservableCollection<NavItem> NavItems { get; }
 
@@ -55,7 +59,9 @@ public sealed partial class MainViewModel : ObservableObject
         SctViewModel sct,
         CoefficientsViewModel coefficients,
         AlarmsViewModel alarms,
-        SettingsViewModel settings)
+        SettingsViewModel settings,
+        Vision.IEzCad2Controller ezCad2,
+        Ui.IUiDispatcher ui)
     {
         // 二级分组「主控台 · 生产监控」：生产监控（当前任务/KPI/任务队列）+ 主控台（运行日志/报警面板）
         var consoleGroup = new NavItem
@@ -82,6 +88,10 @@ public sealed partial class MainViewModel : ObservableObject
         // 默认落在主控台
         NavigateTo(consoleGroup.Children.First(c => c.Title == "主控台"));
         StartClock();
+
+        // 激光打标机在线状态：初始取当前值；Exited 事件可能在任意线程，经 IUiDispatcher 切回 UI 线程
+        LaserOnline = ezCad2.IsOnline;
+        ezCad2.OnlineStateChanged += () => ui.Invoke(() => LaserOnline = ezCad2.IsOnline);
     }
 
     /// <summary>实时时钟刷新周期（秒；展示精度为分钟，1 秒节拍保证跨分即刻更新）。</summary>

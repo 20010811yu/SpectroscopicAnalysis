@@ -16,6 +16,12 @@ public interface IEzCad2Controller
 {
     /// <summary>切换打标工程文件。返回 null 表示成功；否则为失败原因描述。</summary>
     Task<string?> SwitchEzdFileAsync(string ezdPath, CancellationToken cancellationToken = default);
+
+    /// <summary>EzCad2 是否在线（进程存活 = 在线；未启动或已退出 = 掉线）。设备常驻栏状态源。</summary>
+    bool IsOnline { get; }
+
+    /// <summary>在线状态变化事件（任意线程触发，订阅方自行切回 UI 线程）。</summary>
+    event Action? OnlineStateChanged;
 }
 
 /// <summary>
@@ -60,6 +66,27 @@ public class EzCad2Launcher : BackgroundService, IEzCad2Controller
 
     /// <summary>启动时记录的主窗口句柄；隐藏窗口后 Process.MainWindowHandle 会返回 0，关闭时须用本句柄。</summary>
     private IntPtr _mainWindowHandle;
+
+    /// <summary>EzCad2 在线状态（进程存活 = 在线）；volatile 保证守护/退出线程与 UI 读可见。</summary>
+    private volatile bool _isOnline;
+
+    /// <inheritdoc />
+    public bool IsOnline => _isOnline;
+
+    /// <inheritdoc />
+    public event Action? OnlineStateChanged;
+
+    /// <summary>更新在线状态并在变化时触发事件（可从进程 Exited 回调线程调用）。</summary>
+    private void SetOnline(bool online)
+    {
+        if (_isOnline == online)
+        {
+            return;
+        }
+
+        _isOnline = online;
+        OnlineStateChanged?.Invoke();
+    }
 
     public EzCad2Launcher(IConfiguration configuration, IHostApplicationLifetime appLifetime, ILogger<EzCad2Launcher> logger, IErrorCollector errorCollector)
     {
@@ -252,6 +279,10 @@ public class EzCad2Launcher : BackgroundService, IEzCad2Controller
 
         // 留存进程引用，供 StopAsync 在上位机退出时联动关闭（此处不 Dispose，避免句柄提前失效）
         _launchedProcess = process;
+
+        // 在线状态：进程启动成功即在线；Exited 事件（EnableRaisingEvents 已开）置掉线并通知设备常驻栏
+        SetOnline(true);
+        process.Exited += (_, _) => SetOnline(false);
 
         // 事件驱动隐藏：WinEvent 钩子监听该进程所有窗口的 SHOW 事件，窗口一显示立即隐藏（含启动闪屏）；
         // 钩子回调依赖消息泵，在专用线程上安装并泵消息，等待期结束后投递 WM_QUIT 收尾

@@ -11,7 +11,28 @@ namespace SpectroscopicAnalysis.Tests;
 /// </summary>
 public sealed class MainViewModelTests
 {
-    private static MainViewModel CreateMain() => new(
+    /// <summary>EzCad2 控制器假件：在线状态可控，用于验证激光打标机状态联动。</summary>
+    private sealed class FakeEzCad2Controller : IEzCad2Controller
+    {
+        public bool IsOnline { get; private set; }
+
+        public event Action? OnlineStateChanged;
+
+        public Task<string?> SwitchEzdFileAsync(string ezdPath, CancellationToken cancellationToken = default) =>
+            Task.FromResult<string?>(null);
+
+        /// <summary>模拟进程启动/退出引发的状态变化。</summary>
+        internal void SetOnline(bool online)
+        {
+            IsOnline = online;
+            OnlineStateChanged?.Invoke();
+        }
+    }
+
+    private static MainViewModel CreateMain(FakeEzCad2Controller? ezCad2 = null)
+    {
+        var controller = ezCad2 ?? new FakeEzCad2Controller();
+        return new(
         new ProductionMonitorViewModel(new FakeSctOperationLogRepository(), new FakeSampleRepository(), new FakeProductionSampleRepository(), new FakeSctStrategyEngine(), new FakeWorkflowOrchestrator(), new FakeUiDispatcher(), new FakeErrorCollector(), new FakeDialogService(), new FakeSampleRegistrationService()),
         new ConsoleViewModel(new FakeErrorCollector(), new SystemLogCollector(), new FakeSampleRepository(), new FakeProductionSampleRepository(), new FakeUiDispatcher(), new LaserMarkingViewModel(new FakeLaserMarkingService())),
         new SamplesViewModel(new FakeSampleRepository(), new FakeProductionSampleRepository(), new FakeCertifiedValueRepository(), new FakeControlLimitRepository(),
@@ -21,7 +42,10 @@ public sealed class MainViewModelTests
             new FakeUiDispatcher(), new FakeDialogService(), new FakeErrorCollector()),
         new CoefficientsViewModel(new FakeCoefficientRepository(), new FakeOperationLogRepository(), new FakeUiDispatcher(), new FakeErrorCollector()),
         new AlarmsViewModel(),
-        new SettingsViewModel());
+        new SettingsViewModel(),
+        controller,
+        new FakeUiDispatcher());
+    }
 
     [Fact]
     public void 构造后_默认落在生产监控且分组展开()
@@ -93,5 +117,20 @@ public sealed class MainViewModelTests
         var main = CreateMain();
         main.SetScaleCommand.Execute(scaleText);
         Assert.Equal(1.0, main.UiScale);   // 保持原档位
+    }
+
+    [Fact]
+    public void 激光打标机_初始与状态变化联动()
+    {
+        var ezCad2 = new FakeEzCad2Controller();
+        var main = CreateMain(ezCad2);
+
+        Assert.False(main.LaserOnline);            // 启动前掉线
+
+        ezCad2.SetOnline(true);
+        Assert.True(main.LaserOnline);             // 启动后在线
+
+        ezCad2.SetOnline(false);
+        Assert.False(main.LaserOnline);            // 退出后掉线
     }
 }

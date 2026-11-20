@@ -206,6 +206,22 @@
                                 <Ellipse Style="{StaticResource StatusDot}" Fill="{DynamicResource Brush.Status.Running}" />
                                 <TextBlock Text="GNR 光谱仪" Style="{StaticResource Text.Caption}" Margin="8,0,0,0" VerticalAlignment="Center" />
                             </StackPanel>
+                            <!-- 激光打标机：EzCad2 进程存活 = 在线(绿)，未启动/已退出 = 掉线(红) -->
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
+                                <Ellipse>
+                                    <Ellipse.Style>
+                                        <Style TargetType="Ellipse" BasedOn="{StaticResource StatusDot}">
+                                            <Setter Property="Fill" Value="{DynamicResource Brush.Status.Failed}" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding LaserOnline}" Value="True">
+                                                    <Setter Property="Fill" Value="{DynamicResource Brush.Status.Running}" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Ellipse.Style>
+                                </Ellipse>
+                                <TextBlock Text="激光打标机" Style="{StaticResource Text.Caption}" Margin="8,0,0,0" VerticalAlignment="Center" />
+                            </StackPanel>
                             <StackPanel Orientation="Horizontal">
                                 <Ellipse Style="{StaticResource StatusDot}" Fill="{DynamicResource Brush.Status.Idle}" />
                                 <TextBlock Text="铣床（未接入）" Style="{StaticResource Text.Caption}" Margin="8,0,0,0" VerticalAlignment="Center" />

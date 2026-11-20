@@ -564,6 +564,7 @@ public sealed partial class ProductionMonitorViewModel : ObservableObject, IPage
                 _ => l.OperationType,
             },
             TriggerReasonText = l.TriggerReason ?? "—",
+            StartTimeText = DateTime.TryParse(l.StartTime, out var st) ? st.ToString("yyyy-MM-dd HH:mm:ss") : "—",
             OperationTimeText = time.ToString("yyyy-MM-dd HH:mm:ss"),
             ResultStatusText = l.ResultStatus switch
             {

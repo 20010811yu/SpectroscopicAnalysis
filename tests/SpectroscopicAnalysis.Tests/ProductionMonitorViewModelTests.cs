@@ -114,6 +114,22 @@ public sealed class ProductionMonitorViewModelTests
     }
 
     [Fact]
+    public async Task Load_日志开始时间映射_有值显示原时间_空值显示占位()
+    {
+        var withStart = MakeLog(1);
+        withStart.StartTime = "2026-11-20 08:05:00";        // 新日志：开始时间已采集
+        var legacy = MakeLog(2);                             // 历史日志：StartTime 为 NULL
+        var vm = CreateWithLogs(withStart, legacy);
+
+        await vm.LoadCommand.ExecuteAsync(null);
+
+        var newRow = vm.LogRows.Single(r => r.SampleIdText == "P-001");
+        Assert.Equal("2026-11-20 08:05:00", newRow.StartTimeText);
+        var legacyRow = vm.LogRows.Single(r => r.SampleIdText == "P-002");
+        Assert.Equal("—", legacyRow.StartTimeText);
+    }
+
+    [Fact]
     public async Task Load_导航入口与加载命令一致()
     {
         var vm = CreateWithLogs(MakeLog(1));

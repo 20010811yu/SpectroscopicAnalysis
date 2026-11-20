@@ -551,6 +551,7 @@ public sealed partial class SctViewModel : ObservableObject, IPageLifecycle
                 TriggerReason = "手动测高登记",
                 ThicknessBefore = thicknessBefore,
                 ThicknessAfter = thickness,
+                StartTime = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"),   // 人工瞬时操作：开始=完成时刻
                 OperationTime = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"),
                 ResultStatus = "Success",
             });

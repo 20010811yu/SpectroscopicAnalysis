@@ -30,6 +30,9 @@ public sealed class WorkflowOrchestrator : IWorkflowOrchestrator
 
     private SctTask? _current;
     private string _taskState = TaskState.Idle;
+
+    /// <summary>当前任务开始时间（生产样=注册提交时刻/入队时间；SCT 样=指令下发时刻；主循环单任务串行，字段安全）。</summary>
+    private DateTime? _currentTaskStartTime;
     private string? _sctSubState;
     private volatile bool _emergency;
 
@@ -188,6 +191,8 @@ public sealed class WorkflowOrchestrator : IWorkflowOrchestrator
     /// <summary>执行单任务：预检 → 按类型编排 → 回执（编排设计文档 §5/§6）。</summary>
     private async Task ExecuteTaskAsync(SctTask task, CancellationToken ct)
     {
+        // 开始时间采集：生产样 = 注册提交时刻（注册即入队，取任务入队时间）；其余类型在指令下发点采集
+        _currentTaskStartTime = task.TaskType == SctTaskType.Production ? task.EnqueueTime : null;
         lock (_gate)
         {
             _current = task;
@@ -228,7 +233,8 @@ public sealed class WorkflowOrchestrator : IWorkflowOrchestrator
         }
 
         _engine.CompleteTask(task.TaskId, success: true, null);
-        WriteTrace(task.SampleId, task.TaskType, "任务完成", "Success");
+        WriteTrace(task.SampleId, task.TaskType, "任务完成", "Success",
+            _currentTaskStartTime?.ToString("yyyy-MM-dd HH:mm:ss"));
     }
 
     /// <summary>生产任务：Registered→…→Archiving（编排设计文档 §5；激发结果回喂引擎）。</summary>
@@ -272,6 +278,7 @@ public sealed class WorkflowOrchestrator : IWorkflowOrchestrator
         await _locks.RunWithLockAsync(WorkflowLockName.Robot, _options.LockTimeoutMs, async () =>
         {
             await _send.SendCycleStartAsync(idCycle, sampleId, gripHeight: 0, ct);
+            _currentTaskStartTime = DateTime.Now;   // 开始时间 = 激发指令下发时刻
             return true;
         }, ct);
 
@@ -316,6 +323,7 @@ public sealed class WorkflowOrchestrator : IWorkflowOrchestrator
         await _locks.RunWithLockAsync(WorkflowLockName.Robot, _options.LockTimeoutMs, async () =>
         {
             await _send.SendCycleStartAsync(idCycle: 3, sampleId, gripHeight: 0, ct);
+            _currentTaskStartTime = DateTime.Now;   // 开始时间 = 激发指令下发时刻
             return true;
         }, ct);
 
@@ -341,6 +349,7 @@ public sealed class WorkflowOrchestrator : IWorkflowOrchestrator
         await _locks.RunWithLockAsync(WorkflowLockName.Robot, _options.LockTimeoutMs, async () =>
         {
             await _send.MeasureHeightAsync(sampleId, ct);
+            _currentTaskStartTime = DateTime.Now;   // 开始时间 = 测高指令下发时刻
             return true;
         }, ct);
 
@@ -390,7 +399,8 @@ public sealed class WorkflowOrchestrator : IWorkflowOrchestrator
     private void RaiseStateChanged() => StateChanged?.Invoke(this, new WorkflowStateChangedEventArgs(Snapshot));
 
     /// <summary>轨迹审计（任务清单第 12 节：每步动作留痕）。</summary>
-    private void WriteTrace(string? sampleId, string operationType, string reason, string resultStatus)
+    /// <param name="startTime">开始时间（生产样=注册提交时刻；SCT 样=指令下发时刻；null=未采集/历史兼容）。</param>
+    private void WriteTrace(string? sampleId, string operationType, string reason, string resultStatus, string? startTime = null)
     {
         // 全流程日志联动：按任务类型区分类目（检查样/标准化；其余归设备操作），主控台「运行日志」面板数据源之一
         var category = operationType switch
@@ -426,7 +436,8 @@ public sealed class WorkflowOrchestrator : IWorkflowOrchestrator
                     _ => operationType,
                 },
                 TriggerReason = reason,
-                OperationTime = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"),
+                StartTime = startTime,
+                OperationTime = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"),   // 完成时间：全部流程执行完成后记录
                 ResultStatus = resultStatus,
             });
         }

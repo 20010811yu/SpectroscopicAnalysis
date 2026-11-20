@@ -8,7 +8,7 @@ public sealed class SctOperationLogRepository : ISctOperationLogRepository
 {
     private const string SelectColumns =
         "LogID, SampleID, OperationType, TriggerReason, RawIntensity, MeasuredConc, CorrectedConc, IsPass, " +
-        "ThicknessBefore, ThicknessAfter, CoeffBefore, CoeffAfter, OperationTime, ResultStatus";
+        "ThicknessBefore, ThicknessAfter, CoeffBefore, CoeffAfter, StartTime, OperationTime, ResultStatus";
 
     private readonly Db _db;
 
@@ -58,8 +58,9 @@ public sealed class SctOperationLogRepository : ISctOperationLogRepository
         ThicknessAfter = reader.IsDBNull(9) ? null : reader.GetDouble(9),
         CoeffBefore = reader.IsDBNull(10) ? null : reader.GetString(10),
         CoeffAfter = reader.IsDBNull(11) ? null : reader.GetString(11),
-        OperationTime = reader.GetString(12),
-        ResultStatus = reader.GetString(13),
+        StartTime = reader.IsDBNull(12) ? null : reader.GetString(12),
+        OperationTime = reader.GetString(13),
+        ResultStatus = reader.GetString(14),
     };
 
     /// <summary>插入操作日志（审计留痕，参数化 SQL）。</summary>
@@ -69,8 +70,8 @@ public sealed class SctOperationLogRepository : ISctOperationLogRepository
         using var cmd = conn.CreateCommand();
         cmd.CommandText =
             "INSERT INTO SCT_OperationLog (SampleID, OperationType, TriggerReason, RawIntensity, MeasuredConc, CorrectedConc, IsPass, " +
-            "ThicknessBefore, ThicknessAfter, CoeffBefore, CoeffAfter, OperationTime, ResultStatus) " +
-            "VALUES ($sampleId, $opType, $reason, $raw, $measured, $corrected, $isPass, $thkBefore, $thkAfter, $coeffBefore, $coeffAfter, $time, $status)";
+            "ThicknessBefore, ThicknessAfter, CoeffBefore, CoeffAfter, StartTime, OperationTime, ResultStatus) " +
+            "VALUES ($sampleId, $opType, $reason, $raw, $measured, $corrected, $isPass, $thkBefore, $thkAfter, $coeffBefore, $coeffAfter, $startTime, $time, $status)";
         cmd.Parameters.AddWithValue("$sampleId", (object?)log.SampleId ?? DBNull.Value);
         cmd.Parameters.AddWithValue("$opType", log.OperationType);
         cmd.Parameters.AddWithValue("$reason", (object?)log.TriggerReason ?? DBNull.Value);
@@ -82,6 +83,7 @@ public sealed class SctOperationLogRepository : ISctOperationLogRepository
         cmd.Parameters.AddWithValue("$thkAfter", (object?)log.ThicknessAfter ?? DBNull.Value);
         cmd.Parameters.AddWithValue("$coeffBefore", (object?)log.CoeffBefore ?? DBNull.Value);
         cmd.Parameters.AddWithValue("$coeffAfter", (object?)log.CoeffAfter ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("$startTime", (object?)log.StartTime ?? DBNull.Value);
         cmd.Parameters.AddWithValue("$time", log.OperationTime);
         cmd.Parameters.AddWithValue("$status", log.ResultStatus);
         cmd.ExecuteNonQuery();

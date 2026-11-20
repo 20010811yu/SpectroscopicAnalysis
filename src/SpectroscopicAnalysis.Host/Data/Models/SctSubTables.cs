@@ -56,6 +56,9 @@ public sealed class SctOperationLog
     public double? ThicknessAfter { get; set; }
     public string? CoeffBefore { get; set; }
     public string? CoeffAfter { get; set; }
+    /// <summary>开始时间（生产样 = 提交样品注册时刻；控样/类型标准化样/检查样 = 激发指令下发时刻；历史行为 NULL）。</summary>
+    public string? StartTime { get; set; }
+    /// <summary>完成时间（列名 OperationTime，语义为全部流程执行完成后的记录时刻）。</summary>
     public string OperationTime { get; set; } = string.Empty;
     /// <summary>结果状态：Success / Fail / Warning。</summary>
     public string ResultStatus { get; set; } = "Success";

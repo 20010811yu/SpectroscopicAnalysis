@@ -108,7 +108,9 @@ public sealed class SctStrategyEngine : ISctStrategyEngine
                 IsRecheck = isRecheck,
             };
             _queue.Add(task);
-            WriteLog(taskType, sampleId, reason, resultStatus: "Success", isPass: null);
+            // 入队即流程起点：开始时间 = 入队时刻（生产样即注册提交时刻），与任务 EnqueueTime 一致
+            WriteLog(taskType, sampleId, reason, resultStatus: "Success", isPass: null,
+                startTime: task.EnqueueTime.ToString("yyyy-MM-dd HH:mm:ss"));
             return task.TaskId;
         }
     }
@@ -547,8 +549,9 @@ public sealed class SctStrategyEngine : ISctStrategyEngine
     };
 
     /// <summary>写执行记录（审计留痕；任务清单第 12 节）。</summary>
+    /// <param name="startTime">开始时间（入队日志=任务入队时刻，即生产样注册提交时刻；其余回喂点未知下发时刻为 null）。</param>
     private void WriteLog(string operationType, string? sampleId, string reason,
-        string resultStatus, bool? isPass, double? thicknessBefore = null, double? thicknessAfter = null)
+        string resultStatus, bool? isPass, double? thicknessBefore = null, double? thicknessAfter = null, string? startTime = null)
     {
         try
         {
@@ -566,6 +569,7 @@ public sealed class SctStrategyEngine : ISctStrategyEngine
                 IsPass = isPass,
                 ThicknessBefore = thicknessBefore,
                 ThicknessAfter = thicknessAfter,
+                StartTime = startTime,
                 OperationTime = _time.GetLocalNow().DateTime.ToString("yyyy-MM-dd HH:mm:ss"),
                 ResultStatus = resultStatus,
             });

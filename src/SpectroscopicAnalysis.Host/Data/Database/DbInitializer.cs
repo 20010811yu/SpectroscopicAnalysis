@@ -79,6 +79,7 @@ public sealed class DbInitializer
             ThicknessAfter   REAL,
             CoeffBefore      TEXT,
             CoeffAfter       TEXT,
+            StartTime        TEXT,
             OperationTime    TEXT NOT NULL DEFAULT (datetime('now','localtime')),
             ResultStatus     TEXT NOT NULL DEFAULT 'Success' CHECK (ResultStatus IN ('Success','Fail','Warning'))
         );
@@ -188,6 +189,8 @@ public sealed class DbInitializer
         }
         // 存量库迁移：建表脚本对旧库不生效（IF NOT EXISTS），缺失列按表逐个补齐
         AddColumnIfMissing(conn, tx, "SCT_Sample", "AssociatedMethod", "TEXT");
+        // 操作日志补开始时间列（生产样=注册提交时刻，SCT 样=指令下发时刻；存量行为 NULL）
+        AddColumnIfMissing(conn, tx, "SCT_OperationLog", "StartTime", "TEXT");
         // 生产样状态机改版（Normal/Analyzing/Failed → PendingAnalysis，失败改记 FailureReason）：
         // 旧表 Status 带 4 值 CHECK 约束无法直接改，需重建表迁移（幂等：仅旧约束存在时执行）
         MigrateProductionStatusCheck(conn, tx);

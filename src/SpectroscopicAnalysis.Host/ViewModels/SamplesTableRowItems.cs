@@ -53,6 +53,9 @@ public sealed class OperationLogRowItem
     public string RawSampleId { get; init; } = string.Empty;
     public string OperationTypeText { get; init; } = string.Empty;
     public string TriggerReasonText { get; init; } = "—";
+    /// <summary>开始时间展示（生产样=注册提交时刻，SCT 样=指令下发时刻；未采集/历史行显示 —）。</summary>
+    public string StartTimeText { get; init; } = "—";
+    /// <summary>完成时间展示（全部流程执行完成后的记录时刻）。</summary>
     public string OperationTimeText { get; init; } = string.Empty;
     public string ResultStatusText { get; init; } = string.Empty;
     /// <summary>原始操作时间串（日期过滤/排序用；不绑定 UI）。</summary>

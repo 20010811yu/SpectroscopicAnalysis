@@ -19,6 +19,7 @@ public sealed class WorkflowOrchestrator : IWorkflowOrchestrator
     private readonly ISpectrometer _spectrometer;
     private readonly ISctOperationLogRepository _logs;
     private readonly ISctSampleRepository _samples;
+    private readonly IProductionSampleRepository _production;
     private readonly IErrorCollector _errors;
     private readonly LoggingAlarm.ISystemLogCollector _systemLog;
     private readonly WorkflowOptions _options;
@@ -48,6 +49,7 @@ public sealed class WorkflowOrchestrator : IWorkflowOrchestrator
         ISpectrometer spectrometer,
         ISctOperationLogRepository logs,
         ISctSampleRepository samples,
+        IProductionSampleRepository production,
         IErrorCollector errors,
         LoggingAlarm.ISystemLogCollector systemLog,
         SampleManager.ISampleDataChangeNotifier sampleDataChanged,
@@ -60,6 +62,7 @@ public sealed class WorkflowOrchestrator : IWorkflowOrchestrator
         _spectrometer = spectrometer;
         _logs = logs;
         _samples = samples;
+        _production = production;
         _errors = errors;
         _systemLog = systemLog;
         _sampleDataChanged = sampleDataChanged;
@@ -259,12 +262,15 @@ public sealed class WorkflowOrchestrator : IWorkflowOrchestrator
         await TransitionToAsync(TaskState.Placing, ct);
 
         await TransitionToAsync(TaskState.Analyzing, ct);
-        await _locks.RunWithLockAsync(WorkflowLockName.SparkStand, _options.LockTimeoutMs, async () =>
+        var spark = await _locks.RunWithLockAsync(WorkflowLockName.SparkStand, _options.LockTimeoutMs, async () =>
         {
             await _spectrometer.TriggerSparkAsync(sampleId, ct);
-            await _spectrometer.ReadResultAsync(ct);
-            return true;
+            return await _spectrometer.ReadResultAsync(ct);
         }, ct);
+        if (spark.Success)
+        {
+            ArchiveSparkResult(sampleId, spark);   // 激发结果归档（Analysis_Result；生产样无 SCT 档案，无使用次数记录）
+        }
 
         // 系数修正计算归 Correction 模块（编排设计文档 §2：本层不做计算）
         await TransitionToAsync(TaskState.Archiving, ct);
@@ -295,13 +301,16 @@ public sealed class WorkflowOrchestrator : IWorkflowOrchestrator
 
         await EnterSubStateAsync(SctSubState.Milling, ct);
         await EnterSubStateAsync(SctSubState.Analyzing, ct);
-        await _locks.RunWithLockAsync(WorkflowLockName.SparkStand, _options.LockTimeoutMs, async () =>
+        var spark = await _locks.RunWithLockAsync(WorkflowLockName.SparkStand, _options.LockTimeoutMs, async () =>
         {
             await _spectrometer.TriggerSparkAsync(sampleId, ct);
-            await _spectrometer.ReadResultAsync(ct);
-            return true;
+            return await _spectrometer.ReadResultAsync(ct);
         }, ct);
-        PersistSparkUsage(sampleId);   // 激发成功：使用次数+1、上次使用时间落库（先于引擎回喂，阈值判定需最新次数）
+        if (spark.Success)
+        {
+            PersistSparkUsage(sampleId);   // 激发成功：使用次数+1、上次使用时间落库（先于引擎回喂，阈值判定需最新次数）
+            ArchiveSparkResult(sampleId, spark);   // 激发结果归档（Analysis_Result）
+        }
 
         if (withCoeffUpdate)
         {
@@ -349,6 +358,7 @@ public sealed class WorkflowOrchestrator : IWorkflowOrchestrator
         if (spark.Success)
         {
             PersistSparkUsage(sampleId);   // 激发成功：使用次数+1、上次使用时间落库（先于引擎回喂）
+            ArchiveSparkResult(sampleId, spark);   // 激发结果归档（Analysis_Result）
         }
 
         await EnterSubStateAsync(SctSubState.Returning, ct);
@@ -375,6 +385,35 @@ public sealed class WorkflowOrchestrator : IWorkflowOrchestrator
         {
             // 档案更新失败不阻断流程收尾，但必须进错误链（禁止吞异常）
             _errors.Collect(ErrorCodes.SctSampleMaintainFailed, "激发后样品档案更新失败", sampleId, ex);
+        }
+    }
+
+    /// <summary>
+    /// 激发结果归档（Analysis_Result，原始/校正双存缺口补齐）：原始强度按协议原文落库；
+    /// 测定/校正浓度与系数版本待 GNR 真实协议的元素强度解析接入后回填（Stub 阶段为 null）。
+    /// 激发失败不归档（无结果数据，失败已由操作日志留痕）。归档失败进错误链，不阻断流程收尾。
+    /// </summary>
+    private void ArchiveSparkResult(string sampleId, SparkResult spark)
+    {
+        if (!spark.Success)
+        {
+            return;
+        }
+
+        try
+        {
+            _production.InsertResult(new AnalysisResult
+            {
+                SampleId = sampleId,
+                RawIntensity = spark.RawIntensity,
+                IsPass = true,
+                ResultStatus = AnalysisResultStatus.Success,
+                OperationTime = DateTime.Now,
+            });
+        }
+        catch (Exception ex)
+        {
+            _errors.Collect(ErrorCodes.SctSampleMaintainFailed, "激发结果归档失败", sampleId, ex);
         }
     }
 

@@ -15,6 +15,7 @@ public sealed class WorkflowOrchestratorTests
 {
     private readonly FakeSctPolicyStore _policy = new();
     private readonly FakeSampleRepository _samples = new();
+    private readonly FakeProductionSampleRepository _production = new();
     private readonly FakeOperationLogRepository _logs = new();
     private readonly FakeErrorCollector _errors = new();
     private readonly StubDeviceGateway _gateway = new();
@@ -33,7 +34,7 @@ public sealed class WorkflowOrchestratorTests
     {
         var engine = new SctStrategyEngine(_policy, _samples, _logs, _errors);
         var orchestrator = new WorkflowOrchestrator(
-            engine, _gateway, _gateway, _gateway, _gateway, _logs, _samples, _errors, new SystemLogCollector(),
+            engine, _gateway, _gateway, _gateway, _gateway, _logs, _samples, _production, _errors, new SystemLogCollector(),
             new SampleDataChangeNotifier(), FastOptions());
         return (engine, orchestrator);
     }
@@ -107,6 +108,12 @@ public sealed class WorkflowOrchestratorTests
         Assert.Contains("SUS-001", _samples.SparkedIds);
         Assert.Equal(usageBefore + 1, sample.UsageCount);
         Assert.NotNull(sample.LastUseTime);
+        // 激发结果归档：原始强度按协议原文落库（双存缺口补齐）
+        var result = _production.GetResults("SUS-001").Single();
+        Assert.Equal("1000", result.RawIntensity);
+        Assert.Equal(AnalysisResultStatus.Success, result.ResultStatus);
+        Assert.True(result.IsPass);
+        Assert.NotNull(result.OperationTime);
         // 引擎回喂：标准化完成记录时间 → 定时标准化不再立即到期
         engine.OnTick();
         Assert.False(engine.TryDequeue(out _));

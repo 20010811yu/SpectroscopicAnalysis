@@ -1,21 +1,67 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using SpectroscopicAnalysis.Host.Data.Models;
 using SpectroscopicAnalysis.Host.LoggingAlarm;
+using SpectroscopicAnalysis.Host.SctStrategy;
 using SpectroscopicAnalysis.Host.ViewModels;
 
 namespace SpectroscopicAnalysis.Tests;
 
-/// <summary>主控台 ViewModel 测试：报警面板确认、全流程日志映射、货架示意映射（5×8）。</summary>
+/// <summary>主控台 ViewModel 测试：报警面板确认、全流程日志映射、货架示意映射（5×8）、SCT 当前策略摘要。</summary>
 public sealed class ConsoleViewModelTests
 {
     private static ConsoleViewModel CreateVm(
         FakeErrorCollector? errors = null,
         FakeSampleRepository? samples = null,
-        FakeProductionSampleRepository? production = null)
+        FakeProductionSampleRepository? production = null,
+        FakeSctPolicyStore? policy = null)
     {
         return new ConsoleViewModel(errors ?? new FakeErrorCollector(), new SystemLogCollector(),
             samples ?? new FakeSampleRepository(), production ?? new FakeProductionSampleRepository(),
+            policy ?? new FakeSctPolicyStore(),
             new FakeUiDispatcher(), new LaserMarkingViewModel(new FakeLaserMarkingService(), new MainViewModelTests.FakeEzCad2Controller(), new FakeUiDispatcher()));
+    }
+
+    // ==================== SCT 当前策略摘要 ====================
+
+    [Fact]
+    public void RefreshPolicySummary_按数量插入_渲染选样规则与间隔与重测上限()
+    {
+        var policy = new FakeSctPolicyStore
+        {
+            Current = new SctPolicyOptions   // 默认：ByCount、LeastUsed、轮换启用
+            {
+                ControlInsertCount = 15,
+                ControlRecheckMaxCount = 2,
+            },
+        };
+        var vm = CreateVm(policy: policy);
+
+        vm.OnNavigatedTo();
+
+        Assert.Equal("选样规则：最少使用优先 · 多块轮换", vm.SettingRuleText);
+        Assert.Equal("检查样插入：每 15 个生产样 1 次", vm.ControlInsertText);
+        Assert.Equal("超差重测：上限 2 次", vm.RecheckLimitText);
+    }
+
+    [Fact]
+    public void RefreshPolicySummary_按时间插入_渲染分钟间隔()
+    {
+        var policy = new FakeSctPolicyStore
+        {
+            Current = new SctPolicyOptions
+            {
+                ControlInsertMode = ControlInsertMode.ByTime,
+                ControlInsertMinutes = 60,
+                SettingSampleSelectionMode = SettingSampleSelectionMode.RoundRobin,
+                ControlRotationEnabled = false,
+            },
+        };
+        var vm = CreateVm(policy: policy);
+
+        vm.OnNavigatedTo();
+
+        Assert.Equal("选样规则：轮询", vm.SettingRuleText);       // 轮换关闭不追加说明
+        Assert.Equal("检查样插入：每 60 分钟 1 次", vm.ControlInsertText);
     }
 
     // ==================== 报警面板 ====================

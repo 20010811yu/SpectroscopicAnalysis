@@ -4,6 +4,7 @@ using CommunityToolkit.Mvvm.Input;
 using SpectroscopicAnalysis.Host.Data.Models;
 using SpectroscopicAnalysis.Host.Data.Repositories;
 using SpectroscopicAnalysis.Host.LoggingAlarm;
+using SpectroscopicAnalysis.Host.SctStrategy;
 using SpectroscopicAnalysis.Host.Ui;
 
 namespace SpectroscopicAnalysis.Host.ViewModels;
@@ -27,6 +28,7 @@ public sealed partial class ConsoleViewModel : ObservableObject, IPageLifecycle
     private readonly ISystemLogCollector _systemLog;
     private readonly ISctSampleRepository _samples;
     private readonly IProductionSampleRepository _production;
+    private readonly ISctPolicyStore _policyStore;
     private readonly IUiDispatcher _ui;
     private readonly LaserMarkingViewModel _laserMarking;
 
@@ -34,12 +36,13 @@ public sealed partial class ConsoleViewModel : ObservableObject, IPageLifecycle
 
     public ConsoleViewModel(IErrorCollector errors, ISystemLogCollector systemLog,
         ISctSampleRepository samples, IProductionSampleRepository production,
-        IUiDispatcher ui, LaserMarkingViewModel laserMarking)
+        ISctPolicyStore policyStore, IUiDispatcher ui, LaserMarkingViewModel laserMarking)
     {
         _errors = errors;
         _systemLog = systemLog;
         _samples = samples;
         _production = production;
+        _policyStore = policyStore;
         _ui = ui;
         _laserMarking = laserMarking;
         Laser = laserMarking;
@@ -263,6 +266,7 @@ public sealed partial class ConsoleViewModel : ObservableObject, IPageLifecycle
     {
         RefreshAlarms();
         RefreshSystemLogs();
+        RefreshPolicySummary();
         _ = Task.Run(RefreshRack);
     }
 
@@ -272,5 +276,40 @@ public sealed partial class ConsoleViewModel : ObservableObject, IPageLifecycle
         RefreshAll();
         _laserMarking.OnNavigatedTo();
         StartRefreshTimer();
+    }
+
+    // ==================== SCT 当前策略摘要（当前任务卡底部展示） ====================
+
+    /// <summary>检查样选择规则文案（最少使用优先/轮询，含多块轮换开关）。</summary>
+    [ObservableProperty]
+    private string _settingRuleText = string.Empty;
+
+    /// <summary>检查样插入模式文案（按数量/按时间，带具体间隔值）。</summary>
+    [ObservableProperty]
+    private string _controlInsertText = string.Empty;
+
+    /// <summary>超差重测上限文案。</summary>
+    [ObservableProperty]
+    private string _recheckLimitText = string.Empty;
+
+    /// <summary>
+    /// 刷新 SCT 当前策略摘要（JSON 配置 Load 同步读取，文件小、直接在 UI 线程执行）。
+    /// 定时刷新兜底：SCT 管理页保存策略后主控台 30 秒内自动更新。
+    /// </summary>
+    private void RefreshPolicySummary()
+    {
+        var policy = _policyStore.Load();
+        // 选样规则（SettingSampleSelectionMode 常量键 → 中文；轮换启用时追加说明）
+        var rule = policy.SettingSampleSelectionMode == SettingSampleSelectionMode.RoundRobin
+            ? "轮询"
+            : "最少使用优先";
+        SettingRuleText = policy.ControlRotationEnabled
+            ? $"选样规则：{rule} · 多块轮换"
+            : $"选样规则：{rule}";
+        // 插入模式（带具体间隔值）
+        ControlInsertText = policy.ControlInsertMode == ControlInsertMode.ByTime
+            ? $"检查样插入：每 {policy.ControlInsertMinutes} 分钟 1 次"
+            : $"检查样插入：每 {policy.ControlInsertCount} 个生产样 1 次";
+        RecheckLimitText = $"超差重测：上限 {policy.ControlRecheckMaxCount} 次";
     }
 }

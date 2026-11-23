@@ -69,6 +69,14 @@
                         </StackPanel>
                     </StackPanel>
                     <TextBlock Text="激发台力控下压完成，等待 GNR RESULT_REQUEST…（占位）" Style="{StaticResource Text.Caption}" />
+                    <!-- SCT 当前策略摘要：选样规则 / 检查样插入模式 / 超差重测上限（30 秒定时刷新，SCT 管理页保存后自动更新） -->
+                    <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                        <TextBlock Text="{Binding SettingRuleText}" Style="{StaticResource Text.Caption}" Foreground="{DynamicResource Brush.Text.Secondary}" />
+                        <TextBlock Text="｜" Style="{StaticResource Text.Caption}" Foreground="{DynamicResource Brush.Text.Secondary}" Margin="8,0" />
+                        <TextBlock Text="{Binding ControlInsertText}" Style="{StaticResource Text.Caption}" Foreground="{DynamicResource Brush.Text.Secondary}" />
+                        <TextBlock Text="｜" Style="{StaticResource Text.Caption}" Foreground="{DynamicResource Brush.Text.Secondary}" Margin="8,0" />
+                        <TextBlock Text="{Binding RecheckLimitText}" Style="{StaticResource Text.Caption}" Foreground="{DynamicResource Brush.Text.Secondary}" />
+                    </StackPanel>
                 </StackPanel>
             </Border>
 

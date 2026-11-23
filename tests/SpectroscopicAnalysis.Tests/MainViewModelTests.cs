@@ -37,7 +37,7 @@ public sealed class MainViewModelTests
         var controller = ezCad2 ?? new FakeEzCad2Controller();
         return new(
         new ProductionMonitorViewModel(new FakeSctOperationLogRepository(), new FakeSampleRepository(), new FakeProductionSampleRepository(), new FakeSctStrategyEngine(), new FakeWorkflowOrchestrator(), new FakeUiDispatcher(), new FakeErrorCollector(), new FakeDialogService(), new FakeSampleRegistrationService()),
-        new ConsoleViewModel(new FakeErrorCollector(), new SystemLogCollector(), new FakeSampleRepository(), new FakeProductionSampleRepository(), new FakeUiDispatcher(), new LaserMarkingViewModel(new FakeLaserMarkingService(), new FakeEzCad2Controller(), new FakeUiDispatcher())),
+        new ConsoleViewModel(new FakeErrorCollector(), new SystemLogCollector(), new FakeSampleRepository(), new FakeProductionSampleRepository(), new FakeSctPolicyStore(), new FakeUiDispatcher(), new LaserMarkingViewModel(new FakeLaserMarkingService(), new FakeEzCad2Controller(), new FakeUiDispatcher())),
         new SamplesViewModel(new FakeSampleRepository(), new FakeProductionSampleRepository(), new FakeCertifiedValueRepository(), new FakeControlLimitRepository(),
             new FakeCoefficientRepository(), new FakeOperationLogRepository(), new FakeSctStrategyEngine(),
             new FakeUiDispatcher(), new FakeDialogService(), new FakeErrorCollector()),

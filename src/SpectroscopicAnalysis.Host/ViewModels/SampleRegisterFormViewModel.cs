@@ -49,6 +49,10 @@ public sealed partial class SampleRegisterFormViewModel : ObservableObject
     [ObservableProperty]
     private string? _rackPosition;
 
+    /// <summary>可用架位下拉选项（打开弹窗前由调用方按当前占用填充；默认全布局兜底）。</summary>
+    public IReadOnlyList<string> AvailableRackPositions { get; set; } =
+        SampleManager.RackDirectory.AllPositions;
+
     [ObservableProperty]
     private string _initialThickness = string.Empty;
 

@@ -129,7 +129,8 @@
                         </Grid.ColumnDefinitions>
                         <TextBlock Grid.Column="0" Text="样品架位置*" Style="{StaticResource Text.Caption}" Width="110" VerticalAlignment="Center" />
                         <StackPanel Grid.Column="1" Margin="8,0,16,0">
-                            <TextBox Text="{Binding RackPosition, UpdateSourceTrigger=PropertyChanged}" />
+                            <!-- 可用架位下拉选择（打开弹窗时按当前占用加载空闲架位） -->
+                            <ComboBox ItemsSource="{Binding AvailableRackPositions}" SelectedItem="{Binding RackPosition}" />
                             <TextBlock Text="{Binding RackPositionError}" Style="{StaticResource FieldError}" />
                         </StackPanel>
                         <TextBlock Grid.Column="2" Text="最大使用次数*" Style="{StaticResource Text.Caption}" Width="110" VerticalAlignment="Center" />

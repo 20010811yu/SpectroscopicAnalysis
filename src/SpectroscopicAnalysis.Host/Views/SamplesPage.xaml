@@ -104,10 +104,10 @@
                             <TextBlock Text="分析方法*" Style="{StaticResource Text.Caption}" Width="110" VerticalAlignment="Center" />
                             <ComboBox ItemsSource="{Binding AnalysisMethodOptions}" SelectedItem="{Binding RegAnalysisMethod}" />
                         </StackPanel>
-                        <!-- 控样/检查样/类型标准样：架位 + 最大使用次数 -->
+                        <!-- 控样/检查样/类型标准样：架位（下拉选择当前可用架位）+ 最大使用次数 -->
                         <StackPanel Orientation="Horizontal" Margin="0,0,0,8" Style="{StaticResource StdRow}">
                             <TextBlock Text="样品架位置*" Style="{StaticResource Text.Caption}" Width="110" VerticalAlignment="Center" />
-                            <TextBox Text="{Binding RegRackPosition, UpdateSourceTrigger=PropertyChanged}" />
+                            <ComboBox ItemsSource="{Binding AvailableRackPositions}" SelectedItem="{Binding RegRackPosition}" MinWidth="110" />
                             <TextBlock Text="最大使用次数*" Style="{StaticResource Text.Caption}" Width="110" VerticalAlignment="Center" Margin="24,0,0,0" />
                             <TextBox Text="{Binding RegMaxUsageCount, UpdateSourceTrigger=PropertyChanged}" />
                         </StackPanel>

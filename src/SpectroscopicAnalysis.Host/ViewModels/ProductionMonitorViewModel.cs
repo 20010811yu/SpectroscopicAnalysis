@@ -362,6 +362,10 @@ public sealed partial class ProductionMonitorViewModel : ObservableObject, IPage
             }
         });
 
+        // 注册前加载当前可用（空闲）架位：下拉选择代替手输，占用来自标样库与生产样
+        form.AvailableRackPositions = SampleManager.RackDirectory.AvailablePositions(
+            _samples.GetAll(), _production.GetAll());
+
         if (_dialogs.ShowSampleRegister(form))
         {
             // 注册成功：入库与入队已完成，刷新队列卡与 KPI（StateChanged 亦会触发，此处即时同步）

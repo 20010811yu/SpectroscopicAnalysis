@@ -734,6 +734,10 @@ public sealed partial class SamplesViewModel : ObservableObject, IPageLifecycle
     [ObservableProperty]
     private string? _regRackPosition;
 
+    /// <summary>可用架位下拉选项（注册时加载空闲架位；LoadAsync 后台计算，占用架位不出现）。</summary>
+    [ObservableProperty]
+    private IReadOnlyList<string> _availableRackPositions = SampleManager.RackDirectory.AllPositions;
+
     [ObservableProperty]
     private string _regInitialThickness = string.Empty;
 
@@ -816,6 +820,13 @@ public sealed partial class SamplesViewModel : ObservableObject, IPageLifecycle
                     if (occupant is not null)
                     {
                         errors.Add($"货架位置已占用：{sample.RackPosition}（现有样品 {occupant.SampleId}）");
+                    }
+                    // 货架共用：生产样占用的架位同样不可选
+                    var productionOccupant = _production.GetAll().FirstOrDefault(p =>
+                        string.Equals(p.RackPosition?.Trim(), sample.RackPosition, StringComparison.Ordinal));
+                    if (productionOccupant is not null)
+                    {
+                        errors.Add($"货架位置已占用：{sample.RackPosition}（现有生产样 {productionOccupant.SampleId}）");
                     }
                 }
                 return errors.Count > 0 ? string.Join("\n", errors) : null;
@@ -1024,11 +1035,20 @@ public sealed partial class SamplesViewModel : ObservableObject, IPageLifecycle
         try
         {
             await LoadActiveTableAsync();
+            await RefreshAvailableRackPositionsAsync();
         }
         finally
         {
             _ui.Invoke(() => IsLoading = false);
         }
+    }
+
+    /// <summary>刷新注册表单可用架位下拉（货架共用，占用来自标样库与生产样；后台查询回 UI 线程）。</summary>
+    private async Task RefreshAvailableRackPositionsAsync()
+    {
+        var available = await Task.Run(() =>
+            SampleManager.RackDirectory.AvailablePositions(_samples.GetAll(), _production.GetAll()));
+        _ui.Invoke(() => AvailableRackPositions = available);
     }
 
     /// <summary>加载样品台账（含生产样，供类型筛选切换查看）。</summary>

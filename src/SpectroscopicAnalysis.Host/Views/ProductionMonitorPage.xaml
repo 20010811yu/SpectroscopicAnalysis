@@ -213,7 +213,7 @@
                     </StackPanel>
                     <TextBlock Text="所选日期暂无运行日志记录" Style="{StaticResource Text.Caption}"
                                Visibility="{Binding HasLogs, Converter={StaticResource BoolToVisibility.Inverse}}" Margin="0,0,0,8" />
-                    <DataGrid ItemsSource="{Binding LogRows}" Height="484" AutoGenerateColumns="False"
+                    <DataGrid ItemsSource="{Binding LogRows}" Height="640" AutoGenerateColumns="False"
                               IsReadOnly="True" CanUserAddRows="False" CanUserSortColumns="False"
                               PreviewMouseWheel="ProductionGrid_PreviewMouseWheel"
                               HeadersVisibility="Column" GridLinesVisibility="Horizontal"

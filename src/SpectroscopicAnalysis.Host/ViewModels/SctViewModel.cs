@@ -319,6 +319,9 @@ public sealed partial class SctViewModel : ObservableObject, IPageLifecycle
     [ObservableProperty]
     private string? _policySavedMessage;
 
+    /// <summary>保存成功提示自动隐藏的取消源（再次保存时重置计时）。</summary>
+    private CancellationTokenSource? _savedMessageCts;
+
     /// <summary>策略配置错误提示（空即无错误）。</summary>
     [ObservableProperty]
     private string? _policyError;
@@ -818,12 +821,42 @@ public sealed partial class SctViewModel : ObservableObject, IPageLifecycle
             // 全流程日志：策略配置保存留痕（关键项旧→新；无变化也要留痕，证明保存动作发生过）
             _systemLog.Log("SCT策略", $"策略配置已保存（{DescribePolicyChanges(oldPolicy, newPolicy)}）");
             PolicySavedMessage = "✓ 策略配置已保存";
+            ScheduleSavedMessageHide();
         }
         catch (IOException ex)
         {
             PolicyError = $"保存失败：{ex.Message}";
             _errors.Collect(ErrorCodes.SctSampleMaintainFailed, "SCT 策略配置保存失败", null, ex);
         }
+    }
+
+    /// <summary>保存成功提示 5 秒后自动隐藏（再次保存时重置计时，取消旧计时）。</summary>
+    private void ScheduleSavedMessageHide()
+    {
+        _savedMessageCts?.Cancel();
+        _savedMessageCts?.Dispose();
+        _savedMessageCts = new CancellationTokenSource();
+
+        var token = _savedMessageCts.Token;
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await Task.Delay(TimeSpan.FromSeconds(5), token).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException)
+            {
+                return; // 计时被新一次保存重置，不做任何处理
+            }
+
+            _ui.Invoke(() =>
+            {
+                if (PolicySavedMessage == "✓ 策略配置已保存")
+                {
+                    PolicySavedMessage = null;
+                }
+            });
+        }, CancellationToken.None);
     }
 
     /// <summary>生成策略关键项变更描述（旧→新；无变化返回「内容无变化」）。全流程日志留痕用。</summary>

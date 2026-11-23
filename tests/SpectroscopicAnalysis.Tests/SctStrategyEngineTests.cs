@@ -305,7 +305,8 @@ public sealed class SctStrategyEngineTests
         engine.CompleteTask(recheck.TaskId, true, null);
         engine.NotifyControlResult("CTL-001", passed: true);    // 通过 → 闭环结束
         Assert.False(engine.TryDequeue(out _));
-        Assert.Contains(_logs.Inserted, l => l.OperationType == "ControlCheck" && l.IsPass == true);
+        // 结果留痕已并入编排层完成日志行（一行一任务），引擎不再单独写日志
+        Assert.DoesNotContain(_logs.Inserted, l => l.OperationType == "ControlCheck");
     }
 
     [Fact]
@@ -368,7 +369,8 @@ public sealed class SctStrategyEngineTests
         Assert.Equal(SampleStatus.Normal, sample.Status);       // 清 NeedMeasure
         Assert.Equal(8.5, sample.CurrentThickness);
         Assert.NotNull(sample.LastHeightCheckTime);
-        Assert.Contains(_logs.Inserted, l => l.OperationType == "HeightMeasure" && l.ResultStatus == "Success");
+        // 留痕已并入编排层完成日志行（一行一任务），引擎不再单独写日志
+        Assert.DoesNotContain(_logs.Inserted, l => l.OperationType == "HeightMeasure");
     }
 
     [Fact]
@@ -382,6 +384,7 @@ public sealed class SctStrategyEngineTests
         var sample = _samples.GetById("SUS-001")!;
         Assert.Equal(SampleStatus.Disabled, sample.Status);
         Assert.Contains(_errors.Collected, c => c.Code == ErrorCodes.SctThicknessBelowMinimum);
-        Assert.Contains(_logs.Inserted, l => l.OperationType == "HeightMeasure" && l.ResultStatus == "Fail");
+        // 留痕已并入编排层完成日志行（一行一任务），引擎不再单独写日志
+        Assert.DoesNotContain(_logs.Inserted, l => l.OperationType == "HeightMeasure");
     }
 }

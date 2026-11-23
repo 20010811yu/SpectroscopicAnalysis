@@ -223,17 +223,28 @@ public sealed class WorkflowOrchestrator : IWorkflowOrchestrator
             return;
         }
 
+        // 任务结果数据（并入完成日志行；仅控制检查/测高产生）
+        bool? isPass = null;
+        double? thicknessBefore = null;
+        double? thicknessAfter = null;
+        var heightBelowMin = false;
+
         switch (task.TaskType)
         {
             case SctTaskType.HeightMeasure:
-                await RunHeightMeasureAsync(task, ct);
+                (thicknessBefore, thicknessAfter, var belowMin) = await RunHeightMeasureAsync(task, ct);
+                if (belowMin)
+                {
+                    heightBelowMin = true;   // 低于最小厚度 → 置 Disabled，日志按失败留痕（引擎 §8 同语义）
+                }
+
                 break;
             case SctTaskType.Standardize:
             case SctTaskType.TypeStandardize:
                 await RunSctAnalysisAsync(task, withCoeffUpdate: true, ct);
                 break;
             case SctTaskType.ControlCheck:
-                await RunControlCheckAsync(task, ct);
+                isPass = await RunControlCheckAsync(task, ct);
                 break;
             case SctTaskType.Production:
                 await RunProductionAsync(task, ct);
@@ -244,9 +255,11 @@ public sealed class WorkflowOrchestrator : IWorkflowOrchestrator
         }
 
         _engine.CompleteTask(task.TaskId, success: true, null);
-        // 一行一任务：触发原因携带任务下发原因（原入队行信息并入完成行，StartTime=入队/下发时刻）
-        WriteTrace(task.SampleId, task.TaskType, task.Reason, "Success",
-            _currentTaskStartTime?.ToString("yyyy-MM-dd HH:mm:ss"));
+        // 一行一任务：触发原因携带任务下发原因（原入队行信息并入完成行，StartTime=入队/下发时刻）；
+        // 控制检查/测高的结果数据（合格判定、厚度前后值）由编排层并入本行——引擎回喂不再单独写日志
+        var resultStatus = heightBelowMin ? "Fail" : "Success";
+        WriteTrace(task.SampleId, task.TaskType, task.Reason, resultStatus,
+            _currentTaskStartTime?.ToString("yyyy-MM-dd HH:mm:ss"), isPass, thicknessBefore, thicknessAfter);
         // 任务执行链可能回喂引擎更新样品档案（使用次数/状态/厚度），通知台账类页面重载
         _sampleDataChanged.NotifySampleDataChanged();
     }
@@ -326,12 +339,14 @@ public sealed class WorkflowOrchestrator : IWorkflowOrchestrator
         }
     }
 
-    /// <summary>控制检查：分析后按激发结果回喂判定（Stub 阶段 passed=激发成功；Correction 落地后按 LimitType/LimitValue 精确判定）。</summary>
-    private async Task RunControlCheckAsync(SctTask task, CancellationToken ct)
+    /// <summary>控制检查：分析后按激发结果回喂判定（Stub 阶段 passed=激发成功；Correction 落地后按 LimitType/LimitValue 精确判定）。
+    /// 返回合格判定（并入完成日志行的 IsPass；引擎回喂不再单独写日志）。</summary>
+    private async Task<bool> RunControlCheckAsync(SctTask task, CancellationToken ct)
     {
         var sampleId = task.SampleId ?? "Unknown";
         var passed = await RunSctAnalysisWithResultAsync(task, ct);
         _engine.NotifyControlResult(sampleId, passed);
+        return passed;
     }
 
     /// <summary>带激发结果的 SCT 分析链（控制检查用；返回激发是否成功）。</summary>
@@ -418,8 +433,11 @@ public sealed class WorkflowOrchestrator : IWorkflowOrchestrator
         }
     }
 
-    /// <summary>测高任务：不激发，回读厚度回填策略引擎（编排设计文档 §6 特殊流）。</summary>
-    private async Task RunHeightMeasureAsync(SctTask task, CancellationToken ct)
+    /// <summary>
+    /// 测高任务：不激发，回读厚度回填策略引擎（编排设计文档 §6 特殊流）。
+    /// 返回（回填前厚度，回填后厚度，是否低于最小厚度）——并入完成日志行（引擎回喂不再单独写日志）。
+    /// </summary>
+    private async Task<(double? Before, double After, bool BelowMin)> RunHeightMeasureAsync(SctTask task, CancellationToken ct)
     {
         var sampleId = task.SampleId ?? "Unknown";
         await EnterSubStateAsync(SctSubState.Selecting, ct);
@@ -437,8 +455,14 @@ public sealed class WorkflowOrchestrator : IWorkflowOrchestrator
         var thickness = status.MeasuredThickness
             ?? throw new InvalidOperationException("测高任务未回读厚度");
 
+        // 回填前厚度/最小厚度阈值比较（引擎 §8 厚度流转语义，供完成日志行留痕）
+        var sample = _samples.GetById(sampleId);
+        var before = sample?.CurrentThickness;
+        var belowMin = sample is { } s && thickness < s.MinThickness;
+
         await EnterSubStateAsync(SctSubState.Returning, ct);
         _engine.NotifyHeightMeasured(sampleId, thickness);
+        return (before, thickness, belowMin);
     }
 
     // ==================== 状态机守卫与辅助 ====================
@@ -479,7 +503,11 @@ public sealed class WorkflowOrchestrator : IWorkflowOrchestrator
 
     /// <summary>轨迹审计（任务清单第 12 节：每步动作留痕）。</summary>
     /// <param name="startTime">开始时间（生产样=注册提交时刻；SCT 样=指令下发时刻；null=未采集/历史兼容）。</param>
-    private void WriteTrace(string? sampleId, string operationType, string reason, string resultStatus, string? startTime = null)
+    /// <param name="isPass">合格判定（控制检查；其余任务 null）。</param>
+    /// <param name="thicknessBefore">测高前厚度（仅测高；其余 null）。</param>
+    /// <param name="thicknessAfter">测高后厚度（仅测高；其余 null）。</param>
+    private void WriteTrace(string? sampleId, string operationType, string reason, string resultStatus,
+        string? startTime = null, bool? isPass = null, double? thicknessBefore = null, double? thicknessAfter = null)
     {
         // 全流程日志联动：按任务类型区分类目（检查样/标准化；其余归设备操作），主控台「运行日志」面板数据源之一
         var category = operationType switch
@@ -516,6 +544,9 @@ public sealed class WorkflowOrchestrator : IWorkflowOrchestrator
                 },
                 TriggerReason = reason,
                 StartTime = startTime,
+                IsPass = isPass,
+                ThicknessBefore = thicknessBefore,
+                ThicknessAfter = thicknessAfter,
                 OperationTime = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"),   // 完成时间：全部流程执行完成后记录
                 ResultStatus = resultStatus,
             });

@@ -270,9 +270,7 @@ public sealed class SctStrategyEngine : ISctStrategyEngine
     public void NotifyControlResult(string sampleId, bool passed)
     {
         var policy = _policyStore.Load();
-        WriteLog(SctTaskType.ControlCheck, sampleId,
-            _recheckLoop is not null ? "超差验证重测" : "检查样检查",
-            resultStatus: passed ? "Success" : "Fail", isPass: passed);
+        // 结果留痕由编排层完成行承载（一行一任务：IsPass 并入轨迹日志），引擎不再单独写日志
 
         lock (_gate)
         {
@@ -339,7 +337,6 @@ public sealed class SctStrategyEngine : ISctStrategyEngine
             return;
         }
 
-        var before = sample.CurrentThickness;
         var now = _time.GetLocalNow().DateTime;
 
         // 厚度流转（与测高登记同一状态机，引擎设计 §8）
@@ -348,8 +345,7 @@ public sealed class SctStrategyEngine : ISctStrategyEngine
             sample.CurrentThickness = thickness;
             sample.Status = SampleStatus.Disabled;
             _samples.Update(sample);
-            WriteLog(SctTaskType.HeightMeasure, sampleId, "测高回填",
-                resultStatus: "Fail", isPass: null, thicknessBefore: before, thicknessAfter: thickness);
+            // 留痕由编排层完成行承载（厚度前后值/失败状态并入轨迹日志），引擎不再单独写日志
             _errors.Collect(ErrorCodes.SctThicknessBelowMinimum,
                 $"标样 {sampleId} 测高后厚度 {thickness:0.##} 低于最小厚度 {sample.MinThickness:0.##}，请更换", sampleId);
             return;
@@ -359,8 +355,7 @@ public sealed class SctStrategyEngine : ISctStrategyEngine
         sample.Status = SampleStatus.Normal;    // 清 NeedMeasure
         sample.LastHeightCheckTime = now;
         _samples.Update(sample);
-        WriteLog(SctTaskType.HeightMeasure, sampleId, "测高回填",
-            resultStatus: "Success", isPass: null, thicknessBefore: before, thicknessAfter: thickness);
+        // 留痕由编排层完成行承载（厚度前后值并入轨迹日志），引擎不再单独写日志
     }
 
     /// <inheritdoc />

@@ -23,6 +23,9 @@ public sealed class StubDeviceGateway :
     /// <summary>PLC 通信日志（可选；DI 注入单例，测试不传则不记录）。</summary>
     private readonly IPlcCommLogger? _commLog;
 
+    /// <summary>全流程系统日志（可选；系统自动动作关键节点留痕，主控台「运行日志」面板消费）。</summary>
+    private readonly LoggingAlarm.ISystemLogCollector? _systemLog;
+
     /// <summary>心跳计数（心跳寄存器递增值；每次安全状态轮询视为一次心跳节拍）。</summary>
     private int _heartbeatCounter;
 
@@ -42,7 +45,12 @@ public sealed class StubDeviceGateway :
     public List<(int IdCycle, string SampleId)> SentCycles { get; } = [];
     public List<string> MeasuredHeights { get; } = [];
 
-    public StubDeviceGateway(IPlcCommLogger? commLog = null) => _commLog = commLog;
+    public StubDeviceGateway(IPlcCommLogger? commLog = null,
+        LoggingAlarm.ISystemLogCollector? systemLog = null)
+    {
+        _commLog = commLog;
+        _systemLog = systemLog;
+    }
 
     /// <inheritdoc />
     public Task SendCycleStartAsync(int idCycle, string sampleId, double gripHeight, CancellationToken ct)
@@ -84,11 +92,24 @@ public sealed class StubDeviceGateway :
     }
 
     /// <inheritdoc />
-    public Task TriggerSparkAsync(string sampleId, CancellationToken ct) => Task.CompletedTask;
+    public Task TriggerSparkAsync(string sampleId, CancellationToken ct)
+    {
+        _systemLog?.Log("光谱仪", $"激发测量已触发（样品 {sampleId}）");   // 全流程日志：GNR 激发动作留痕
+        return Task.CompletedTask;
+    }
 
     /// <inheritdoc />
-    public Task<SparkResult> ReadResultAsync(CancellationToken ct) =>
-        Task.FromResult(new SparkResult("Stub", "1000", SparkSucceeds));
+    public async Task<SparkResult> ReadResultAsync(CancellationToken ct)
+    {
+        var result = new SparkResult("Stub", "1000", SparkSucceeds);
+        // 全流程日志：激发结果接收（成功/失败区分级别）
+        _systemLog?.Log("光谱仪",
+            string.IsNullOrEmpty(result.SampleId)
+                ? (result.Success ? "激发结果已接收：成功" : "激发结果已接收：失败")
+                : $"激发结果已接收（样品 {result.SampleId}）：{(result.Success ? "成功" : "失败")}",
+            result.Success ? "Info" : "Failed");
+        return await Task.FromResult(result);
+    }
 
     /// <inheritdoc />
     public event EventHandler<HeartbeatLostEventArgs>? HeartbeatLost;
@@ -101,6 +122,7 @@ public sealed class StubDeviceGateway :
     {
         // 心跳丢失本身也是一次 PLC 交互留痕（计数寄存器停止递增的异常记录）
         _commLog?.Log(PlcCommDirection.Send, AddrHeartbeat, $"心跳丢失 原因={reason}");
+        _systemLog?.Log("PLC", $"PLC 心跳丢失：{reason}", "Warning");   // 全流程日志：连接异常留痕
         HeartbeatLost?.Invoke(this, new HeartbeatLostEventArgs(reason));
     }
 

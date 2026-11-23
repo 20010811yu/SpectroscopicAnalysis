@@ -76,3 +76,22 @@ public sealed class SystemLogCollector : ISystemLogCollector, IDisposable
         }
     }
 }
+
+/// <summary>全流程系统日志空实现：测试/无日志依赖场景兜底（不落内存表、不写文件、无事件）。</summary>
+public sealed class NullSystemLogCollector : ISystemLogCollector
+{
+    /// <inheritdoc />
+    public event Action? EntryLogged
+    {
+        add { }
+        remove { }
+    }
+
+    /// <inheritdoc />
+    public void Log(string category, string message, string level = "Info")
+    {
+    }
+
+    /// <inheritdoc />
+    public IReadOnlyList<SystemLogEntry> GetEntries() => [];
+}

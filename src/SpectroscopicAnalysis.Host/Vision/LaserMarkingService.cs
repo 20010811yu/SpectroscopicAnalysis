@@ -29,6 +29,11 @@ public class LaserMarkingService : ILaserMarkingService
         _ezCad2Controller = ezCad2Controller;
         _logger = logger;
         _errorCollector = errorCollector;
+        // 全流程日志：EzCad2 上下线状态变化留痕（此前仅掉线报警，上线/恢复无记录）
+        _ezCad2Controller.OnlineStateChanged += () =>
+            _systemLog.Log("激光打标",
+                _ezCad2Controller.IsOnline ? "打标机 EzCad2 上线" : "打标机 EzCad2 离线",
+                _ezCad2Controller.IsOnline ? "Info" : "Warning");
     }
 
     /// <inheritdoc/>

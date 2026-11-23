@@ -34,6 +34,7 @@ public sealed class SctStrategyEngine : ISctStrategyEngine
     private readonly ISctSampleRepository _samples;
     private readonly ISctOperationLogRepository _logs;
     private readonly IErrorCollector _errors;
+    private readonly LoggingAlarm.ISystemLogCollector _systemLog;
     private readonly TimeProvider _time;
 
     private readonly object _gate = new();
@@ -70,13 +71,15 @@ public sealed class SctStrategyEngine : ISctStrategyEngine
         ISctSampleRepository samples,
         ISctOperationLogRepository logs,
         IErrorCollector errors,
-        TimeProvider? timeProvider = null)
+        TimeProvider? timeProvider = null,
+        LoggingAlarm.ISystemLogCollector? systemLog = null)
     {
         _policyStore = policyStore;
         _samples = samples;
         _logs = logs;
         _errors = errors;
         _time = timeProvider ?? TimeProvider.System;
+        _systemLog = systemLog ?? new LoggingAlarm.NullSystemLogCollector();
     }
 
     // ==================== 队列 ====================
@@ -108,7 +111,11 @@ public sealed class SctStrategyEngine : ISctStrategyEngine
                 IsRecheck = isRecheck,
             };
             _queue.Add(task);
-            // 入队不再单独写日志：入队时刻由编排完成行的 StartTime 承载（一行一任务，减少重复记录）
+            // 全流程日志：任务入队（系统自动动作留痕；此前入队不记，执行期间主控台不可见）
+            _systemLog.Log("策略引擎",
+                string.IsNullOrEmpty(sampleId)
+                    ? $"任务入队：{TaskTypeText(taskType)}，原因：{reason}"
+                    : $"任务入队：{TaskTypeText(taskType)}（样品 {sampleId}），原因：{reason}");
             return task.TaskId;
         }
     }
@@ -182,6 +189,7 @@ public sealed class SctStrategyEngine : ISctStrategyEngine
     /// <inheritdoc />
     public void EmergencyReset()
     {
+        int cancelledCount;
         lock (_gate)
         {
             foreach (var t in _queue)
@@ -189,9 +197,11 @@ public sealed class SctStrategyEngine : ISctStrategyEngine
                 t.Status = SctTaskStatus.Cancelled;
             }
 
+            cancelledCount = _queue.Count;
             _queue.Clear();
             _recheckLoop = null;    // 冻结闭环状态，恢复后由人工重新触发
         }
+        _systemLog.Log("策略引擎", $"急停复位：任务队列清空（{cancelledCount} 条取消），校正闭环冻结", "Warning");   // 全流程日志：系统急停动作留痕
     }
 
     /// <inheritdoc />
@@ -573,4 +583,16 @@ public sealed class SctStrategyEngine : ISctStrategyEngine
             _errors.Collect(ErrorCodes.SctSampleMaintainFailed, "SCT 策略引擎写执行记录失败", sampleId, ex);
         }
     }
+
+    /// <summary>任务类型中文名（入队系统日志用，与编排层完成行文案一致）。</summary>
+    private static string TaskTypeText(string operationType) => operationType switch
+    {
+        SctTaskType.ControlCheck => "校正检查",
+        SctTaskType.Standardize => "标准化",
+        SctTaskType.TypeStandardize => "类型标准化",
+        SctTaskType.HeightMeasure => "测高",
+        SctTaskType.Production => "生产分析",
+        SctTaskType.Archive => "归档",
+        _ => operationType,
+    };
 }

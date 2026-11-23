@@ -99,6 +99,7 @@ public sealed class WorkflowOrchestrator : IWorkflowOrchestrator
         _emergency = false;
         _cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
         _loop = Task.Run(() => MainLoopAsync(_cts.Token));
+        _systemLog.Log("应用", "流程编排启动");   // 全流程日志：系统启停动作留痕
         return Task.CompletedTask;
     }
 
@@ -117,6 +118,7 @@ public sealed class WorkflowOrchestrator : IWorkflowOrchestrator
                 // 优雅停止的预期路径
             }
         }
+        _systemLog.Log("应用", "流程编排停止");
     }
 
     /// <inheritdoc />
@@ -210,6 +212,11 @@ public sealed class WorkflowOrchestrator : IWorkflowOrchestrator
             _taskState = TaskState.Registered;
         }
         RaiseStateChanged();
+        // 全流程日志：任务开始（关键节点级，此前仅完成行有记录，执行期间主控台不可见）
+        _systemLog.Log(LogCategoryOf(task.TaskType),
+            string.IsNullOrEmpty(task.SampleId)
+                ? $"任务开始：{TaskTypeNameOf(task.TaskType)}"
+                : $"任务开始（样品 {task.SampleId}）：{TaskTypeNameOf(task.TaskType)}");
 
         // 预检（开发规范 11.3：SafetyOK/RobotReady/SparkStandReady/样品位置一致性，不可跳过）
         var safety = await _safety.GetSafetyStatusAsync(ct);
@@ -222,6 +229,11 @@ public sealed class WorkflowOrchestrator : IWorkflowOrchestrator
             _engine.CompleteTask(task.TaskId, success: false, "预检未通过");
             return;
         }
+        // 全流程日志：预检通过（此前仅失败留痕，成功无记录）
+        _systemLog.Log(LogCategoryOf(task.TaskType),
+            string.IsNullOrEmpty(task.SampleId)
+                ? "安全预检通过：SafetyOK/RobotReady/SparkStandReady/位置一致"
+                : $"安全预检通过（样品 {task.SampleId}）：SafetyOK/RobotReady/SparkStandReady/位置一致");
 
         // 任务结果数据（并入完成日志行；仅控制检查/测高产生）
         bool? isPass = null;
@@ -395,6 +407,7 @@ public sealed class WorkflowOrchestrator : IWorkflowOrchestrator
             }
 
             _samples.UpdateAfterSpark(sampleId, sample.CurrentThickness, sample.Status, DateTime.Now);
+            _systemLog.Log("设备操作", $"激发后样品档案已更新：使用次数+1（样品 {sampleId}）");   // 全流程日志：数据维护成功留痕
         }
         catch (Exception ex)
         {
@@ -426,6 +439,7 @@ public sealed class WorkflowOrchestrator : IWorkflowOrchestrator
                 ResultStatus = AnalysisResultStatus.Success,
                 OperationTime = DateTime.Now,
             });
+            _systemLog.Log("设备操作", $"激发结果双存完成（样品 {sampleId}）");   // 全流程日志：原始数据落库成功留痕
         }
         catch (Exception ex)
         {
@@ -501,6 +515,26 @@ public sealed class WorkflowOrchestrator : IWorkflowOrchestrator
 
     private void RaiseStateChanged() => StateChanged?.Invoke(this, new WorkflowStateChangedEventArgs(Snapshot));
 
+    /// <summary>按任务类型取全流程日志类目（检查样/标准化；其余归设备操作）——轨迹审计与系统日志共用。</summary>
+    private static string LogCategoryOf(string operationType) => operationType switch
+    {
+        SctTaskType.ControlCheck => "检查样",
+        SctTaskType.Standardize or SctTaskType.TypeStandardize => "标准化",
+        _ => "设备操作",
+    };
+
+    /// <summary>按任务类型取中文类型名（完成行与任务开始行共用）。</summary>
+    private static string TaskTypeNameOf(string operationType) => operationType switch
+    {
+        SctTaskType.ControlCheck => "校正检查",
+        SctTaskType.Standardize => "标准化",
+        SctTaskType.TypeStandardize => "类型标准化",
+        SctTaskType.HeightMeasure => "测高",
+        SctTaskType.Production => "生产分析",
+        SctTaskType.Archive => "归档",
+        _ => operationType,
+    };
+
     /// <summary>轨迹审计（任务清单第 12 节：每步动作留痕）。</summary>
     /// <param name="startTime">开始时间（生产样=注册提交时刻；SCT 样=指令下发时刻；null=未采集/历史兼容）。</param>
     /// <param name="isPass">合格判定（控制检查；其余任务 null）。</param>
@@ -510,23 +544,9 @@ public sealed class WorkflowOrchestrator : IWorkflowOrchestrator
         string? startTime = null, bool? isPass = null, double? thicknessBefore = null, double? thicknessAfter = null)
     {
         // 全流程日志联动：按任务类型区分类目（检查样/标准化；其余归设备操作），主控台「运行日志」面板数据源之一
-        var category = operationType switch
-        {
-            SctTaskType.ControlCheck => "检查样",
-            SctTaskType.Standardize or SctTaskType.TypeStandardize => "标准化",
-            _ => "设备操作",
-        };
-        // 消息正文用中文类型名：控样→标准化 / 检查样→校正检查 / 类型标准化样→类型标准化
-        var typeText = operationType switch
-        {
-            SctTaskType.ControlCheck => "校正检查",
-            SctTaskType.Standardize => "标准化",
-            SctTaskType.TypeStandardize => "类型标准化",
-            SctTaskType.HeightMeasure => "测高",
-            SctTaskType.Production => "生产分析",
-            SctTaskType.Archive => "归档",
-            _ => operationType,
-        };
+        var category = LogCategoryOf(operationType);
+        // 消息正文用中文类型名（映射见 TaskTypeNameOf，与任务开始行共用）
+        var typeText = TaskTypeNameOf(operationType);
         _systemLog.Log(category,
             string.IsNullOrEmpty(sampleId) ? $"{typeText}：{reason}" : $"{typeText}（样品 {sampleId}）：{reason}",
             resultStatus == "Fail" ? "Failed" : "Info");

@@ -167,34 +167,36 @@
                             <Button Content="手动类型标准化" Command="{Binding TriggerTypeStandardizeCommand}"
                                     ToolTip="提交类型标准化任务到策略引擎队列（需选中检查样或类型标准化样）" Style="{StaticResource PrimaryBtn}" Margin="8,0,0,0" Padding="10,5" />
                         </StackPanel>
-                        <!-- 成功提示（绿色，5 秒自动消失） -->
-                        <TextBlock Text="{Binding PolicySavedMessage}" Foreground="{DynamicResource Brush.Status.Running}"
-                                   HorizontalAlignment="Right" Margin="0,4,0,0">
-                            <TextBlock.Style>
-                                <Style TargetType="TextBlock" BasedOn="{StaticResource Text.Caption}">
-                                    <Setter Property="Visibility" Value="Visible" />
-                                    <Style.Triggers>
-                                        <DataTrigger Binding="{Binding PolicySavedMessage}" Value="{x:Null}">
-                                            <Setter Property="Visibility" Value="Collapsed" />
-                                        </DataTrigger>
-                                    </Style.Triggers>
-                                </Style>
-                            </TextBlock.Style>
-                        </TextBlock>
-                        <!-- 手动触发错误提示（类型不符/未选行） -->
-                        <TextBlock Text="{Binding TriggerError}" Foreground="{DynamicResource Brush.Status.Failed}"
-                                   HorizontalAlignment="Right" Margin="0,4,0,0">
-                            <TextBlock.Style>
-                                <Style TargetType="TextBlock" BasedOn="{StaticResource Text.Caption}">
-                                    <Setter Property="Visibility" Value="Visible" />
-                                    <Style.Triggers>
-                                        <DataTrigger Binding="{Binding TriggerError}" Value="{x:Null}">
-                                            <Setter Property="Visibility" Value="Collapsed" />
-                                        </DataTrigger>
-                                    </Style.Triggers>
-                                </Style>
-                            </TextBlock.Style>
-                        </TextBlock>
+                        <!-- 单行提示槽位：成功（绿，5 秒消失）与错误（红）共用同一格，新消息覆盖未消失的旧消息 -->
+                        <Grid HorizontalAlignment="Right" Margin="0,4,0,0">
+                            <TextBlock Text="{Binding PolicySavedMessage}" Foreground="{DynamicResource Brush.Status.Running}"
+                                       HorizontalAlignment="Right">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock" BasedOn="{StaticResource Text.Caption}">
+                                        <Setter Property="Visibility" Value="Visible" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding PolicySavedMessage}" Value="{x:Null}">
+                                                <Setter Property="Visibility" Value="Collapsed" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
+                            <!-- 手动触发错误提示（类型不符/未选行/禁用样品拦截） -->
+                            <TextBlock Text="{Binding TriggerError}" Foreground="{DynamicResource Brush.Status.Failed}"
+                                       HorizontalAlignment="Right">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock" BasedOn="{StaticResource Text.Caption}">
+                                        <Setter Property="Visibility" Value="Visible" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding TriggerError}" Value="{x:Null}">
+                                                <Setter Property="Visibility" Value="Collapsed" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
+                        </Grid>
                     </StackPanel>
                 </DockPanel>
 

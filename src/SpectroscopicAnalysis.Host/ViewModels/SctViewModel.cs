@@ -319,8 +319,27 @@ public sealed partial class SctViewModel : ObservableObject, IPageLifecycle
     [ObservableProperty]
     private string? _policySavedMessage;
 
-    /// <summary>保存成功提示自动隐藏的取消源（再次保存时重置计时）。</summary>
+    /// <summary>保存成功提示自动隐藏的取消源（再次设置提示时重置计时）。</summary>
     private CancellationTokenSource? _savedMessageCts;
+
+    /// <summary>单行显示约定：新成功提示出现时覆盖尚未消失的错误提示（二者共用按钮下方一个提示槽位）。</summary>
+    partial void OnPolicySavedMessageChanged(string? value)
+    {
+        if (value is not null && TriggerError is not null)
+        {
+            TriggerError = null;
+        }
+    }
+
+    /// <summary>单行显示约定：新错误提示出现时覆盖未到期的成功提示，并取消其自动清空计时。</summary>
+    partial void OnTriggerErrorChanged(string? value)
+    {
+        if (value is not null)
+        {
+            _savedMessageCts?.Cancel();
+            PolicySavedMessage = null;
+        }
+    }
 
     /// <summary>策略配置错误提示（空即无错误）。</summary>
     [ObservableProperty]

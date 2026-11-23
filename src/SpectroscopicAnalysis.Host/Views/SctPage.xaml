@@ -152,6 +152,20 @@
                         </Grid>
                         <Button Content="查询" Command="{Binding SearchCommand}" Style="{StaticResource PrimaryBtn}" Margin="8,0,0,0" Padding="14,5" />
                     </StackPanel>
+                    <!-- 手动操作成功提示：绿色，显示在手动触发按钮正下方（与 TriggerError 同位；5 秒自动消失） -->
+                    <TextBlock DockPanel.Dock="Bottom" Text="{Binding PolicySavedMessage}" Foreground="{DynamicResource Brush.Status.Running}"
+                               HorizontalAlignment="Right" Margin="0,4,0,0">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock" BasedOn="{StaticResource Text.Caption}">
+                                <Setter Property="Visibility" Value="Visible" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding PolicySavedMessage}" Value="{x:Null}">
+                                        <Setter Property="Visibility" Value="Collapsed" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
                     <!-- 手动触发错误提示（类型不符/未选行），显示在手动触发按钮正下方 -->
                     <TextBlock DockPanel.Dock="Bottom" Text="{Binding TriggerError}" Foreground="{DynamicResource Brush.Status.Failed}"
                                HorizontalAlignment="Right" Margin="0,4,0,0">

@@ -27,8 +27,6 @@
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
 
-                <!-- 品牌（左） -->
-                <TextBlock Grid.Column="0" Text="SpectroscopicAnalysis 上位机" Style="{StaticResource Text.CardTitle}" VerticalAlignment="Center" Margin="0,0,16,0" />
                 <!-- 模式按钮组（静态占位，切换交互随功能阶段接入） -->
                 <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
                     <Button Style="{StaticResource ModeBtn}" Content="自动" />

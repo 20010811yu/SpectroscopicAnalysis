@@ -125,11 +125,12 @@
                                             </Style.Triggers>
                                         </Style>
                                     </Border.Style>
-                                    <!-- 文案/前景随在线状态切换（默认离线红，在线绿） -->
-                                    <TextBlock Text="● 离线">
+                                    <!-- 文案/前景随在线状态切换（默认离线红，在线绿；文案须由样式 Setter 提供——本地值优先级高于触发器会盖掉切换） -->
+                                    <TextBlock>
                                         <TextBlock.Style>
                                             <Style TargetType="TextBlock" BasedOn="{StaticResource Text.Caption}">
                                                 <Setter Property="Foreground" Value="{DynamicResource Brush.Status.Failed}" />
+                                                <Setter Property="Text" Value="● 离线" />
                                                 <Style.Triggers>
                                                     <DataTrigger Binding="{Binding IsOnline}" Value="True">
                                                         <Setter Property="Foreground" Value="{DynamicResource Brush.Status.Running}" />

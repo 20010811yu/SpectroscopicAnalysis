@@ -99,11 +99,9 @@ public sealed partial class SampleRegisterFormViewModel : ObservableObject
         get => _confirmed;
         private set
         {
-            if (_confirmed != value)
-            {
-                _confirmed = value;
-                OnPropertyChanged();    // CommunityToolkit：按调用方成员名通知
-            }
+            // 不做同值守卫：取消（false→false）也必须发通知，弹窗宿主靠本事件关窗
+            _confirmed = value;
+            OnPropertyChanged();    // CommunityToolkit：按调用方成员名通知
         }
     }
 

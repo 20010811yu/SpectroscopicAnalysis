@@ -90,8 +90,22 @@ public sealed partial class SampleRegisterFormViewModel : ObservableObject
     [NotifyCanExecuteChangedFor(nameof(ConfirmCommand))]
     private bool _isRegistering;
 
-    /// <summary>注册成功（弹窗宿主据此关闭窗口并刷新）。</summary>
-    public bool Confirmed { get; private set; }
+    /// <summary>注册结果（弹窗宿主据此关闭窗口：true=注册成功并关闭；false=取消关闭。
+    /// 必须带变更通知——弹窗宿主监听 PropertyChanged 关窗，此前无通知导致确认/取消均无法关闭）。</summary>
+    private bool _confirmed;
+
+    public bool Confirmed
+    {
+        get => _confirmed;
+        private set
+        {
+            if (_confirmed != value)
+            {
+                _confirmed = value;
+                OnPropertyChanged();    // CommunityToolkit：按调用方成员名通知
+            }
+        }
+    }
 
     public SampleRegisterFormViewModel(Func<SampleRegisterFormViewModel, Task<string?>> submitAsync)
     {

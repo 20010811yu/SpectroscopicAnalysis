@@ -20,10 +20,11 @@ public partial class RegisterSampleDialogWindow : Window
         };
     }
 
+    /// <summary>表单 VM 的 Confirmed 变化即关窗（true=注册成功，false=用户取消；初始 false 不会误触发）。</summary>
     private void VmOnPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
         if (e.PropertyName == nameof(SampleRegisterFormViewModel.Confirmed)
-            && sender is SampleRegisterFormViewModel { Confirmed: true })
+            && sender is SampleRegisterFormViewModel)
         {
             Close();
         }

@@ -141,4 +141,21 @@ public sealed class SampleRegisterFormViewModelTests
         Assert.Null(vm.SampleIdError);
         Assert.Null(vm.ThicknessError);
     }
+
+    [Fact]
+    public async Task Confirmed_成功与取消均触发变更通知_弹窗宿主据此关窗()
+    {
+        var changes = new List<string?>();
+        var vm = new SampleRegisterFormViewModel(_ => Task.FromResult<string?>(null));
+        vm.PropertyChanged += (_, e) => changes.Add(e.PropertyName);
+
+        vm.SampleId = "P-3";
+        vm.SampleName = "生产样";
+        vm.AnalysisMethod = "GB/T 7999-A";
+        await vm.ConfirmCommand.ExecuteAsync(null);     // 成功 → Confirmed=true 通知
+        vm.CancelCommand.Execute(null);                 // 取消 → Confirmed=false 通知
+
+        Assert.Contains(nameof(SampleRegisterFormViewModel.Confirmed), changes);
+        Assert.Equal(2, changes.Count(c => c == nameof(SampleRegisterFormViewModel.Confirmed)));
+    }
 }

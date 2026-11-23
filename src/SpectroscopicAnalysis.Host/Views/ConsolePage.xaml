@@ -260,12 +260,12 @@
                     <TextBlock Text="运行日志（全流程）" Style="{StaticResource Text.CardTitle}" Margin="0,0,0,8" />
                     <TextBlock Text="暂无日志记录" Style="{StaticResource Text.Caption}"
                                Visibility="{Binding HasSystemLogs, Converter={StaticResource BoolToVisibility.Inverse}}" Margin="0,0,0,8" />
-                    <ScrollViewer VerticalScrollBarVisibility="Auto" MaxHeight="420"
+                    <ScrollViewer VerticalScrollBarVisibility="Auto" MaxHeight="320"
                                   Visibility="{Binding HasSystemLogs, Converter={StaticResource BoolToVisibility}}">
                         <ItemsControl ItemsSource="{Binding SystemLogRows}">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
-                                    <Border Padding="0,3">
+                                    <Border Padding="0,8">
                                         <StackPanel Orientation="Horizontal">
                                             <TextBlock Text="{Binding TimeText}" Style="{StaticResource Text.Caption}"
                                                        FontFamily="Consolas" Width="152" VerticalAlignment="Center" />
@@ -311,12 +311,12 @@
                     </DockPanel>
                     <TextBlock Text="暂无报警记录" Style="{StaticResource Text.Caption}"
                                Visibility="{Binding HasAlarms, Converter={StaticResource BoolToVisibility.Inverse}}" />
-                    <ScrollViewer VerticalScrollBarVisibility="Auto" MaxHeight="360"
+                    <ScrollViewer VerticalScrollBarVisibility="Auto" MaxHeight="300"
                                   Visibility="{Binding HasAlarms, Converter={StaticResource BoolToVisibility}}">
                         <ItemsControl ItemsSource="{Binding AlarmRows}">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
-                                    <Border Margin="0,0,0,6" Padding="12,6" HorizontalAlignment="Stretch">
+                                    <Border Margin="0,0,0,8" Padding="12,10" HorizontalAlignment="Stretch">
                                         <Border.Style>
                                             <Style TargetType="Border" BasedOn="{StaticResource Badge.Base}">
                                                 <Setter Property="Background" Value="{DynamicResource Brush.Badge.Failed.Bg}" />

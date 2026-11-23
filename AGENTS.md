@@ -35,6 +35,6 @@
 6. **编码**：可空引用启用；中文注释与日志；async I/O 禁止 `.Result/.Wait()`；file-scoped namespace。
 7. **UI**：必须遵循 [docs/界面设计规范.md](docs/界面设计规范.md)——颜色/字号/样式一律引用 `Themes/` 资源字典（`Brush.*`/`Color.*` 键），禁止硬编码颜色与内联样式；ViewModel 禁止返回 Brush/Color；状态色语义固定不得挪用。**弹性布局强制**：容器 Grid+Star 比例，禁止对内容容器写固定宽高（图标白名单除外，见规范第 5 节）；字号一律引用 Typography 资源（禁止直接写 FontSize 数值），窗口支持 100/125/150% 缩放档位（根容器 LayoutTransform）。**原型已冻结**：`docs/prototypes/` 仅作初始设计参照，页面修改不同步原型文件，以程序界面为准。
 8. **安全**：密钥/连接串不入库；样品位置与软件记录不一致时不得切入自动模式。
-9. **Git**：conventional commits 中文描述；提交前 `dotnet build` 必须通过。**任务完成后自动提交（强制）**：每次修改任务完成并验证通过后，AI 必须立即将本次修改的文件 `git add` + `git commit`（按功能拆分提交，message 用 conventional commits 中文描述；临时文件不得入库），无需再向用户确认。
+9. **Git**：conventional commits 中文描述；提交前 `dotnet build` 必须通过。**任务完成后自动提交（强制）**：每次修改任务完成并验证通过后，AI 必须立即将本次修改的文件 `git add` + `git commit`（按功能拆分提交，message 用 conventional commits 中文描述；临时文件不得入库），无需再向用户确认。**提交后自动推送（强制）**：commit 成功后必须立即 `git push` 到 origin 对应分支，无需再向用户确认；推送失败须向用户报告原因。
 10. **范围**：仅修改与当前任务相关的代码；不重构无关代码；不删除现有规则文档中的约束。
 11. **禁止身份内容**：程序不得包含用户账号、角色权限、操作员/登录展示、操作者字段等任何身份相关操作与内容（开发规范第 5 节决策），新增功能亦不得引入。

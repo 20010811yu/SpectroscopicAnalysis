@@ -60,10 +60,6 @@ public sealed partial class ProductionMonitorViewModel : ObservableObject, IPage
     [ObservableProperty]
     private int _queuePendingCount;
 
-    /// <summary>「未确认报警」数（ErrorCollector 内存报警表实时值）。</summary>
-    [ObservableProperty]
-    private int _unackAlarmCount;
-
     /// <summary>「检查样插入倒计时」文本（ByCount：n / 阈值；ByTime：已过分钟 / 间隔 分钟）。</summary>
     [ObservableProperty]
     private string _controlCountdownText = "—";
@@ -100,7 +96,7 @@ public sealed partial class ProductionMonitorViewModel : ObservableObject, IPage
     }
 
     /// <summary>
-    /// 刷新 KPI 四卡：今日已完成（Status=Completed 生产样，无结果也计入）/ 队列待分析 / 未确认报警 / 检查样倒计时。
+    /// 刷新 KPI 三卡：今日已完成（Status=Completed 生产样，无结果也计入）/ 队列待分析 / 检查样倒计时。
     /// I/O 在后台线程，结果经 IUiDispatcher 回 UI 线程（开发规范第 4 节）。
     /// </summary>
     private void RefreshKpis()
@@ -127,7 +123,6 @@ public sealed partial class ProductionMonitorViewModel : ObservableObject, IPage
                 {
                     TodayCompletedCount = completed;
                     QueuePendingCount = _engine.GetQueuedTasks().Count;
-                    UnackAlarmCount = _errors.UnacknowledgedCount;
                     ControlCountdownText = text;
                 });
             }
@@ -368,8 +363,6 @@ public sealed partial class ProductionMonitorViewModel : ObservableObject, IPage
             RefreshQueue();
             RefreshKpis();
         };
-        // 新报警产生即时刷新 KPI「未确认报警」（掉线等报警不再滞后 30 秒定时刷新）
-        _errors.AlarmRaised += RefreshKpis;
     }
 
     /// <summary>导航进入时加载（导航路径为 fire-and-forget；测试可 await LoadCommand.ExecuteAsync 保证确定性）。</summary>

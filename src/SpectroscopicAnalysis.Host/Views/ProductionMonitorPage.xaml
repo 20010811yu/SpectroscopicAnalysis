@@ -14,10 +14,9 @@
 
             <!-- 当前任务卡已迁至主控台页顶部（占位模块原样搬移） -->
 
-            <!-- KPI 四卡（弹性：等比例列） -->
+            <!-- KPI 三卡（弹性：等比例列） -->
             <Grid Margin="{DynamicResource Spacing.CardGap}">
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*" MinWidth="120" />
                     <ColumnDefinition Width="*" MinWidth="120" />
                     <ColumnDefinition Width="*" MinWidth="120" />
                     <ColumnDefinition Width="*" MinWidth="120" />
@@ -34,13 +33,7 @@
                         <TextBlock Text="队列待分析" Style="{StaticResource Text.Caption}" HorizontalAlignment="Center" />
                     </StackPanel>
                 </Border>
-                <Border Style="{StaticResource Card}" Margin="6,0" Grid.Column="2">
-                    <StackPanel>
-                        <TextBlock Text="{Binding UnackAlarmCount}" Style="{StaticResource Text.Display}" Foreground="{DynamicResource Brush.Status.Warning}" HorizontalAlignment="Center" />
-                        <TextBlock Text="未确认报警" Style="{StaticResource Text.Caption}" HorizontalAlignment="Center" />
-                    </StackPanel>
-                </Border>
-                <Border Style="{StaticResource Card}" Margin="6,0,0,0" Grid.Column="3">
+                <Border Style="{StaticResource Card}" Margin="6,0,0,0" Grid.Column="2">
                     <StackPanel>
                         <TextBlock Text="{Binding ControlCountdownText}" Style="{StaticResource Text.Display}" Foreground="{DynamicResource Brush.Primary}" HorizontalAlignment="Center" />
                         <TextBlock Text="检查样插入倒计时" Style="{StaticResource Text.Caption}" HorizontalAlignment="Center" />

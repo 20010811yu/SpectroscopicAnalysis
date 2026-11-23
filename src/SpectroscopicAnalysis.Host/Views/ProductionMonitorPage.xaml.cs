@@ -1,6 +1,7 @@
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using SpectroscopicAnalysis.Host.ViewModels;
 
 namespace SpectroscopicAnalysis.Host.Views;
 
@@ -23,5 +24,18 @@ public partial class ProductionMonitorPage : UserControl
             Source = sender,
         };
         ((UIElement)((Control)sender).Parent).RaiseEvent(forwarded);
+    }
+
+    /// <summary>
+    /// 生产日志行双击：转发给 ViewModel 的 OpenLogSampleCommand（跳转样品档案定位）。
+    /// 仅 ICommand 转发，无业务逻辑（开发规范 3.3：用户操作走 ICommand，code-behind 只做交互转发）。
+    /// </summary>
+    private void LogGrid_MouseDoubleClick(object sender, MouseButtonEventArgs e)
+    {
+        if (e.OriginalSource is FrameworkElement { DataContext: OperationLogRowItem row }
+            && DataContext is ProductionMonitorViewModel vm)
+        {
+            vm.OpenLogSampleCommand.Execute(row);
+        }
     }
 }

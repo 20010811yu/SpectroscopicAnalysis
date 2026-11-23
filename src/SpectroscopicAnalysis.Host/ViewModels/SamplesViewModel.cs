@@ -59,7 +59,7 @@ public sealed class ProductionRowItem
 }
 
 /// <summary>分析结果行展示模型（表 Analysis_Result）。</summary>
-public sealed class AnalysisResultRowItem
+public sealed class AnalysisResultRowItem : ILocateHighlightRow
 {
     public required string ResultIdText { get; init; }
     public required string SampleId { get; init; }
@@ -71,10 +71,16 @@ public sealed class AnalysisResultRowItem
     public required string ResultStatusText { get; init; }
     public required string ArchiveText { get; init; }
     public required string TimeText { get; init; }
+
+    /// <summary>原始分析时间（生产日志跳转的时间匹配用；不绑定 UI）。</summary>
+    public DateTime? RawTime { get; init; }
+
+    /// <inheritdoc/>
+    public bool IsLocateHighlighted { get; set; }
 }
 
 /// <summary>详情面板轨迹日志行展示模型（最近 10 条，时间倒序）。</summary>
-public sealed class DetailLogRowItem
+public sealed class DetailLogRowItem : ILocateHighlightRow
 {
     public required string OperationTimeText { get; init; }
     public required string OperationTypeText { get; init; }
@@ -82,6 +88,12 @@ public sealed class DetailLogRowItem
     public required string ResultStatusText { get; init; }
     /// <summary>原始状态枚举串（视图 DataTrigger 切颜色）。</summary>
     public required string ResultStatus { get; init; }
+
+    /// <summary>原始操作时间（生产日志跳转的时间匹配用；不绑定 UI）。</summary>
+    public DateTime? RawTime { get; init; }
+
+    /// <inheritdoc/>
+    public bool IsLocateHighlighted { get; set; }
 }
 
 /// <summary>
@@ -410,9 +422,108 @@ public sealed partial class SamplesViewModel : ObservableObject, IPageLifecycle
     /// <summary>选中行变化 → 重算详情面板（含子表后台查询；失败走错误链不弹窗）。</summary>
     partial void OnSelectedRowChanged(object? value) => _ = RefreshDetailAsync(value);
 
+    // ==================== 生产日志跳转定位（生产监控页双击日志行联动） ====================
+
+    /// <summary>时间匹配容差（详情子表记录与日志完成时间的最大允许偏差）。</summary>
+    private static readonly TimeSpan LocateTimeTolerance = TimeSpan.FromMinutes(2);
+
+    /// <summary>待匹配的日志完成时间（选中行触发详情加载时消费一次；置 null 后普通选中不高亮）。</summary>
+    private DateTime? _locateHighlightTime;
+
+    /// <summary>
+    /// 从生产日志跳转定位：按样品编号切换对应数据表（生产样→生产样档案，其余→样品台账），
+    /// 以编号过滤保证目标行在第一页可见并选中（打开右侧详情）；详情子表中与日志时间
+    /// 最接近（±LocateTimeTolerance 内）的一条记录高亮（IsLocateHighlighted，视图 DataTrigger 着色）。
+    /// UI 线程调用（经 MainViewModel 导航进入）。
+    /// </summary>
+    public async Task LocateSampleAsync(string sampleId, DateTime logTime)
+    {
+        if (string.IsNullOrWhiteSpace(sampleId))
+        {
+            return;
+        }
+
+        // 判断样品归属表：生产样在 Production_Sample，其余在 SCT_Sample
+        var id = sampleId.Trim();
+        var isProduction = await Task.Run(() => _production.GetAll()
+            .Any(p => string.Equals(p.SampleId, id, StringComparison.Ordinal)));
+        var isSct = await Task.Run(() => _samples.GetById(id) is not null);
+        if (!isProduction && !isSct)
+        {
+            _dialogs.Alert("未找到样品", $"样品档案中未找到编号「{id}」对应的样品。");
+            return;
+        }
+
+        _locateHighlightTime = logTime;   // 详情面板加载子表时按此时间匹配高亮
+        var targetTable = isProduction ? TableProductionSample : TableSample;
+        if (ActiveTable != targetTable)
+        {
+            ActiveTable = targetTable;    // 触发该表加载（OnActiveTableChanged）
+        }
+
+        // 复位筛选并以编号为关键词过滤，确保目标行落在第一页（RefreshView 在加载完成后消费关键词）
+        if (FilterKey != FilterAll)
+        {
+            FilterKey = FilterAll;
+        }
+
+        if (StatusFilter.Key is not null)
+        {
+            StatusFilter = StatusOption.All;
+        }
+
+        SearchText = id;
+        if (ActiveTable == targetTable && !IsLoading)
+        {
+            // 同表跳转（或加载已被防重入跳过）：显式按关键词刷新一次
+            SearchCommand.Execute(null);
+        }
+        else
+        {
+            await _activeTableLoad;
+        }
+
+        // 关键词已按编号过滤，目标行即当前页首行；选中后详情面板自动打开
+        SelectedRow = targetTable == TableProductionSample
+            ? (object?)ProductionRows.FirstOrDefault()
+            : (object?)SctSamples.FirstOrDefault();
+    }
+
+    /// <summary>在详情子表行中标记与基准时间最接近的一条（容差内才标记）。</summary>
+    private static void MarkNearestByTime<T>(List<T> rows, DateTime time, Func<T, DateTime?> timeOf) where T : class, ILocateHighlightRow
+    {
+        T? best = null;
+        var bestDelta = double.MaxValue;
+        foreach (var row in rows)
+        {
+            var t = timeOf(row);
+            if (t is null)
+            {
+                continue;
+            }
+
+            var delta = Math.Abs((t.Value - time).TotalSeconds);
+            if (delta <= LocateTimeTolerance.TotalSeconds && delta < bestDelta)
+            {
+                best = row;
+                bestDelta = delta;
+            }
+        }
+
+        if (best is not null)
+        {
+            best.IsLocateHighlighted = true;
+        }
+    }
+
+
     /// <summary>按选中行装配详情：字段直接取行展示模型，标准值/结果/日志后台查询后回填。</summary>
     private async Task RefreshDetailAsync(object? row)
     {
+        // 生产日志跳转的时间匹配值只消费一次（本次详情加载后失效，普通选中不高亮）
+        var locateTime = _locateHighlightTime;
+        _locateHighlightTime = null;
+
         switch (row)
         {
             case SampleRowItem s:
@@ -476,8 +587,16 @@ public sealed partial class SamplesViewModel : ObservableObject, IPageLifecycle
                     _ => l.ResultStatus,
                 },
                 ResultStatus = l.ResultStatus,
+                RawTime = DateTime.TryParse(l.OperationTime, out var lt) ? lt : null,
             }).ToList())
                 : new List<DetailLogRowItem>();
+
+            // 生产日志跳转：详情子表内按时间就近匹配各高亮一条（±容差内才有命中）
+            if (locateTime is { } ht)
+            {
+                MarkNearestByTime(results, ht, r => r.RawTime);
+                MarkNearestByTime(logs, ht, l => l.RawTime);
+            }
 
             _ui.Invoke(() =>
             {
@@ -1085,6 +1204,7 @@ public sealed partial class SamplesViewModel : ObservableObject, IPageLifecycle
         },
         ArchiveText = r.ArchivePosition ?? "—（未归档）",
         TimeText = r.OperationTime?.ToString("MM-dd HH:mm") ?? "—",
+        RawTime = r.OperationTime,
     };
 
     /// <summary>切换数据表：仅接受 TableOptions 中登记的键；设置属性触发加载并等待其完成（确定性）。</summary>

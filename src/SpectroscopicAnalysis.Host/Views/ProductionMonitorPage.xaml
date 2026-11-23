@@ -282,6 +282,7 @@
                               Visibility="{Binding HasLogs, Converter={StaticResource BoolToVisibility}}"
                               RowStyle="{StaticResource GridRow}" CellStyle="{StaticResource GridCell}"
                               ColumnHeaderStyle="{StaticResource GridColumnHeader}"
+                              MouseDoubleClick="LogGrid_MouseDoubleClick"
                               FontSize="{DynamicResource FontSize.Body}">
                         <DataGrid.Columns>
                             <DataGridTextColumn Header="样品" Binding="{Binding SampleIdText}" FontFamily="Consolas" Width="1*" MinWidth="70" ElementStyle="{StaticResource GridCellText}" />

@@ -319,6 +319,35 @@ public sealed partial class ProductionMonitorViewModel : ObservableObject, IPage
         }
     }
 
+    // ==================== 生产日志跳转样品档案 ====================
+
+    /// <summary>跳转样品档案请求（MainViewModel 订阅后导航到样品档案页；参数=样品编号 + 日志完成时间）。</summary>
+    public event Action<string, DateTime>? SampleLocateRequested;
+
+    /// <summary>双击生产日志行：跳转样品档案定位对应样品（编号过滤选中 + 时间就近匹配高亮）。</summary>
+    [RelayCommand]
+    private void OpenLogSample(OperationLogRowItem? row)
+    {
+        if (row is null)
+        {
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(row.RawSampleId))
+        {
+            _dialogs.Alert("无法跳转", "该日志行未关联样品编号，无法在样品档案中定位。");
+            return;
+        }
+
+        if (!DateTime.TryParse(row.RawOperationTime, out var time))
+        {
+            _dialogs.Alert("无法跳转", "该日志行缺少有效完成时间，无法进行时间匹配。");
+            return;
+        }
+
+        SampleLocateRequested?.Invoke(row.RawSampleId, time);
+    }
+
     public ProductionMonitorViewModel(ISctOperationLogRepository logs, ISctSampleRepository samples,
         IProductionSampleRepository production, ISctStrategyEngine engine, IWorkflowOrchestrator orchestrator,
         IUiDispatcher ui, IErrorCollector errors, Ui.IDialogService dialogs,

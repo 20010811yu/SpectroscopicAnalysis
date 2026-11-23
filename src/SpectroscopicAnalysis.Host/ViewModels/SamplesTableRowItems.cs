@@ -1,5 +1,15 @@
 namespace SpectroscopicAnalysis.Host.ViewModels;
 
+/// <summary>支持生产日志跳转时间匹配高亮的行模型（RawTime 参与最近匹配，IsLocateHighlighted 驱动视图着色）。</summary>
+public interface ILocateHighlightRow
+{
+    /// <summary>原始操作时间（生产日志跳转的时间匹配用；不绑定 UI）。</summary>
+    DateTime? RawTime { get; }
+
+    /// <summary>是否为生产日志跳转的时间匹配行（视图 DataTrigger 高亮底色）。</summary>
+    bool IsLocateHighlighted { get; set; }
+}
+
 /// <summary>
 /// 样品档案页「切换数据表」的 4 张子表行展示模型（领域数据 → 展示文本映射，开发规范 3.3）。
 /// 与 SampleRowItem 同模式：数值格式化 / 枚举中文化在 VM 层完成，View 只做绑定。

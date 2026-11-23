@@ -995,7 +995,18 @@
                                             </ItemsControl.Template>
                                             <ItemsControl.ItemTemplate>
                                                 <DataTemplate>
-                                                    <Border BorderBrush="{DynamicResource Brush.Border.Default}" BorderThickness="0,0,0,1">
+                                                    <!-- 生产日志跳转的时间匹配行以选中底色高亮（IsLocateHighlighted） -->
+                                                    <Border BorderThickness="0,0,0,1">
+                                                        <Border.Style>
+                                                            <Style TargetType="Border">
+                                                                <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border.Default}" />
+                                                                <Style.Triggers>
+                                                                    <DataTrigger Binding="{Binding IsLocateHighlighted}" Value="True">
+                                                                        <Setter Property="Background" Value="{DynamicResource Brush.Bg.Row.Selected}" />
+                                                                    </DataTrigger>
+                                                                </Style.Triggers>
+                                                            </Style>
+                                                        </Border.Style>
                                                         <Grid>
                                                             <Grid.ColumnDefinitions>
                                                                 <ColumnDefinition Width="*" /><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /><ColumnDefinition Width="*" />
@@ -1046,7 +1057,18 @@
                                         </ItemsControl.Template>
                                         <ItemsControl.ItemTemplate>
                                             <DataTemplate>
-                                                <Border BorderBrush="{DynamicResource Brush.Border.Default}" BorderThickness="0,0,0,1">
+                                                <!-- 生产日志跳转的时间匹配行以选中底色高亮（IsLocateHighlighted） -->
+                                                <Border BorderThickness="0,0,0,1">
+                                                    <Border.Style>
+                                                        <Style TargetType="Border">
+                                                            <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border.Default}" />
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding IsLocateHighlighted}" Value="True">
+                                                                    <Setter Property="Background" Value="{DynamicResource Brush.Bg.Row.Selected}" />
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </Border.Style>
                                                     <Grid>
                                                         <Grid.ColumnDefinitions>
                                                             <ColumnDefinition Width="0.8*" /><ColumnDefinition Width="1*" /><ColumnDefinition Width="0.8*" /><ColumnDefinition Width="1.3*" />

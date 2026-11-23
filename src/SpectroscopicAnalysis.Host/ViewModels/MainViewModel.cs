@@ -74,16 +74,24 @@ public sealed partial class MainViewModel : ObservableObject
                 new() { Title = "生产监控", Target = productionMonitor },
             ],
         };
+        var samplesNav = new NavItem { Title = "样品档案", Target = samples };
         var items = new ObservableCollection<NavItem>
         {
             consoleGroup,
-            new() { Title = "样品档案", Target = samples },
+            samplesNav,
             new() { Title = "SCT 管理", Target = sct },
             new() { Title = "系数管理", Target = coefficients },
             new() { Title = "日志报警", Target = alarms },
             new() { Title = "设置", Target = settings },
         };
         NavItems = new ReadOnlyObservableCollection<NavItem>(items);
+
+        // 生产监控双击生产日志行 → 切到样品档案页并定位对应样品（编号选中 + 时间就近匹配高亮）
+        productionMonitor.SampleLocateRequested += (sampleId, logTime) =>
+        {
+            NavigateTo(samplesNav);
+            _ = samples.LocateSampleAsync(sampleId, logTime);
+        };
 
         // 默认落在主控台
         NavigateTo(consoleGroup.Children.First(c => c.Title == "主控台"));

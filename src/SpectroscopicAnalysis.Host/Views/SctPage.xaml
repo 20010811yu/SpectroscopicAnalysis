@@ -152,46 +152,49 @@
                         </Grid>
                         <Button Content="查询" Command="{Binding SearchCommand}" Style="{StaticResource PrimaryBtn}" Margin="8,0,0,0" Padding="14,5" />
                     </StackPanel>
-                    <!-- 手动操作成功提示：绿色，显示在手动触发按钮正下方（与 TriggerError 同位；5 秒自动消失） -->
-                    <TextBlock DockPanel.Dock="Bottom" Text="{Binding PolicySavedMessage}" Foreground="{DynamicResource Brush.Status.Running}"
-                               HorizontalAlignment="Right" Margin="0,4,0,0">
-                        <TextBlock.Style>
-                            <Style TargetType="TextBlock" BasedOn="{StaticResource Text.Caption}">
-                                <Setter Property="Visibility" Value="Visible" />
-                                <Style.Triggers>
-                                    <DataTrigger Binding="{Binding PolicySavedMessage}" Value="{x:Null}">
-                                        <Setter Property="Visibility" Value="Collapsed" />
-                                    </DataTrigger>
-                                </Style.Triggers>
-                            </Style>
-                        </TextBlock.Style>
-                    </TextBlock>
-                    <!-- 手动触发错误提示（类型不符/未选行），显示在手动触发按钮正下方 -->
-                    <TextBlock DockPanel.Dock="Bottom" Text="{Binding TriggerError}" Foreground="{DynamicResource Brush.Status.Failed}"
-                               HorizontalAlignment="Right" Margin="0,4,0,0">
-                        <TextBlock.Style>
-                            <Style TargetType="TextBlock" BasedOn="{StaticResource Text.Caption}">
-                                <Setter Property="Visibility" Value="Visible" />
-                                <Style.Triggers>
-                                    <DataTrigger Binding="{Binding TriggerError}" Value="{x:Null}">
-                                        <Setter Property="Visibility" Value="Collapsed" />
-                                    </DataTrigger>
-                                </Style.Triggers>
-                            </Style>
-                        </TextBlock.Style>
-                    </TextBlock>
-                    <StackPanel Orientation="Horizontal" DockPanel.Dock="Right" HorizontalAlignment="Right" VerticalAlignment="Center">
-                        <Button Content="测高登记" Command="{Binding OpenMeasureCommand}" Style="{StaticResource SecondaryBtn}" Padding="10,5" />
-                        <Button Content="阈值调整" Command="{Binding OpenThresholdCommand}" Style="{StaticResource SecondaryBtn}" Margin="8,0,0,0" Padding="10,5" />
-                        <Button Content="启用/禁用" Command="{Binding ToggleActiveCommand}" Style="{StaticResource SecondaryBtn}" Margin="8,0,0,0" Padding="10,5" />
-                        <Button Content="手动测高执行" Command="{Binding TriggerHeightMeasureCommand}"
-                                ToolTip="提交测高任务到策略引擎队列（需选中行）" Style="{StaticResource SecondaryBtn}" Margin="16,0,0,0" Padding="10,5" />
-                        <Button Content="手动标准化" Command="{Binding TriggerStandardizationCommand}"
-                                ToolTip="提交标准化任务到策略引擎队列（需选中控样或类型标准化样）" Style="{StaticResource PrimaryBtn}" Margin="8,0,0,0" Padding="10,5" />
-                        <Button Content="手动校正检查" Command="{Binding TriggerControlCheckCommand}"
-                                ToolTip="提交校正检查任务到策略引擎队列（需选中检查样或类型标准化样）" Style="{StaticResource PrimaryBtn}" Margin="8,0,0,0" Padding="10,5" />
-                        <Button Content="手动类型标准化" Command="{Binding TriggerTypeStandardizeCommand}"
-                                ToolTip="提交类型标准化任务到策略引擎队列（需选中检查样或类型标准化样）" Style="{StaticResource PrimaryBtn}" Margin="8,0,0,0" Padding="10,5" />
+                    <!-- 手动操作按钮 + 其下方成功（绿）/错误（红）提示：垂直排列，右对齐，位置固定在按钮正下方 -->
+                    <StackPanel DockPanel.Dock="Right" HorizontalAlignment="Right" VerticalAlignment="Center">
+                        <StackPanel Orientation="Horizontal">
+                            <Button Content="测高登记" Command="{Binding OpenMeasureCommand}" Style="{StaticResource SecondaryBtn}" Padding="10,5" />
+                            <Button Content="阈值调整" Command="{Binding OpenThresholdCommand}" Style="{StaticResource SecondaryBtn}" Margin="8,0,0,0" Padding="10,5" />
+                            <Button Content="启用/禁用" Command="{Binding ToggleActiveCommand}" Style="{StaticResource SecondaryBtn}" Margin="8,0,0,0" Padding="10,5" />
+                            <Button Content="手动测高执行" Command="{Binding TriggerHeightMeasureCommand}"
+                                    ToolTip="提交测高任务到策略引擎队列（需选中行）" Style="{StaticResource SecondaryBtn}" Margin="16,0,0,0" Padding="10,5" />
+                            <Button Content="手动标准化" Command="{Binding TriggerStandardizationCommand}"
+                                    ToolTip="提交标准化任务到策略引擎队列（需选中控样或类型标准化样）" Style="{StaticResource PrimaryBtn}" Margin="8,0,0,0" Padding="10,5" />
+                            <Button Content="手动校正检查" Command="{Binding TriggerControlCheckCommand}"
+                                    ToolTip="提交校正检查任务到策略引擎队列（需选中检查样或类型标准化样）" Style="{StaticResource PrimaryBtn}" Margin="8,0,0,0" Padding="10,5" />
+                            <Button Content="手动类型标准化" Command="{Binding TriggerTypeStandardizeCommand}"
+                                    ToolTip="提交类型标准化任务到策略引擎队列（需选中检查样或类型标准化样）" Style="{StaticResource PrimaryBtn}" Margin="8,0,0,0" Padding="10,5" />
+                        </StackPanel>
+                        <!-- 成功提示（绿色，5 秒自动消失） -->
+                        <TextBlock Text="{Binding PolicySavedMessage}" Foreground="{DynamicResource Brush.Status.Running}"
+                                   HorizontalAlignment="Right" Margin="0,4,0,0">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock" BasedOn="{StaticResource Text.Caption}">
+                                    <Setter Property="Visibility" Value="Visible" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding PolicySavedMessage}" Value="{x:Null}">
+                                            <Setter Property="Visibility" Value="Collapsed" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+                        <!-- 手动触发错误提示（类型不符/未选行） -->
+                        <TextBlock Text="{Binding TriggerError}" Foreground="{DynamicResource Brush.Status.Failed}"
+                                   HorizontalAlignment="Right" Margin="0,4,0,0">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock" BasedOn="{StaticResource Text.Caption}">
+                                    <Setter Property="Visibility" Value="Visible" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding TriggerError}" Value="{x:Null}">
+                                            <Setter Property="Visibility" Value="Collapsed" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
                     </StackPanel>
                 </DockPanel>
 

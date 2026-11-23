@@ -956,6 +956,12 @@ public sealed partial class SctViewModel : ObservableObject, IPageLifecycle
             return;
         }
 
+        if (IsDisabledRow(row))
+        {
+            TriggerError = "禁用样品不能执行手动标准化，请先恢复样品后再操作";
+            return;
+        }
+
         _strategyEngine.SubmitTask(SctTaskType.Standardize, row.SampleId, "人工触发");
         _ui.Invoke(() =>
         {
@@ -984,6 +990,12 @@ public sealed partial class SctViewModel : ObservableObject, IPageLifecycle
         if (row.SampleTypeKey is not (SampleType.Control or SampleType.TypeStd))
         {
             TriggerError = "仅检查样或类型标准化样可手动触发校正检查";
+            return;
+        }
+
+        if (IsDisabledRow(row))
+        {
+            TriggerError = "禁用样品不能执行手动校正检查，请先恢复样品后再操作";
             return;
         }
 
@@ -1018,6 +1030,12 @@ public sealed partial class SctViewModel : ObservableObject, IPageLifecycle
             return;
         }
 
+        if (IsDisabledRow(row))
+        {
+            TriggerError = "禁用样品不能执行手动类型标准化，请先恢复样品后再操作";
+            return;
+        }
+
         _strategyEngine.SubmitTask(SctTaskType.TypeStandardize, row.SampleId, "人工触发");
         _ui.Invoke(() =>
         {
@@ -1043,6 +1061,9 @@ public sealed partial class SctViewModel : ObservableObject, IPageLifecycle
             ScheduleSavedMessageHide(PolicySavedMessage);
         });
     }
+
+    /// <summary>行是否为禁用样品（启用标志关闭或状态为 Disabled——禁用样品禁止手动标准化/校正检查/类型标准化）。</summary>
+    private static bool IsDisabledRow(SctRowItem row) => !row.IsActive || row.Status == SampleStatus.Disabled;
 
     /// <summary>分析类触发可用性：策略引擎已接入。</summary>
     private bool CanTriggerAnalysis() => _strategyEngine is not null;

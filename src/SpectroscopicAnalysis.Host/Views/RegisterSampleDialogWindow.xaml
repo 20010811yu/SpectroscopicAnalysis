@@ -4,20 +4,33 @@
         Title="样品注册" WindowStartupLocation="CenterOwner"
         ResizeMode="NoResize" SizeToContent="Height"
         ShowInTaskbar="False" Background="{DynamicResource Brush.Bg.Page}">
-    <!-- 样品注册弹窗（主控台「＋ 样品注册」入口；表单复刻样品档案页注册面板，业务在注册服务） -->
+    <!-- 样品注册弹窗（主控台「＋ 样品注册」入口；业务在注册服务）。
+         布局：表单区限宽居中（消除右侧空白），双列字段 Grid + Star 弹性（界面规范第 5 节）；错误就地红字。 -->
     <Window.Resources>
-        <!-- 表单输入统一尺寸：宽 280 高 32（与样品档案页注册面板一致） -->
+        <!-- 表单输入统一高度，宽度随列弹性（Star 列），不再定宽左对齐 -->
         <Style TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
-            <Setter Property="Width" Value="280" />
             <Setter Property="Height" Value="32" />
-            <Setter Property="HorizontalAlignment" Value="Left" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
             <Setter Property="VerticalAlignment" Value="Center" />
         </Style>
         <Style TargetType="ComboBox" BasedOn="{StaticResource {x:Type ComboBox}}">
-            <Setter Property="Width" Value="280" />
             <Setter Property="Height" Value="32" />
-            <Setter Property="HorizontalAlignment" Value="Left" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
             <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+        <!-- 字段级错误就地红字（绑定 XxxError 属性，null 折叠） -->
+        <Style x:Key="FieldError" TargetType="TextBlock" BasedOn="{StaticResource Text.Caption}">
+            <Setter Property="Foreground" Value="{DynamicResource Brush.Status.Failed}" />
+            <Setter Property="Margin" Value="0,2,0,0" />
+            <Setter Property="Visibility" Value="Collapsed" />
+            <Style.Triggers>
+                <Trigger Property="Text" Value="">
+                    <Setter Property="Visibility" Value="Collapsed" />
+                </Trigger>
+                <Trigger Property="Text" Value="{x:Null}">
+                    <Setter Property="Visibility" Value="Collapsed" />
+                </Trigger>
+            </Style.Triggers>
         </Style>
         <!-- 行级显隐：生产样仅分析方法组；控样/检查样/类型标准样共用架位/厚度组；关联合金仅类型标准样 -->
         <Style x:Key="ProductionRow" TargetType="FrameworkElement">
@@ -52,64 +65,124 @@
         </Style>
     </Window.Resources>
 
-    <Border Style="{StaticResource Card}" Margin="16">
+    <!-- 表单区限宽：内容容器不写固定宽高，仅以 MaxWidth 约束上限（界面规范第 5 节弹性布局） -->
+    <Border Style="{StaticResource Card}" Margin="16" MaxWidth="720" HorizontalAlignment="Center">
         <StackPanel>
             <TextBlock Text="样品注册" Style="{StaticResource Text.CardTitle}" Margin="0,0,0,12" />
             <StackPanel>
-                <!-- 第一步：类型选择 -->
-                <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
-                    <TextBlock Text="样品类型*" Style="{StaticResource Text.Caption}" Width="110" VerticalAlignment="Center" />
-                    <ComboBox ItemsSource="{Binding SampleTypeOptions}" SelectedItem="{Binding SampleType}" />
-                </StackPanel>
-                <!-- 公共字段：编号/名称 -->
-                <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
-                    <TextBlock Text="样品编号*" Style="{StaticResource Text.Caption}" Width="110" VerticalAlignment="Center" />
-                    <TextBox Text="{Binding SampleId, UpdateSourceTrigger=PropertyChanged}" />
-                    <TextBlock Text="样品名称*" Style="{StaticResource Text.Caption}" Width="110" VerticalAlignment="Center" Margin="24,0,0,0" />
-                    <TextBox Text="{Binding SampleName, UpdateSourceTrigger=PropertyChanged}" />
-                </StackPanel>
+                <!-- 第一步：类型选择（下拉显示中文，SelectedValue 取英文键入库） -->
+                <Grid Margin="0,0,0,8">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" SharedSizeGroup="Label" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0" Text="样品类型*" Style="{StaticResource Text.Caption}" Width="110" VerticalAlignment="Center" />
+                    <ComboBox Grid.Column="1" Margin="8,0,0,0" ItemsSource="{Binding SampleTypeOptions}"
+                              DisplayMemberPath="Display" SelectedValuePath="Key"
+                              SelectedValue="{Binding SampleType}" />
+                </Grid>
+                <!-- 公共字段：编号/名称（双列） -->
+                <Grid Margin="0,0,0,8">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" SharedSizeGroup="Label" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" SharedSizeGroup="Label" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+                    <TextBlock Grid.Row="0" Grid.Column="0" Text="样品编号*" Style="{StaticResource Text.Caption}" Width="110" VerticalAlignment="Center" />
+                    <StackPanel Grid.Row="0" Grid.Column="1" Margin="8,0,16,0">
+                        <TextBox Text="{Binding SampleId, UpdateSourceTrigger=PropertyChanged}" />
+                        <TextBlock Text="{Binding SampleIdError}" Style="{StaticResource FieldError}" />
+                    </StackPanel>
+                    <TextBlock Grid.Row="0" Grid.Column="2" Text="样品名称*" Style="{StaticResource Text.Caption}" Width="110" VerticalAlignment="Center" />
+                    <StackPanel Grid.Row="0" Grid.Column="3" Margin="8,0,0,0">
+                        <TextBox Text="{Binding SampleName, UpdateSourceTrigger=PropertyChanged}" />
+                        <TextBlock Text="{Binding SampleNameError}" Style="{StaticResource FieldError}" />
+                    </StackPanel>
+                </Grid>
                 <!-- 生产样：分析方法下拉 -->
-                <StackPanel Orientation="Horizontal" Margin="0,0,0,8" Style="{StaticResource ProductionRow}">
-                    <TextBlock Text="分析方法*" Style="{StaticResource Text.Caption}" Width="110" VerticalAlignment="Center" />
-                    <ComboBox ItemsSource="{Binding AnalysisMethodOptions}" SelectedItem="{Binding AnalysisMethod}" />
+                <StackPanel Orientation="Vertical" Margin="0,0,0,8" Style="{StaticResource ProductionRow}">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" SharedSizeGroup="Label" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="0" Text="分析方法*" Style="{StaticResource Text.Caption}" Width="110" VerticalAlignment="Center" />
+                        <StackPanel Grid.Column="1" Margin="8,0,0,0">
+                            <ComboBox ItemsSource="{Binding AnalysisMethodOptions}" SelectedItem="{Binding AnalysisMethod}" />
+                            <TextBlock Text="{Binding AnalysisMethodError}" Style="{StaticResource FieldError}" />
+                        </StackPanel>
+                    </Grid>
                 </StackPanel>
-                <!-- 控样/检查样/类型标准样：架位 + 最大使用次数 -->
-                <StackPanel Orientation="Horizontal" Margin="0,0,0,8" Style="{StaticResource StdRow}">
-                    <TextBlock Text="样品架位置*" Style="{StaticResource Text.Caption}" Width="110" VerticalAlignment="Center" />
-                    <TextBox Text="{Binding RackPosition, UpdateSourceTrigger=PropertyChanged}" />
-                    <TextBlock Text="最大使用次数*" Style="{StaticResource Text.Caption}" Width="110" VerticalAlignment="Center" Margin="24,0,0,0" />
-                    <TextBox Text="{Binding MaxUsageCount, UpdateSourceTrigger=PropertyChanged}" />
+                <!-- 控样/检查样/类型标准样：架位 + 最大使用次数（双列） -->
+                <StackPanel Margin="0,0,0,8" Style="{StaticResource StdRow}">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" SharedSizeGroup="Label" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" SharedSizeGroup="Label" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="0" Text="样品架位置*" Style="{StaticResource Text.Caption}" Width="110" VerticalAlignment="Center" />
+                        <StackPanel Grid.Column="1" Margin="8,0,16,0">
+                            <TextBox Text="{Binding RackPosition, UpdateSourceTrigger=PropertyChanged}" />
+                            <TextBlock Text="{Binding RackPositionError}" Style="{StaticResource FieldError}" />
+                        </StackPanel>
+                        <TextBlock Grid.Column="2" Text="最大使用次数*" Style="{StaticResource Text.Caption}" Width="110" VerticalAlignment="Center" />
+                        <StackPanel Grid.Column="3" Margin="8,0,0,0">
+                            <TextBox Text="{Binding MaxUsageCount, UpdateSourceTrigger=PropertyChanged}" />
+                            <TextBlock Text="{Binding MaxUsageCountError}" Style="{StaticResource FieldError}" />
+                        </StackPanel>
+                    </Grid>
                 </StackPanel>
-                <!-- 控样/检查样/类型标准样：初始/最小厚度 -->
-                <StackPanel Orientation="Horizontal" Margin="0,0,0,8" Style="{StaticResource StdRow}">
-                    <TextBlock Text="初始厚度 (mm)*" Style="{StaticResource Text.Caption}" Width="110" VerticalAlignment="Center" />
-                    <TextBox Text="{Binding InitialThickness, UpdateSourceTrigger=PropertyChanged}" />
-                    <TextBlock Text="最小厚度 (mm)*" Style="{StaticResource Text.Caption}" Width="110" VerticalAlignment="Center" Margin="24,0,0,0" />
-                    <TextBox Text="{Binding MinThickness, UpdateSourceTrigger=PropertyChanged}" />
+                <!-- 控样/检查样/类型标准样：初始/最小厚度（双列） -->
+                <StackPanel Margin="0,0,0,8" Style="{StaticResource StdRow}">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" SharedSizeGroup="Label" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" SharedSizeGroup="Label" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="0" Text="初始厚度 (mm)*" Style="{StaticResource Text.Caption}" Width="110" VerticalAlignment="Center" />
+                        <StackPanel Grid.Column="1" Margin="8,0,16,0">
+                            <TextBox Text="{Binding InitialThickness, UpdateSourceTrigger=PropertyChanged}" />
+                            <TextBlock Text="{Binding ThicknessError}" Style="{StaticResource FieldError}" />
+                        </StackPanel>
+                        <TextBlock Grid.Column="2" Text="最小厚度 (mm)*" Style="{StaticResource Text.Caption}" Width="110" VerticalAlignment="Center" />
+                        <StackPanel Grid.Column="3" Margin="8,0,0,0">
+                            <TextBox Text="{Binding MinThickness, UpdateSourceTrigger=PropertyChanged}" />
+                        </StackPanel>
+                    </Grid>
                 </StackPanel>
                 <!-- 仅类型标准样：关联合金 -->
-                <StackPanel Orientation="Horizontal" Margin="0,0,0,8" Style="{StaticResource TypeStdRow}">
-                    <TextBlock Text="关联合金*" Style="{StaticResource Text.Caption}" Width="110" VerticalAlignment="Center" />
-                    <TextBox Text="{Binding AlloyType, UpdateSourceTrigger=PropertyChanged}" />
+                <StackPanel Orientation="Vertical" Margin="0,0,0,8" Style="{StaticResource TypeStdRow}">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" SharedSizeGroup="Label" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="0" Text="关联合金*" Style="{StaticResource Text.Caption}" Width="110" VerticalAlignment="Center" />
+                        <StackPanel Grid.Column="1" Margin="8,0,0,0">
+                            <TextBox Text="{Binding AlloyType, UpdateSourceTrigger=PropertyChanged}" />
+                            <TextBlock Text="{Binding AlloyTypeError}" Style="{StaticResource FieldError}" />
+                        </StackPanel>
+                    </Grid>
                 </StackPanel>
             </StackPanel>
 
-            <!-- 校验错误就地红字（弹窗不关闭，便于修正后重试） -->
-            <TextBlock Text="{Binding RegisterError}" TextWrapping="Wrap" Margin="0,4,0,8"
-                       Foreground="{DynamicResource Brush.Status.Failed}">
-                <TextBlock.Style>
-                    <Style TargetType="TextBlock" BasedOn="{StaticResource Text.Caption}">
-                        <Setter Property="Visibility" Value="Visible" />
-                        <Style.Triggers>
-                            <DataTrigger Binding="{Binding RegisterError}" Value="{x:Null}">
-                                <Setter Property="Visibility" Value="Collapsed" />
-                            </DataTrigger>
-                        </Style.Triggers>
-                    </Style>
-                </TextBlock.Style>
-            </TextBlock>
+            <!-- 服务端校验错误（编号重复/架位占用等）就地红字（弹窗不关闭，便于修正后重试） -->
+            <Border Margin="0,4,0,8" Padding="8,6" CornerRadius="4" Background="{DynamicResource Brush.Badge.Failed.Bg}"
+                    Visibility="{Binding RegisterError, Converter={StaticResource NullToVisibility.Inverse}}">
+                <TextBlock Text="{Binding RegisterError}" TextWrapping="Wrap"
+                           Foreground="{DynamicResource Brush.Status.Failed}" Style="{StaticResource Text.Caption}" />
+            </Border>
 
-            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,4,0,0">
                 <Button Content="取消" Command="{Binding CancelCommand}" Style="{StaticResource SecondaryBtn}" Margin="0,0,8,0" />
                 <Button Content="确认入库" Command="{Binding ConfirmCommand}"
                         Style="{StaticResource PrimaryBtn}" Padding="14,6" />

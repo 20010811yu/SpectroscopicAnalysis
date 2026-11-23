@@ -75,9 +75,14 @@ public sealed class ProductionMonitorViewModelTests
 
         vm.OpenSampleRegisterCommand.Execute(null);
         var form = dialogs.RegisterForms[0];
+        // 先通过字段级校验（必填项补全），错误来自服务端（Fake 预设）
+        form.SampleId = "P-ERR";
+        form.SampleName = "测试样品";
+        form.AnalysisMethod = "GB/T 7999-A";
         await form.ConfirmCommand.ExecuteAsync(null);
 
         Assert.False(form.Confirmed);
+        Assert.Null(form.SampleIdError);            // 字段级校验已通过，错误来自服务端
         Assert.Equal("样品编号已存在", form.RegisterError);
     }
 

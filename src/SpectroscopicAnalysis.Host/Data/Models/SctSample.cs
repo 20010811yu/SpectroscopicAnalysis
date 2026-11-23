@@ -16,7 +16,19 @@ public static class SampleType
     public const string Control = "Control";
     public const string TypeStd = "TypeStd";
     public const string Production = "Production";
+
+    /// <summary>类型键 → 中文显示名（下拉/台账展示用；入库与表单流转仍为英文键）。</summary>
+    public static readonly IReadOnlyDictionary<string, string> DisplayNames = new Dictionary<string, string>
+    {
+        [Production] = "生产样品",
+        [SettingUp] = "标准化样",
+        [Control] = "检查样",
+        [TypeStd] = "类型标准化样",
+    };
 }
+
+/// <summary>样品类型下拉选项（键 + 中文名成对；SelectedValue 取 Key 入库，Display 仅展示）。</summary>
+public sealed record SampleTypeOption(string Key, string Display);
 
 /// <summary>样品档案（表 SCT_Sample，字段见任务清单 2.1）。</summary>
 public sealed class SctSample

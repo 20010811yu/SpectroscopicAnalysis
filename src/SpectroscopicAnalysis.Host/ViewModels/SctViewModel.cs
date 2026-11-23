@@ -94,6 +94,9 @@ public sealed partial class SctViewModel : ObservableObject, IPageLifecycle
     /// <summary>样品数据变更通知（维护操作写库后发布，样品档案等台账页面即时重载；未注入时为本地实例——测试兼容）。</summary>
     private readonly SampleManager.ISampleDataChangeNotifier _sampleDataChanged;
 
+    /// <summary>全流程系统日志（策略配置保存留痕；未注入时空实现兜底——测试兼容）。</summary>
+    private readonly LoggingAlarm.ISystemLogCollector _systemLog;
+
     /// <summary>全部 SCT 标样（非生产样），未筛选。</summary>
     private List<SctRowItem> _allRows = new();
 
@@ -108,7 +111,8 @@ public sealed partial class SctViewModel : ObservableObject, IPageLifecycle
         IDialogService dialogs,
         IErrorCollector errors,
         ISctStrategyEngine? strategyEngine = null,
-        SampleManager.ISampleDataChangeNotifier? sampleDataChanged = null)
+        SampleManager.ISampleDataChangeNotifier? sampleDataChanged = null,
+        LoggingAlarm.ISystemLogCollector? systemLog = null)
     {
         _samples = samples;
         _logs = logs;
@@ -117,6 +121,7 @@ public sealed partial class SctViewModel : ObservableObject, IPageLifecycle
         _dialogs = dialogs;
         _errors = errors;
         _strategyEngine = strategyEngine;
+        _systemLog = systemLog ?? new LoggingAlarm.NullSystemLogCollector();
         _sampleDataChanged = sampleDataChanged ?? new SampleManager.SampleDataChangeNotifier();
         // 订阅样品数据变更（编排任务回喂/其他页面维护操作），标样台账即时重载（事件任意线程触发，经 IUiDispatcher 回 UI）
         _sampleDataChanged.SampleDataChanged += () => _ui.Invoke(() => LoadCommand.Execute(null));
@@ -789,7 +794,9 @@ public sealed partial class SctViewModel : ObservableObject, IPageLifecycle
 
         try
         {
-            _policyStore.Save(new SctPolicyOptions
+            // 留存旧配置做前后值对照（配置变更审计：全流程日志记录关键项变化）
+            var oldPolicy = _policyStore.Load();
+            var newPolicy = new SctPolicyOptions
             {
                 SettingSampleSelectionMode = PolicySettingSelectionMode,
                 ControlRotationEnabled = PolicyRotationEnabled,
@@ -806,7 +813,10 @@ public sealed partial class SctViewModel : ObservableObject, IPageLifecycle
                 StandardizeOnAutoMode = StandardizeOnAutoMode,
                 PeriodicStandardizeEnabled = PeriodicEnabled,
                 PeriodicStandardizeHours = periodicHours,
-            });
+            };
+            _policyStore.Save(newPolicy);
+            // 全流程日志：策略配置保存留痕（关键项旧→新；无变化也要留痕，证明保存动作发生过）
+            _systemLog.Log("SCT策略", $"策略配置已保存（{DescribePolicyChanges(oldPolicy, newPolicy)}）");
             PolicySavedMessage = "✓ 策略配置已保存";
         }
         catch (IOException ex)
@@ -814,6 +824,68 @@ public sealed partial class SctViewModel : ObservableObject, IPageLifecycle
             PolicyError = $"保存失败：{ex.Message}";
             _errors.Collect(ErrorCodes.SctSampleMaintainFailed, "SCT 策略配置保存失败", null, ex);
         }
+    }
+
+    /// <summary>生成策略关键项变更描述（旧→新；无变化返回「内容无变化」）。全流程日志留痕用。</summary>
+    private static string DescribePolicyChanges(SctPolicyOptions oldPolicy, SctPolicyOptions newPolicy)
+    {
+        static string InsertModeText(string mode) => mode == ControlInsertMode.ByTime ? "按时间" : "按数量";
+        static string SelectionText(string mode) => mode == SettingSampleSelectionMode.RoundRobin ? "轮询" : "最少使用优先";
+
+        var changes = new List<string>();
+        if (oldPolicy.ControlInsertMode != newPolicy.ControlInsertMode)
+        {
+            changes.Add($"插入模式 {InsertModeText(oldPolicy.ControlInsertMode)}→{InsertModeText(newPolicy.ControlInsertMode)}");
+        }
+
+        if (oldPolicy.ControlInsertCount != newPolicy.ControlInsertCount)
+        {
+            changes.Add($"插入数量 {oldPolicy.ControlInsertCount}→{newPolicy.ControlInsertCount}");
+        }
+
+        if (oldPolicy.ControlInsertMinutes != newPolicy.ControlInsertMinutes)
+        {
+            changes.Add($"插入间隔 {oldPolicy.ControlInsertMinutes}→{newPolicy.ControlInsertMinutes} 分钟");
+        }
+
+        if (oldPolicy.SettingSampleSelectionMode != newPolicy.SettingSampleSelectionMode)
+        {
+            changes.Add($"选样规则 {SelectionText(oldPolicy.SettingSampleSelectionMode)}→{SelectionText(newPolicy.SettingSampleSelectionMode)}");
+        }
+
+        if (oldPolicy.ControlRotationEnabled != newPolicy.ControlRotationEnabled)
+        {
+            changes.Add($"多块轮换 {(oldPolicy.ControlRotationEnabled ? "开" : "关")}→{(newPolicy.ControlRotationEnabled ? "开" : "关")}");
+        }
+
+        if (oldPolicy.LimitType != newPolicy.LimitType || oldPolicy.LimitValue != newPolicy.LimitValue)
+        {
+            changes.Add($"判定限值 {oldPolicy.LimitType}={oldPolicy.LimitValue}→{newPolicy.LimitType}={newPolicy.LimitValue}");
+        }
+
+        if (oldPolicy.ControlRecheckMaxCount != newPolicy.ControlRecheckMaxCount)
+        {
+            changes.Add($"超差重测上限 {oldPolicy.ControlRecheckMaxCount}→{newPolicy.ControlRecheckMaxCount} 次");
+        }
+
+        if (oldPolicy.AutoStandardizeOnControlFail != newPolicy.AutoStandardizeOnControlFail)
+        {
+            changes.Add($"超差自动标准化 {(oldPolicy.AutoStandardizeOnControlFail ? "开" : "关")}→{(newPolicy.AutoStandardizeOnControlFail ? "开" : "关")}");
+        }
+
+        if (oldPolicy.PeriodicStandardizeEnabled != newPolicy.PeriodicStandardizeEnabled ||
+            oldPolicy.PeriodicStandardizeHours != newPolicy.PeriodicStandardizeHours)
+        {
+            changes.Add($"定时标准化 {(oldPolicy.PeriodicStandardizeEnabled ? $"{oldPolicy.PeriodicStandardizeHours}h" : "关")}→{(newPolicy.PeriodicStandardizeEnabled ? $"{newPolicy.PeriodicStandardizeHours}h" : "关")}");
+        }
+
+        if (oldPolicy.TypeStandardizePeriodEnabled != newPolicy.TypeStandardizePeriodEnabled ||
+            oldPolicy.TypeStandardizePeriodDays != newPolicy.TypeStandardizePeriodDays)
+        {
+            changes.Add($"类型标准化期限 {(oldPolicy.TypeStandardizePeriodEnabled ? $"{oldPolicy.TypeStandardizePeriodDays}d" : "关")}→{(newPolicy.TypeStandardizePeriodEnabled ? $"{newPolicy.TypeStandardizePeriodDays}d" : "关")}");
+        }
+
+        return changes.Count == 0 ? "内容无变化" : string.Join("；", changes);
     }
 
     // ==================== 手动触发（提交策略引擎任务队列；引擎未注入时保持禁用） ====================

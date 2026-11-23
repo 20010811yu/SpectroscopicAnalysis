@@ -1,5 +1,6 @@
 using System.IO;
 using SpectroscopicAnalysis.Host.Data.Models;
+using SpectroscopicAnalysis.Host.LoggingAlarm;
 using SpectroscopicAnalysis.Host.SampleManager;
 using SpectroscopicAnalysis.Host.SctStrategy;
 using SpectroscopicAnalysis.Host.ViewModels;
@@ -267,6 +268,28 @@ public sealed class SctPageTests
         Assert.Equal(2, vm.OperationRows.Count);
         Assert.Equal("SUS-002", vm.OperationRows[0].SampleIdText); // 时间倒序
         Assert.Contains("9.0 → 8.5", vm.OperationRows[0].ThicknessText);
+    }
+
+    [Fact]
+    public void Policy_保存成功写入全流程日志含变更前后值()
+    {
+        var systemLog = new SystemLogCollector();
+        var policy = new FakeSctPolicyStore();
+        var vm = new SctViewModel(new FakeSampleRepository(), new FakeOperationLogRepository(), policy,
+            new FakeUiDispatcher(), new FakeDialogService(), new FakeErrorCollector(),
+            strategyEngine: null, sampleDataChanged: null, systemLog: systemLog);
+
+        // 修改插入模式与间隔后保存 → 日志含类目与旧→新对照
+        vm.PolicyInsertMode = ControlInsertMode.ByTime;
+        vm.PolicyInsertMinutes = "45";
+        vm.SavePolicyCommand.Execute(null);
+
+        Assert.Null(vm.PolicyError);
+        var entry = Assert.Single(systemLog.GetEntries());
+        Assert.Equal("SCT策略", entry.Category);
+        Assert.Contains("策略配置已保存", entry.Message);
+        Assert.Contains("插入模式 按数量→按时间", entry.Message);
+        Assert.Contains("插入间隔 60→45 分钟", entry.Message);
     }
 
     [Fact]

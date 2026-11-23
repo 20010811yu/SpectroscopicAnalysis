@@ -585,6 +585,8 @@ public sealed partial class SctViewModel : ObservableObject, IPageLifecycle
             MeasureThicknessText = string.Empty;
             MeasureError = null;
             IsMeasureOpen = false;
+            PolicySavedMessage = $"✓ 测高登记已保存（{sampleId}）";
+            ScheduleSavedMessageHide(PolicySavedMessage);
         });
         await LoadCommand.ExecuteAsync(null);
         _sampleDataChanged.NotifySampleDataChanged();   // 通知样品档案等台账页面重载
@@ -676,6 +678,8 @@ public sealed partial class SctViewModel : ObservableObject, IPageLifecycle
         {
             ThresholdError = null;
             IsThresholdOpen = false;
+            PolicySavedMessage = $"✓ 阈值已更新（{sampleId}）";
+            ScheduleSavedMessageHide(PolicySavedMessage);
         });
         await LoadCommand.ExecuteAsync(null);
         _sampleDataChanged.NotifySampleDataChanged();   // 通知样品档案等台账页面重载
@@ -722,6 +726,11 @@ public sealed partial class SctViewModel : ObservableObject, IPageLifecycle
             return;
         }
 
+        _ui.Invoke(() =>
+        {
+            PolicySavedMessage = disable ? $"✓ 已禁用标样（{sampleId}）" : $"✓ 已启用标样（{sampleId}）";
+            ScheduleSavedMessageHide(PolicySavedMessage);
+        });
         await LoadCommand.ExecuteAsync(null);
         _sampleDataChanged.NotifySampleDataChanged();   // 通知样品档案等台账页面重载
     }
@@ -821,7 +830,7 @@ public sealed partial class SctViewModel : ObservableObject, IPageLifecycle
             // 全流程日志：策略配置保存留痕（关键项旧→新；无变化也要留痕，证明保存动作发生过）
             _systemLog.Log("SCT策略", $"策略配置已保存（{DescribePolicyChanges(oldPolicy, newPolicy)}）");
             PolicySavedMessage = "✓ 策略配置已保存";
-            ScheduleSavedMessageHide();
+            ScheduleSavedMessageHide(PolicySavedMessage);
         }
         catch (IOException ex)
         {
@@ -830,8 +839,8 @@ public sealed partial class SctViewModel : ObservableObject, IPageLifecycle
         }
     }
 
-    /// <summary>保存成功提示 5 秒后自动隐藏（再次保存时重置计时，取消旧计时）。</summary>
-    private void ScheduleSavedMessageHide()
+    /// <summary>保存成功提示 5 秒后自动隐藏（再次设置提示时重置计时，取消旧计时）。</summary>
+    private void ScheduleSavedMessageHide(string message)
     {
         _savedMessageCts?.Cancel();
         _savedMessageCts?.Dispose();
@@ -846,12 +855,12 @@ public sealed partial class SctViewModel : ObservableObject, IPageLifecycle
             }
             catch (OperationCanceledException)
             {
-                return; // 计时被新一次保存重置，不做任何处理
+                return; // 计时被新一次提示重置，不做任何处理
             }
 
             _ui.Invoke(() =>
             {
-                if (PolicySavedMessage == "✓ 策略配置已保存")
+                if (PolicySavedMessage == message)
                 {
                     PolicySavedMessage = null;
                 }
@@ -948,7 +957,11 @@ public sealed partial class SctViewModel : ObservableObject, IPageLifecycle
         }
 
         _strategyEngine.SubmitTask(SctTaskType.Standardize, row.SampleId, "人工触发");
-        _ui.Invoke(() => PolicySavedMessage = $"✓ 标准化任务已提交队列（{row.SampleId}）");
+        _ui.Invoke(() =>
+        {
+            PolicySavedMessage = $"✓ 标准化任务已提交队列（{row.SampleId}）";
+            ScheduleSavedMessageHide(PolicySavedMessage);
+        });
     }
 
     /// <summary>手动触发校正检查（提交 ControlCheck 任务；检查样/类型标准化样均可，须先选中行）。</summary>
@@ -975,7 +988,11 @@ public sealed partial class SctViewModel : ObservableObject, IPageLifecycle
         }
 
         _strategyEngine.SubmitTask(SctTaskType.ControlCheck, row.SampleId, "人工触发");
-        _ui.Invoke(() => PolicySavedMessage = $"✓ 校正检查任务已提交队列（{row.SampleId}）");
+        _ui.Invoke(() =>
+        {
+            PolicySavedMessage = $"✓ 校正检查任务已提交队列（{row.SampleId}）";
+            ScheduleSavedMessageHide(PolicySavedMessage);
+        });
     }
 
     /// <summary>手动触发类型标准化（提交 TypeStandardize 任务，显式携带选中样品——区别于自动触发的合金选样；检查样/类型标准化样均可，须先选中行）。</summary>
@@ -1002,7 +1019,11 @@ public sealed partial class SctViewModel : ObservableObject, IPageLifecycle
         }
 
         _strategyEngine.SubmitTask(SctTaskType.TypeStandardize, row.SampleId, "人工触发");
-        _ui.Invoke(() => PolicySavedMessage = $"✓ 类型标准化任务已提交队列（{row.SampleId}）");
+        _ui.Invoke(() =>
+        {
+            PolicySavedMessage = $"✓ 类型标准化任务已提交队列（{row.SampleId}）";
+            ScheduleSavedMessageHide(PolicySavedMessage);
+        });
     }
 
     /// <summary>手动触发测高任务（提交 HeightMeasure 任务到任务队列，需选中目标标样）。</summary>
@@ -1016,7 +1037,11 @@ public sealed partial class SctViewModel : ObservableObject, IPageLifecycle
         }
 
         _strategyEngine.SubmitTask(SctTaskType.HeightMeasure, SelectedSample.SampleId, "人工测高触发");
-        _ui.Invoke(() => PolicySavedMessage = $"✓ 测高任务已提交队列（{SelectedSample.SampleId}）");
+        _ui.Invoke(() =>
+        {
+            PolicySavedMessage = $"✓ 测高任务已提交队列（{SelectedSample.SampleId}）";
+            ScheduleSavedMessageHide(PolicySavedMessage);
+        });
     }
 
     /// <summary>分析类触发可用性：策略引擎已接入。</summary>

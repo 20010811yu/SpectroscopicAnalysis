@@ -36,7 +36,7 @@
                 <Border Style="{StaticResource Card}" Margin="6,0,0,0" Grid.Column="2">
                     <StackPanel>
                         <TextBlock Text="{Binding ControlCountdownText}" Style="{StaticResource Text.Display}" Foreground="{DynamicResource Brush.Primary}" HorizontalAlignment="Center" />
-                        <TextBlock Text="检查样插入倒计时" Style="{StaticResource Text.Caption}" HorizontalAlignment="Center" />
+                        <TextBlock Text="{Binding ControlCountdownTitle}" Style="{StaticResource Text.Caption}" HorizontalAlignment="Center" />
                     </StackPanel>
                 </Border>
             </Grid>

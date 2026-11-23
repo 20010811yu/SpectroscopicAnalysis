@@ -64,6 +64,10 @@ public sealed partial class ProductionMonitorViewModel : ObservableObject, IPage
     [ObservableProperty]
     private string _controlCountdownText = "—";
 
+    /// <summary>检查样插入 KPI 标题（随插入模式切换：按数量=计数，按时间=倒计时）。</summary>
+    [ObservableProperty]
+    private string _controlCountdownTitle = "检查样插入倒计时";
+
     /// <summary>KPI 定时刷新（导航后启动一次；页面为单例常驻，随宿主退出结束）。</summary>
     private PeriodicTimer? _kpiTimer;
 
@@ -123,6 +127,10 @@ public sealed partial class ProductionMonitorViewModel : ObservableObject, IPage
                 {
                     TodayCompletedCount = completed;
                     QueuePendingCount = _engine.GetQueuedTasks().Count;
+                    // 标题随插入模式切换：按数量=计数语义，按时间=倒计时语义（此前标题写死「倒计时」，ByCount 下语义不符）
+                    ControlCountdownTitle = countdown.Mode == ControlInsertMode.ByTime
+                        ? "检查样插入倒计时"
+                        : "检查样插入计数";
                     ControlCountdownText = text;
                 });
             }

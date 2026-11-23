@@ -230,17 +230,33 @@ public sealed class SctStrategyEngine : ISctStrategyEngine
     /// <inheritdoc />
     public void NotifyAnalysisCompleted(string sampleId)
     {
+        // 注意：生产样档案在 Production_Sample 表（SCT 仓储查不到返回 null），null 不代表事件无效——
+        // 必须先做按数量插入计数再判空返回（此前 null 提前 return 导致 ByCount 计数恒 0、KPI 不更新）
         var sample = _samples.GetById(sampleId);
-        if (sample is null)
-        {
-            return;
-        }
-
         var policy = _policyStore.Load();
         var now = _time.GetLocalNow().DateTime;
 
         lock (_gate)
         {
+            // 生产样完成：按数量插入检查样（引擎设计 §5）
+            if (sample is null || sample.SampleType == SampleType.Production)
+            {
+                if (policy.ControlInsertMode == ControlInsertMode.ByCount)
+                {
+                    _productionSinceControl++;
+                    if (_productionSinceControl >= policy.ControlInsertCount)
+                    {
+                        _productionSinceControl = 0;
+                        EnqueueWithSelection(SctTaskType.ControlCheck, "按分析数量插入");
+                    }
+                }
+
+                if (sample is null)
+                {
+                    return;     // 生产样无 SCT 档案，后续时间戳/使用阈值逻辑不适用
+                }
+            }
+
             if (sample.SampleType == SampleType.Control)
             {
                 _lastControlCheckTime = now;    // 判定结果另行经 NotifyControlResult 回喂
@@ -257,22 +273,7 @@ public sealed class SctStrategyEngine : ISctStrategyEngine
                 _lastTypeStdTime = now;
             }
 
-            if (sample.SampleType != SampleType.Production)
-            {
-                CheckUsageThreshold(sample);
-                return;
-            }
-
-            // 生产样完成：按数量插入检查样（引擎设计 §5）
-            if (policy.ControlInsertMode == ControlInsertMode.ByCount)
-            {
-                _productionSinceControl++;
-                if (_productionSinceControl >= policy.ControlInsertCount)
-                {
-                    _productionSinceControl = 0;
-                    EnqueueWithSelection(SctTaskType.ControlCheck, "按分析数量插入");
-                }
-            }
+            CheckUsageThreshold(sample);
         }
     }
 

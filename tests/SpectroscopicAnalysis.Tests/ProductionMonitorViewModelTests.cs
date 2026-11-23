@@ -152,6 +152,28 @@ public sealed class ProductionMonitorViewModelTests
     }
 
     [Fact]
+    public async Task RefreshKpis_按数量插入_标题切为计数()
+    {
+        var policy = new FakeSctPolicyStore
+        {
+            Current = new SctPolicyOptions { ControlInsertMode = ControlInsertMode.ByCount, ControlInsertCount = 15 },
+        };
+        var engine = new FakeSctStrategyEngine { Countdown = new SctControlCountdown { Mode = ControlInsertMode.ByCount, ProductionSinceControl = 3, ControlInsertCount = 15 } };
+        var vm = new ProductionMonitorViewModel(new FakeSctOperationLogRepository(), new FakeSampleRepository(),
+            new FakeProductionSampleRepository(), engine, new FakeWorkflowOrchestrator(),
+            new FakeUiDispatcher(), new FakeErrorCollector(), new FakeDialogService(), new FakeSampleRegistrationService());
+
+        vm.OnNavigatedTo();
+        for (var i = 0; i < 100 && vm.ControlCountdownText == "—"; i++)
+        {
+            await Task.Delay(10);
+        }
+
+        Assert.Equal("检查样插入计数", vm.ControlCountdownTitle);
+        Assert.Equal("3 / 15", vm.ControlCountdownText);
+    }
+
+    [Fact]
     public async Task Load_日志进入表格_映射正确()
     {
         var vm = CreateWithLogs(

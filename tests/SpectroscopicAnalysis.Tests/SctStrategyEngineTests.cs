@@ -161,6 +161,31 @@ public sealed class SctStrategyEngineTests
     }
 
     [Fact]
+    public void 触发_按数量插入检查样_生产样不在SCT表同样计数()
+    {
+        // 回归：生产样档案在 Production_Sample（SCT 仓储查不到为 null），
+        // 此前 null 提前 return 导致真实生产流程计数恒 0、检查样永不插入
+        _policy.Current.ControlInsertMode = ControlInsertMode.ByCount;
+        _policy.Current.ControlInsertCount = 2;
+        _samples.Store.Add(MakeSample("CTL-001", SampleType.Control, alloy: "6061"));
+        var engine = Create();
+        engine.NotifyAlloySwitched("6061");
+
+        engine.NotifyAnalysisCompleted("P-201");    // 未注册进 SCT 表的生产样
+        Assert.False(engine.TryDequeue(out _));     // 未达阈值不入队
+
+        engine.NotifyAnalysisCompleted("P-202");
+        Assert.True(engine.TryDequeue(out var task));   // 达阈值插入检查样
+        Assert.Equal(SctTaskType.ControlCheck, task.TaskType);
+        Assert.Equal("CTL-001", task.SampleId);
+
+        // 计数已归零：再次完成生产样不重复入队
+        engine.CompleteTask(task.TaskId, true, null);
+        engine.NotifyAnalysisCompleted("P-203");
+        Assert.False(engine.TryDequeue(out _));
+    }
+
+    [Fact]
     public void 触发_按时间插入检查样与定时标准化()
     {
         _policy.Current.ControlInsertMode = ControlInsertMode.ByTime;

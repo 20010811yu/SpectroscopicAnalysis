@@ -135,6 +135,7 @@ public sealed class SctControlCountdownTests
         Assert.Equal(ControlInsertMode.ByTime, countdown.Mode);
         Assert.Equal(60, countdown.MinutesSinceControl);
         Assert.Equal(60, countdown.ControlInsertMinutes);
+        Assert.Null(countdown.ControlDueTime);      // 无上次记录 → 无到期时刻（到期待触发）
     }
 
     [Fact]
@@ -147,8 +148,12 @@ public sealed class SctControlCountdownTests
 
         // 检查样分析完成 → _lastControlCheckTime = 当前时刻
         engine.NotifyAnalysisCompleted("CTL-001");
+        var lastCheck = _time.GetLocalNow().DateTime;
 
         _time.Advance(TimeSpan.FromMinutes(20));
         Assert.Equal(20, engine.GetControlCountdown().MinutesSinceControl, 1);
+        // 到期时刻 = 上次检查时间 + 间隔（UI 逐秒倒计时的数据源）
+        var countdown = engine.GetControlCountdown();
+        Assert.Equal(lastCheck.AddMinutes(60), countdown.ControlDueTime);
     }
 }

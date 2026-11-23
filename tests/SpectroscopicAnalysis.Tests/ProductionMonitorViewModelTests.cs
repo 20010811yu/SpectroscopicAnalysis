@@ -174,6 +174,60 @@ public sealed class ProductionMonitorViewModelTests
     }
 
     [Fact]
+    public async Task RefreshKpis_按时间插入_倒计时精确到秒()
+    {
+        var policy = new FakeSctPolicyStore
+        {
+            Current = new SctPolicyOptions { ControlInsertMode = ControlInsertMode.ByTime, ControlInsertMinutes = 60 },
+        };
+        var engine = new FakeSctStrategyEngine
+        {
+            Countdown = new SctControlCountdown
+            {
+                Mode = ControlInsertMode.ByTime,
+                ControlInsertMinutes = 60,
+                ControlDueTime = DateTime.Now.AddSeconds(90),   // 90 秒后到期
+            },
+        };
+        var vm = new ProductionMonitorViewModel(new FakeSctOperationLogRepository(), new FakeSampleRepository(),
+            new FakeProductionSampleRepository(), engine, new FakeWorkflowOrchestrator(),
+            new FakeUiDispatcher(), new FakeErrorCollector(), new FakeDialogService(), new FakeSampleRegistrationService());
+
+        vm.OnNavigatedTo();
+        for (var i = 0; i < 100 && vm.ControlCountdownText == "—"; i++)
+        {
+            await Task.Delay(10);
+        }
+
+        Assert.Equal("检查样插入倒计时", vm.ControlCountdownTitle);
+        Assert.Matches(@"^剩余 \d{2}:\d{2}:\d{2}$", vm.ControlCountdownText);   // hh:mm:ss 秒级格式
+    }
+
+    [Fact]
+    public async Task RefreshKpis_按时间无上次记录_显示到期待插入()
+    {
+        var policy = new FakeSctPolicyStore
+        {
+            Current = new SctPolicyOptions { ControlInsertMode = ControlInsertMode.ByTime, ControlInsertMinutes = 60 },
+        };
+        var engine = new FakeSctStrategyEngine
+        {
+            Countdown = new SctControlCountdown { Mode = ControlInsertMode.ByTime, ControlInsertMinutes = 60 },   // DueTime=null
+        };
+        var vm = new ProductionMonitorViewModel(new FakeSctOperationLogRepository(), new FakeSampleRepository(),
+            new FakeProductionSampleRepository(), engine, new FakeWorkflowOrchestrator(),
+            new FakeUiDispatcher(), new FakeErrorCollector(), new FakeDialogService(), new FakeSampleRegistrationService());
+
+        vm.OnNavigatedTo();
+        for (var i = 0; i < 100 && vm.ControlCountdownText == "—"; i++)
+        {
+            await Task.Delay(10);
+        }
+
+        Assert.Equal("到期待插入", vm.ControlCountdownText);
+    }
+
+    [Fact]
     public async Task Load_日志进入表格_映射正确()
     {
         var vm = CreateWithLogs(

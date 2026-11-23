@@ -71,6 +71,19 @@ public sealed partial class ProductionMonitorViewModel : ObservableObject, IPage
     /// <summary>KPI 定时刷新（导航后启动一次；页面为单例常驻，随宿主退出结束）。</summary>
     private PeriodicTimer? _kpiTimer;
 
+    /// <summary>倒计时逐秒节拍（导航后启动一次；轻量：仅按缓存的到期时刻重算文本，不做任何 I/O）。</summary>
+    private PeriodicTimer? _countdownTimer;
+
+    /// <summary>倒计时缓存快照：ByTime 到期时刻（null = 无记录已到期 / ByCount 模式）。</summary>
+    private DateTime? _controlDueTime;
+
+    /// <summary>倒计时缓存快照：当前插入模式（ControlInsertMode 常量键）。</summary>
+    private string _countdownMode = ControlInsertMode.ByCount;
+
+    /// <summary>倒计时缓存快照：按数量计数值与阈值（ByCount 文本逐秒重算时复用）。</summary>
+    private int _productionSinceControl;
+    private int _controlInsertCount;
+
     /// <summary>启动 KPI 定时刷新循环（重复导航防重启；取消/异常静默收尾——宿主关闭路径）。</summary>
     private void StartKpiTimer()
     {
@@ -81,6 +94,40 @@ public sealed partial class ProductionMonitorViewModel : ObservableObject, IPage
 
         _kpiTimer = new PeriodicTimer(KpiRefreshInterval);
         _ = RunKpiTimerAsync(_kpiTimer);
+        // 倒计时逐秒节拍：仅重算显示文本（秒级精度），数据快照仍由 30 秒 KPI 刷新维护
+        _countdownTimer = new PeriodicTimer(TimeSpan.FromSeconds(1));
+        _ = RunCountdownTimerAsync(_countdownTimer);
+    }
+
+    /// <summary>倒计时逐秒循环体：每秒在 UI 线程重算剩余时间文本。</summary>
+    private async Task RunCountdownTimerAsync(PeriodicTimer timer)
+    {
+        try
+        {
+            while (await timer.WaitForNextTickAsync())
+            {
+                UpdateCountdownText();
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // 宿主关闭取消定时器，属正常退出路径
+        }
+    }
+
+    /// <summary>按缓存快照重算倒计时文本（须在 UI 线程；纯内存计算，秒级精度）。</summary>
+    private void UpdateCountdownText()
+    {
+        if (_countdownMode != ControlInsertMode.ByTime)
+        {
+            ControlCountdownText = $"{_productionSinceControl} / {_controlInsertCount}";
+            return;
+        }
+
+        // ByTime：剩余 = 到期时刻 - 现在（hh:mm:ss，秒级精度）；无到期时刻（无上次记录）或已到期 → 到期待插入
+        ControlCountdownText = _controlDueTime is { } due && due > DateTime.Now
+            ? $"剩余 {due - DateTime.Now:hh\\:mm\\:ss}"
+            : "到期待插入";
     }
 
     /// <summary>KPI 定时刷新循环体。</summary>
@@ -119,9 +166,6 @@ public sealed partial class ProductionMonitorViewModel : ObservableObject, IPage
                     .Count(p => p.Status == ProductionStatus.Completed &&
                         (!latestResultTime.TryGetValue(p.SampleId, out var t) || t?.Date == today));
                 var countdown = _engine.GetControlCountdown();
-                var text = countdown.Mode == ControlInsertMode.ByTime
-                    ? $"{(int)countdown.MinutesSinceControl} / {countdown.ControlInsertMinutes} 分钟"
-                    : $"{countdown.ProductionSinceControl} / {countdown.ControlInsertCount}";
 
                 _ui.Invoke(() =>
                 {
@@ -131,7 +175,12 @@ public sealed partial class ProductionMonitorViewModel : ObservableObject, IPage
                     ControlCountdownTitle = countdown.Mode == ControlInsertMode.ByTime
                         ? "检查样插入倒计时"
                         : "检查样插入计数";
-                    ControlCountdownText = text;
+                    // 缓存倒计时快照：到期时刻/模式/计数值供 1 秒轻量节拍逐秒重算（重型查询仍 30 秒一轮）
+                    _countdownMode = countdown.Mode;
+                    _controlDueTime = countdown.ControlDueTime;
+                    _productionSinceControl = countdown.ProductionSinceControl;
+                    _controlInsertCount = countdown.ControlInsertCount;
+                    UpdateCountdownText();      // 按最新快照立即重算文本（后续由 1 秒节拍维持秒级精度）
                 });
             }
             catch (Exception ex)

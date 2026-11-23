@@ -214,6 +214,10 @@ public sealed class SctStrategyEngine : ISctStrategyEngine
             var minutesSince = _lastControlCheckTime is null
                 ? policy.ControlInsertMinutes
                 : (_time.GetLocalNow().DateTime - _lastControlCheckTime.Value).TotalMinutes;
+            // 到期时刻：上次检查时间 + 间隔（null = 无记录，已到期待触发）；UI 据此逐秒推算剩余时间
+            DateTime? dueTime = _lastControlCheckTime is null
+                ? null
+                : _lastControlCheckTime.Value.AddMinutes(policy.ControlInsertMinutes);
             return new SctControlCountdown
             {
                 Mode = policy.ControlInsertMode,
@@ -221,6 +225,7 @@ public sealed class SctStrategyEngine : ISctStrategyEngine
                 ControlInsertCount = policy.ControlInsertCount,
                 MinutesSinceControl = minutesSince,
                 ControlInsertMinutes = policy.ControlInsertMinutes,
+                ControlDueTime = dueTime,
             };
         }
     }

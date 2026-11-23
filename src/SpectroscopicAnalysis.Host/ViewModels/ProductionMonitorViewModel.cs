@@ -49,6 +49,7 @@ public sealed partial class ProductionMonitorViewModel : ObservableObject, IPage
     private readonly IErrorCollector _errors;
     private readonly Ui.IDialogService _dialogs;
     private readonly SampleManager.ISampleRegistrationService _registration;
+    private readonly SampleManager.ISampleDataChangeNotifier _sampleDataChanged;
 
     // ==================== KPI 四卡 ====================
 
@@ -403,7 +404,8 @@ public sealed partial class ProductionMonitorViewModel : ObservableObject, IPage
     public ProductionMonitorViewModel(ISctOperationLogRepository logs, ISctSampleRepository samples,
         IProductionSampleRepository production, ISctStrategyEngine engine, IWorkflowOrchestrator orchestrator,
         IUiDispatcher ui, IErrorCollector errors, Ui.IDialogService dialogs,
-        SampleManager.ISampleRegistrationService registration)
+        SampleManager.ISampleRegistrationService registration,
+        SampleManager.ISampleDataChangeNotifier sampleDataChanged)
     {
         _logs = logs;
         _samples = samples;
@@ -414,12 +416,16 @@ public sealed partial class ProductionMonitorViewModel : ObservableObject, IPage
         _errors = errors;
         _dialogs = dialogs;
         _registration = registration;
+        _sampleDataChanged = sampleDataChanged;
         // 编排器取走任务/状态变化时同步刷新队列卡与 KPI（否则注册后任务瞬间被主循环出队，面板看似"没刷新"）
         _orchestrator.StateChanged += (_, _) =>
         {
             RefreshQueue();
             RefreshKpis();
         };
+        // 任务执行链回喂（结果归档/档案更新/检查样插入完成等）→ 生产日志表即时重载（IsLoading 防重入）。
+        // 此前本页漏订阅该通知，日志表只在导航进入时加载一次，检查样到期插入完成后不更新
+        _sampleDataChanged.SampleDataChanged += () => _ = LoadCommand.ExecuteAsync(null);
     }
 
     /// <summary>导航进入时加载（导航路径为 fire-and-forget；测试可 await LoadCommand.ExecuteAsync 保证确定性）。</summary>

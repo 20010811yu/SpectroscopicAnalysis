@@ -20,7 +20,7 @@ public sealed class ProductionMonitorViewModelTests
         var regSvc = registration ?? new FakeSampleRegistrationService();
         return new ProductionMonitorViewModel(logs ?? new FakeSctOperationLogRepository(), new FakeSampleRepository(),
             new FakeProductionSampleRepository(), engine ?? new FakeSctStrategyEngine(), new FakeWorkflowOrchestrator(),
-            new FakeUiDispatcher(), new FakeErrorCollector(), dialogSvc, regSvc);
+            new FakeUiDispatcher(), new FakeErrorCollector(), dialogSvc, regSvc, new SampleDataChangeNotifier());
     }
 
     [Fact]
@@ -45,7 +45,7 @@ public sealed class ProductionMonitorViewModelTests
             new FakeSctOperationLogRepository(), new FakeErrorCollector());
         var registration = new SampleRegistrationService(samplesRepo, productionRepo, engine, new FakeErrorCollector(), new SystemLogCollector());
         var vm = new ProductionMonitorViewModel(new FakeSctOperationLogRepository(), samplesRepo, productionRepo, engine,
-            new FakeWorkflowOrchestrator(), new FakeUiDispatcher(), new FakeErrorCollector(), dialogs, registration);
+            new FakeWorkflowOrchestrator(), new FakeUiDispatcher(), new FakeErrorCollector(), dialogs, registration, new SampleDataChangeNotifier());
 
         // 模拟模态弹窗交互：弹窗显示期间填写表单并点确认入库（真实弹窗确认发生在返回之前）
         dialogs.OnShown = async form =>
@@ -140,7 +140,7 @@ public sealed class ProductionMonitorViewModelTests
         // 显式传入同一仓储实例（CreateVm 默认自建实例，见不到本测试造的数据）
         var vm = new ProductionMonitorViewModel(new FakeSctOperationLogRepository(), new FakeSampleRepository(),
             productionRepo, new FakeSctStrategyEngine(), new FakeWorkflowOrchestrator(),
-            new FakeUiDispatcher(), new FakeErrorCollector(), new FakeDialogService(), new FakeSampleRegistrationService());
+            new FakeUiDispatcher(), new FakeErrorCollector(), new FakeDialogService(), new FakeSampleRegistrationService(), new SampleDataChangeNotifier());
 
         vm.OnNavigatedTo();
         for (var i = 0; i < 100 && vm.TodayCompletedCount == 0; i++)
@@ -161,7 +161,7 @@ public sealed class ProductionMonitorViewModelTests
         var engine = new FakeSctStrategyEngine { Countdown = new SctControlCountdown { Mode = ControlInsertMode.ByCount, ProductionSinceControl = 3, ControlInsertCount = 15 } };
         var vm = new ProductionMonitorViewModel(new FakeSctOperationLogRepository(), new FakeSampleRepository(),
             new FakeProductionSampleRepository(), engine, new FakeWorkflowOrchestrator(),
-            new FakeUiDispatcher(), new FakeErrorCollector(), new FakeDialogService(), new FakeSampleRegistrationService());
+            new FakeUiDispatcher(), new FakeErrorCollector(), new FakeDialogService(), new FakeSampleRegistrationService(), new SampleDataChangeNotifier());
 
         vm.OnNavigatedTo();
         for (var i = 0; i < 100 && vm.ControlCountdownText == "—"; i++)
@@ -191,7 +191,7 @@ public sealed class ProductionMonitorViewModelTests
         };
         var vm = new ProductionMonitorViewModel(new FakeSctOperationLogRepository(), new FakeSampleRepository(),
             new FakeProductionSampleRepository(), engine, new FakeWorkflowOrchestrator(),
-            new FakeUiDispatcher(), new FakeErrorCollector(), new FakeDialogService(), new FakeSampleRegistrationService());
+            new FakeUiDispatcher(), new FakeErrorCollector(), new FakeDialogService(), new FakeSampleRegistrationService(), new SampleDataChangeNotifier());
 
         vm.OnNavigatedTo();
         for (var i = 0; i < 100 && vm.ControlCountdownText == "—"; i++)
@@ -216,7 +216,7 @@ public sealed class ProductionMonitorViewModelTests
         };
         var vm = new ProductionMonitorViewModel(new FakeSctOperationLogRepository(), new FakeSampleRepository(),
             new FakeProductionSampleRepository(), engine, new FakeWorkflowOrchestrator(),
-            new FakeUiDispatcher(), new FakeErrorCollector(), new FakeDialogService(), new FakeSampleRegistrationService());
+            new FakeUiDispatcher(), new FakeErrorCollector(), new FakeDialogService(), new FakeSampleRegistrationService(), new SampleDataChangeNotifier());
 
         vm.OnNavigatedTo();
         for (var i = 0; i < 100 && vm.ControlCountdownText == "—"; i++)

@@ -1,6 +1,7 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using System.Linq;
 using SpectroscopicAnalysis.Host.LoggingAlarm;
+using SpectroscopicAnalysis.Host.SampleManager;
 using SpectroscopicAnalysis.Host.ViewModels;
 using SpectroscopicAnalysis.Host.Vision;
 
@@ -36,7 +37,7 @@ public sealed class MainViewModelTests
     {
         var controller = ezCad2 ?? new FakeEzCad2Controller();
         return new(
-        new ProductionMonitorViewModel(new FakeSctOperationLogRepository(), new FakeSampleRepository(), new FakeProductionSampleRepository(), new FakeSctStrategyEngine(), new FakeWorkflowOrchestrator(), new FakeUiDispatcher(), new FakeErrorCollector(), new FakeDialogService(), new FakeSampleRegistrationService()),
+        new ProductionMonitorViewModel(new FakeSctOperationLogRepository(), new FakeSampleRepository(), new FakeProductionSampleRepository(), new FakeSctStrategyEngine(), new FakeWorkflowOrchestrator(), new FakeUiDispatcher(), new FakeErrorCollector(), new FakeDialogService(), new FakeSampleRegistrationService(), new SampleDataChangeNotifier()),
         new ConsoleViewModel(new FakeErrorCollector(), new SystemLogCollector(), new FakeSampleRepository(), new FakeProductionSampleRepository(), new FakeSctPolicyStore(), new FakeUiDispatcher(), new LaserMarkingViewModel(new FakeLaserMarkingService(), new FakeEzCad2Controller(), new FakeUiDispatcher())),
         new SamplesViewModel(new FakeSampleRepository(), new FakeProductionSampleRepository(), new FakeCertifiedValueRepository(), new FakeControlLimitRepository(),
             new FakeCoefficientRepository(), new FakeOperationLogRepository(), new FakeSctStrategyEngine(),

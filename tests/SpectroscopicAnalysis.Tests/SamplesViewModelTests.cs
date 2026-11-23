@@ -122,7 +122,11 @@ internal sealed class FakeErrorCollector : IErrorCollector
     {
         Collected.Add((errorCode, message, sampleId));
         _inner.Collect(errorCode, message, sampleId, exception);
+        AlarmRaised?.Invoke();   // 与真实实现语义一致：报警产生即触发事件
     }
+
+    /// <inheritdoc />
+    public event Action? AlarmRaised;
 
     public int UnacknowledgedCount => _inner.UnacknowledgedCount;
 

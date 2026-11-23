@@ -53,7 +53,13 @@ public sealed class ErrorCollector : IErrorCollector
         Log.ForContext("ErrorCode", errorCode)
             .ForContext("SampleID", sampleId ?? "-")
             .Error(exception, "业务错误 {Message}", message);
+
+        // 通知订阅方（报警面板/KPI 即时刷新；任意线程触发，订阅方自行切 UI 线程）
+        AlarmRaised?.Invoke();
     }
+
+    /// <inheritdoc />
+    public event Action? AlarmRaised;
 
     /// <summary>未确认报警数（主控台 KPI 数据源）。</summary>
     public int UnacknowledgedCount

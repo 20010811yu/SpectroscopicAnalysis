@@ -368,6 +368,8 @@ public sealed partial class ProductionMonitorViewModel : ObservableObject, IPage
             RefreshQueue();
             RefreshKpis();
         };
+        // 新报警产生即时刷新 KPI「未确认报警」（掉线等报警不再滞后 30 秒定时刷新）
+        _errors.AlarmRaised += RefreshKpis;
     }
 
     /// <summary>导航进入时加载（导航路径为 fire-and-forget；测试可 await LoadCommand.ExecuteAsync 保证确定性）。</summary>

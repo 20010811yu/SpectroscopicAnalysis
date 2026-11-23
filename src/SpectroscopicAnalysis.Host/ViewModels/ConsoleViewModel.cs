@@ -45,6 +45,8 @@ public sealed partial class ConsoleViewModel : ObservableObject, IPageLifecycle
         Laser = laserMarking;
         // 日志写入即时刷新（事件驱动；Log 可能在任意线程，经 IUiDispatcher 切回 UI 线程）
         systemLog.EntryLogged += () => _ui.Invoke(RefreshSystemLogs);
+        // 报警产生即时刷新报警面板（掉线等报警不再滞后 30 秒定时刷新；Collect 可能在任意线程）
+        errors.AlarmRaised += () => _ui.Invoke(RefreshAlarms);
     }
 
     // ==================== 报警面板 ====================

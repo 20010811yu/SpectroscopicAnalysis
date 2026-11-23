@@ -20,6 +20,10 @@ public interface IErrorCollector
     /// <summary>确认单条报警。</summary>
     void Acknowledge(long alarmId);
 
-    /// <summary>全部确认。</summary>
+    /// <summary>确认全部报警。</summary>
     void AcknowledgeAll();
+
+    /// <summary>新报警产生事件（Collect 触发，任意线程；订阅方自行切回 UI 线程刷新报警面板）。
+    /// 面板即时刷新数据源——避免依赖秒级定时轮询导致报警延迟出现。</summary>
+    event Action? AlarmRaised;
 }

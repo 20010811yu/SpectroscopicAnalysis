@@ -127,6 +127,23 @@ public sealed class ProductionSampleRepository : IProductionSampleRepository
         cmd.ExecuteNonQuery();
     }
 
+    /// <summary>更新生产样状态；failureReason 非空时写入失败原因，为空时不清空原值。</summary>
+    public void UpdateStatus(string sampleId, string status, string? failureReason = null)
+    {
+        using var conn = _db.Open();
+        using var cmd = conn.CreateCommand();
+        cmd.CommandText = """
+            UPDATE Production_Sample
+            SET Status = $status,
+                FailureReason = CASE WHEN $failure IS NULL THEN FailureReason ELSE $failure END
+            WHERE SampleID = $id
+            """;
+        cmd.Parameters.AddWithValue("$id", sampleId);
+        cmd.Parameters.AddWithValue("$status", status);
+        cmd.Parameters.AddWithValue("$failure", (object?)failureReason ?? DBNull.Value);
+        cmd.ExecuteNonQuery();
+    }
+
     public void InsertResult(AnalysisResult result)
     {
         using var conn = _db.Open();

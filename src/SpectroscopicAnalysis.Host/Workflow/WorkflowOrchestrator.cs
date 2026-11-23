@@ -295,6 +295,13 @@ public sealed class WorkflowOrchestrator : IWorkflowOrchestrator
         if (spark.Success)
         {
             ArchiveSparkResult(sampleId, spark);   // 激发结果归档（Analysis_Result；生产样无 SCT 档案，无使用次数记录）
+            // 生产样状态流转：分析完成置 Completed（ProductionSample 模型注释语义；此前无写入点导致 KPI「今日已完成」恒 0）
+            _production.UpdateStatus(sampleId, ProductionStatus.Completed);
+        }
+        else
+        {
+            // 激发失败：保持待分析并记失败原因（不进自动重试，人工处理后重新分析）
+            _production.UpdateStatus(sampleId, ProductionStatus.Pending, "激发失败，待重新分析");
         }
 
         // 系数修正计算归 Correction 模块（编排设计文档 §2：本层不做计算）

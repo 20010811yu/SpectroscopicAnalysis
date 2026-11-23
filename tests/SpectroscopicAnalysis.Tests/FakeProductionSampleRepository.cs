@@ -63,6 +63,19 @@ internal sealed class FakeProductionSampleRepository : IProductionSampleReposito
 
     public void Insert(ProductionSample sample) => Store.Add(sample);
 
+    public void UpdateStatus(string sampleId, string status, string? failureReason = null)
+    {
+        var sample = Store.FirstOrDefault(s => s.SampleId == sampleId);
+        if (sample is not null)
+        {
+            sample.Status = status;
+            if (failureReason is not null)
+            {
+                sample.FailureReason = failureReason;
+            }
+        }
+    }
+
     public void InsertResult(AnalysisResult result) => Results.Add(result);
 
     public IReadOnlyList<AnalysisResult> GetResults(string sampleId) =>

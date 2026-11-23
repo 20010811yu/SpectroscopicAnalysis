@@ -21,6 +21,9 @@ public interface IProductionSampleRepository
     /// <summary>插入生产样（种子/流程入库）。</summary>
     void Insert(ProductionSample sample);
 
+    /// <summary>更新生产样状态（生产分析完成后置 Completed；分析失败回 Pending 并记 FailureReason）。</summary>
+    void UpdateStatus(string sampleId, string status, string? failureReason = null);
+
     /// <summary>插入分析结果。</summary>
     void InsertResult(AnalysisResult result);
 

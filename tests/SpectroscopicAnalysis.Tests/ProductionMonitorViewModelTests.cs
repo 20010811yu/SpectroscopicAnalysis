@@ -122,6 +122,31 @@ public sealed class ProductionMonitorViewModelTests
         }
     }
     [Fact]
+    public async Task RefreshKpis_今日已完成_按完成样品与当日结果统计()
+    {
+        var productionRepo = new FakeProductionSampleRepository();
+        var today = DateTime.Today;
+        // 完成 + 当日结果：计入；待分析：不计入；完成但结果在昨日：不计入
+        productionRepo.Store.Add(new ProductionSample { SampleId = "P-1", SampleName = "a", SampleType = "生产", Status = ProductionStatus.Completed, CreatedTime = today.AddHours(-1) });
+        productionRepo.Store.Add(new ProductionSample { SampleId = "P-2", SampleName = "b", SampleType = "生产", Status = ProductionStatus.Pending, CreatedTime = today.AddHours(-1) });
+        productionRepo.Store.Add(new ProductionSample { SampleId = "P-3", SampleName = "c", SampleType = "生产", Status = ProductionStatus.Completed, CreatedTime = today.AddDays(-1) });
+        productionRepo.Results.Add(new AnalysisResult { SampleId = "P-1", IsPass = true, ResultStatus = AnalysisResultStatus.Success, OperationTime = today.AddHours(8) });
+        productionRepo.Results.Add(new AnalysisResult { SampleId = "P-3", IsPass = true, ResultStatus = AnalysisResultStatus.Success, OperationTime = today.AddDays(-1).AddHours(8) });
+        // 显式传入同一仓储实例（CreateVm 默认自建实例，见不到本测试造的数据）
+        var vm = new ProductionMonitorViewModel(new FakeSctOperationLogRepository(), new FakeSampleRepository(),
+            productionRepo, new FakeSctStrategyEngine(), new FakeWorkflowOrchestrator(),
+            new FakeUiDispatcher(), new FakeErrorCollector(), new FakeDialogService(), new FakeSampleRegistrationService());
+
+        vm.OnNavigatedTo();
+        for (var i = 0; i < 100 && vm.TodayCompletedCount == 0; i++)
+        {
+            await Task.Delay(10);       // KPI 为 fire-and-forget，轮询等待落 UI
+        }
+
+        Assert.Equal(1, vm.TodayCompletedCount);
+    }
+
+    [Fact]
     public async Task Load_日志进入表格_映射正确()
     {
         var vm = CreateWithLogs(

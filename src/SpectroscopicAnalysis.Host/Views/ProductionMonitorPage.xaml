@@ -233,19 +233,19 @@
                             <DataGridTextColumn Header="完成时间" Binding="{Binding OperationTimeText}" FontFamily="Consolas" Width="1*" MinWidth="70" ElementStyle="{StaticResource GridCellText}" />
                         </DataGrid.Columns>
                     </DataGrid>
-                    <!-- 分页脚（内存切片分页，每页 10 条；右下角） -->
-                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,8,0,0"
-                                Visibility="{Binding HasLogs, Converter={StaticResource BoolToVisibility}}">
+                    <!-- 分页脚（内存切片分页，每页 10 条；右下角。WrapPanel：窄窗口自动折行防溢出） -->
+                    <WrapPanel HorizontalAlignment="Right" Margin="0,8,0,0"
+                               Visibility="{Binding HasLogs, Converter={StaticResource BoolToVisibility}}">
                         <Button Content="首页" Command="{Binding FirstPageCommand}" Style="{StaticResource PrimaryBtn}" Margin="0,0,8,0" />
-                        <Button Content="上一页" Command="{Binding PrevPageCommand}" Style="{StaticResource PrimaryBtn}" Margin="8,0,0,0" />
-                        <TextBlock Text="{Binding PageDisplay}" VerticalAlignment="Center" Margin="8,0"
+                        <Button Content="上一页" Command="{Binding PrevPageCommand}" Style="{StaticResource PrimaryBtn}" Margin="0,0,0,4" />
+                        <TextBlock Text="{Binding PageDisplay}" VerticalAlignment="Center" Margin="8,0,8,4"
                                    Style="{StaticResource Text.Caption}" />
                         <TextBox Width="48" Height="26" Text="{Binding PageJumpInput, UpdateSourceTrigger=PropertyChanged}"
-                                 VerticalContentAlignment="Center" TextAlignment="Center" Margin="4,0,0,0" />
-                        <Button Content="跳转" Command="{Binding JumpToPageCommand}" Style="{StaticResource PrimaryBtn}" Margin="8,0,0,0" />
-                        <Button Content="下一页" Command="{Binding NextPageCommand}" Style="{StaticResource PrimaryBtn}" Margin="8,0,0,0" />
-                        <TextBlock Text="{Binding TotalCount, StringFormat='共 {0} 条'}" Style="{StaticResource Text.Caption}" VerticalAlignment="Center" Margin="8,0,0,0" />
-                    </StackPanel>
+                                 VerticalContentAlignment="Center" TextAlignment="Center" Margin="0,0,0,4" />
+                        <Button Content="跳转" Command="{Binding JumpToPageCommand}" Style="{StaticResource PrimaryBtn}" Margin="8,0,0,4" />
+                        <Button Content="下一页" Command="{Binding NextPageCommand}" Style="{StaticResource PrimaryBtn}" Margin="8,0,0,4" />
+                        <TextBlock Text="{Binding TotalCount, StringFormat='共 {0} 条'}" Style="{StaticResource Text.Caption}" VerticalAlignment="Center" Margin="8,0,0,4" />
+                    </WrapPanel>
                 </StackPanel>
             </Border>
         </StackPanel>

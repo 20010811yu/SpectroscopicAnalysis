@@ -424,16 +424,13 @@ public sealed partial class SamplesViewModel : ObservableObject, IPageLifecycle
 
     // ==================== 生产日志跳转定位（生产监控页双击日志行联动） ====================
 
-    /// <summary>时间匹配容差（详情子表记录与日志完成时间的最大允许偏差）。</summary>
-    private static readonly TimeSpan LocateTimeTolerance = TimeSpan.FromMinutes(2);
-
     /// <summary>待匹配的日志完成时间（选中行触发详情加载时消费一次；置 null 后普通选中不高亮）。</summary>
     private DateTime? _locateHighlightTime;
 
     /// <summary>
     /// 从生产日志跳转定位：按样品编号切换对应数据表（生产样→生产样档案，其余→样品台账），
     /// 以编号过滤保证目标行在第一页可见并选中（打开右侧详情）；详情子表中与日志时间
-    /// 最接近（±LocateTimeTolerance 内）的一条记录高亮（IsLocateHighlighted，视图 DataTrigger 着色）。
+    /// 完全相等且唯一的一条记录高亮（IsLocateHighlighted，视图 DataTrigger 着色；不唯一不标记）。
     /// UI 线程调用（经 MainViewModel 导航进入）。
     /// </summary>
     public async Task LocateSampleAsync(string sampleId, DateTime logTime)
@@ -489,30 +486,27 @@ public sealed partial class SamplesViewModel : ObservableObject, IPageLifecycle
             : (object?)SctSamples.FirstOrDefault();
     }
 
-    /// <summary>在详情子表行中标记与基准时间最接近的一条（容差内才标记）。</summary>
-    private static void MarkNearestByTime<T>(List<T> rows, DateTime time, Func<T, DateTime?> timeOf) where T : class, ILocateHighlightRow
+    /// <summary>在详情子表行中标记与基准时间唯一精确对应的记录：时间完全相等且仅一条时高亮，否则不标记（杜绝就近误匹配）。</summary>
+    private static void MarkUniqueByTime<T>(List<T> rows, DateTime time, Func<T, DateTime?> timeOf) where T : class, ILocateHighlightRow
     {
-        T? best = null;
-        var bestDelta = double.MaxValue;
+        T? match = null;
+        var matchCount = 0;
         foreach (var row in rows)
         {
             var t = timeOf(row);
-            if (t is null)
+            if (t is null || !t.Value.Equals(time))
             {
                 continue;
             }
 
-            var delta = Math.Abs((t.Value - time).TotalSeconds);
-            if (delta <= LocateTimeTolerance.TotalSeconds && delta < bestDelta)
-            {
-                best = row;
-                bestDelta = delta;
-            }
+            match = row;
+            matchCount++;
         }
 
-        if (best is not null)
+        // 仅当唯一命中才高亮；无命中或多条同时间（不唯一）都不标记
+        if (matchCount == 1)
         {
-            best.IsLocateHighlighted = true;
+            match!.IsLocateHighlighted = true;
         }
     }
 
@@ -591,11 +585,11 @@ public sealed partial class SamplesViewModel : ObservableObject, IPageLifecycle
             }).ToList())
                 : new List<DetailLogRowItem>();
 
-            // 生产日志跳转：详情子表内按时间就近匹配各高亮一条（±容差内才有命中）
+            // 生产日志跳转：详情子表内按时间唯一精确匹配高亮（完全相等且仅一条才标记）
             if (locateTime is { } ht)
             {
-                MarkNearestByTime(results, ht, r => r.RawTime);
-                MarkNearestByTime(logs, ht, l => l.RawTime);
+                MarkUniqueByTime(results, ht, r => r.RawTime);
+                MarkUniqueByTime(logs, ht, l => l.RawTime);
             }
 
             _ui.Invoke(() =>

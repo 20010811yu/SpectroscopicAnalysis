@@ -113,7 +113,35 @@
                 <!-- 列1：激光打标面板（完整功能：方式切换联动 EzCad2、内容编辑即写回、重新加载；原独立页面能力并入） -->
                     <Border Grid.Column="1" Style="{StaticResource Card}" Margin="6,0,6,0">
                         <StackPanel DataContext="{Binding Laser}">
-                            <TextBlock Text="激光打标" Style="{StaticResource Text.CardTitle}" Margin="0,0,0,8" />
+                            <DockPanel Margin="0,0,0,8" LastChildFill="False">
+                                <Border DockPanel.Dock="Right">
+                                    <Border.Style>
+                                        <Style TargetType="Border" BasedOn="{StaticResource Badge.Base}">
+                                            <Setter Property="Background" Value="{DynamicResource Brush.Badge.Failed.Bg}" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsOnline}" Value="True">
+                                                    <Setter Property="Background" Value="{DynamicResource Brush.Badge.Running.Bg}" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Border.Style>
+                                    <!-- 文案/前景随在线状态切换（默认离线红，在线绿） -->
+                                    <TextBlock Text="● 离线">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock" BasedOn="{StaticResource Text.Caption}">
+                                                <Setter Property="Foreground" Value="{DynamicResource Brush.Status.Failed}" />
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding IsOnline}" Value="True">
+                                                        <Setter Property="Foreground" Value="{DynamicResource Brush.Status.Running}" />
+                                                        <Setter Property="Text" Value="● 在线" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
+                                </Border>
+                                <TextBlock Text="激光打标" Style="{StaticResource Text.CardTitle}" VerticalAlignment="Center" />
+                            </DockPanel>
                             <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
                                 <TextBlock Text="打标方式" Style="{StaticResource Text.Caption}" Width="72" VerticalAlignment="Center" />
                                 <ComboBox ItemsSource="{Binding MarkingModes}" SelectedItem="{Binding MarkingMode}" />

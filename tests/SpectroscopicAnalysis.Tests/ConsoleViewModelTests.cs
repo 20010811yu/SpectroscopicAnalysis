@@ -15,7 +15,7 @@ public sealed class ConsoleViewModelTests
     {
         return new ConsoleViewModel(errors ?? new FakeErrorCollector(), new SystemLogCollector(),
             samples ?? new FakeSampleRepository(), production ?? new FakeProductionSampleRepository(),
-            new FakeUiDispatcher(), new LaserMarkingViewModel(new FakeLaserMarkingService()));
+            new FakeUiDispatcher(), new LaserMarkingViewModel(new FakeLaserMarkingService(), new MainViewModelTests.FakeEzCad2Controller(), new FakeUiDispatcher()));
     }
 
     // ==================== 报警面板 ====================

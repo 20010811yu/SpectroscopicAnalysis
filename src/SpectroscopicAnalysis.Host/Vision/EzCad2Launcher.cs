@@ -40,6 +40,9 @@ public class EzCad2Options
 
     /// <summary>是否隐藏 EzCad2 窗口（false = 正常显示窗口；调试期暂不隐藏）。</summary>
     public bool HideWindow { get; set; } = true;
+
+    /// <summary>在线状态兜底轮询周期（毫秒，集中配置原则）；进程 Exited 事件之外的掉线检测兜底。</summary>
+    public int OnlinePollIntervalMs { get; set; } = 2000;
 }
 
 /// <summary>
@@ -76,7 +79,8 @@ public class EzCad2Launcher : BackgroundService, IEzCad2Controller
     /// <inheritdoc />
     public event Action? OnlineStateChanged;
 
-    /// <summary>更新在线状态并在变化时触发事件（可从进程 Exited 回调线程调用）。</summary>
+    /// <summary>更新在线状态并在变化时触发事件（可从进程 Exited 回调线程调用）。
+    /// 掉线时进统一错误链报警（9004）；主动关机与工程切换期间不报（见 _shuttingDown/_switching）。</summary>
     private void SetOnline(bool online)
     {
         if (_isOnline == online)
@@ -85,7 +89,61 @@ public class EzCad2Launcher : BackgroundService, IEzCad2Controller
         }
 
         _isOnline = online;
+        if (!online && !_shuttingDown && !_switching)
+        {
+            // 掉线一次性报警（状态变化才进本方法，天然不刷屏）；恢复在线仅翻状态不报警
+            _errorCollector.Collect(ErrorCodes.EzCad2Offline, "激光打标机 EzCad2 已离线（进程退出）");
+        }
+
         OnlineStateChanged?.Invoke();
+    }
+
+    /// <summary>上位机主动关机标志：联动关闭 EzCad2 导致的进程退出不算掉线故障。</summary>
+    private volatile bool _shuttingDown;
+
+    /// <summary>工程切换中标志：切换期间旧实例被杀/新实例拉起的短暂离线不进报警链（状态仍如实翻转）。</summary>
+    private volatile bool _switching;
+
+    /// <summary>
+    /// 在线状态兜底轮询守护循环（独立于隐藏守护，随宿主常驻）：
+    /// 进程 Exited 事件可能丢失（外部 taskkill/进程被外部拉起等场景），低频按进程名核验存活兜底。
+    /// 阻塞调用线程（Task.Run 线程）直至上位机退出。
+    /// </summary>
+    private void OnlineGuardLoop(CancellationToken stoppingToken)
+    {
+        var interval = Math.Max(500, _options.OnlinePollIntervalMs);
+        while (!stoppingToken.IsCancellationRequested)
+        {
+            var alive = false;
+            try
+            {
+                var own = _launchedProcess;
+                if (own is not null)
+                {
+                    try
+                    {
+                        alive = !own.HasExited;
+                    }
+                    catch (InvalidOperationException)
+                    {
+                        // 进程对象未关联（启动流程被打断等）：交由按进程名兜底判定
+                    }
+                }
+
+                if (!alive && Process.GetProcessesByName("EzCad2").Length > 0)
+                {
+                    alive = true;   // 非本服务拉起的 EzCad2 实例存活同样视为在线
+                }
+            }
+            catch (Exception ex)
+            {
+                // 进程探测失败不改变现有状态（保守：不误报掉线），仅记录排查
+                _logger.LogDebug(ex, "EzCad2 在线兜底轮询探测失败");
+            }
+
+            SetOnline(alive);
+            Thread.Sleep(interval);
+        }
     }
 
     public EzCad2Launcher(IConfiguration configuration, IHostApplicationLifetime appLifetime, ILogger<EzCad2Launcher> logger, IErrorCollector errorCollector)
@@ -117,6 +175,9 @@ public class EzCad2Launcher : BackgroundService, IEzCad2Controller
                     HideGuardLoop(_appStopping);
                 }
             }, _appStopping);
+
+            // 在线状态兜底轮询：独立后台线程（不依赖 HideWindow 开关；Exited 事件之外的掉线检测兜底）
+            _ = Task.Run(() => OnlineGuardLoop(_appStopping), _appStopping);
         }
         catch (OperationCanceledException)
         {
@@ -158,6 +219,7 @@ public class EzCad2Launcher : BackgroundService, IEzCad2Controller
     {
         try
         {
+            _shuttingDown = true;   // 联动关闭导致的进程退出不按掉线故障报警
             var process = _launchedProcess;
             var associated = false;
             if (process != null)
@@ -227,6 +289,8 @@ public class EzCad2Launcher : BackgroundService, IEzCad2Controller
         await _launchLock.WaitAsync(cancellationToken);
         try
         {
+            // 切换期间旧实例被杀/新实例拉起会产生短暂"离线"，抑制报警（状态仍如实翻转）
+            _switching = true;
             await Task.Run(() => Launch(cancellationToken, ezdPath), cancellationToken);
             _logger.LogInformation("已切换 EzCad2 工程文件：{EzdPath}", ezdPath);
             return null;
@@ -238,6 +302,7 @@ public class EzCad2Launcher : BackgroundService, IEzCad2Controller
         }
         finally
         {
+            _switching = false;
             _launchLock.Release();
         }
     }

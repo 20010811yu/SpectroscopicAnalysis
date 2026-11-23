@@ -42,4 +42,7 @@ public static class ErrorCodes
 
     /// <summary>9003 EzCad2 自动启动失败（进程启动失败/等待超时）。</summary>
     public const int EzCad2LaunchFailed = 9003;
+
+    /// <summary>9004 EzCad2 掉线（进程退出：Exited 事件/兜底轮询检测；主动关机与工程切换期间不报）。</summary>
+    public const int EzCad2Offline = 9004;
 }

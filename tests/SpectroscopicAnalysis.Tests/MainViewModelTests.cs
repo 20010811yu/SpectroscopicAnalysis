@@ -11,8 +11,8 @@ namespace SpectroscopicAnalysis.Tests;
 /// </summary>
 public sealed class MainViewModelTests
 {
-    /// <summary>EzCad2 控制器假件：在线状态可控，用于验证激光打标机状态联动。</summary>
-    private sealed class FakeEzCad2Controller : IEzCad2Controller
+    /// <summary>EzCad2 控制器假件：在线状态可控，用于验证激光打标机状态联动（internal 供 ConsoleViewModelTests 复用）。</summary>
+    internal sealed class FakeEzCad2Controller : IEzCad2Controller
     {
         public bool IsOnline { get; private set; }
 
@@ -34,7 +34,7 @@ public sealed class MainViewModelTests
         var controller = ezCad2 ?? new FakeEzCad2Controller();
         return new(
         new ProductionMonitorViewModel(new FakeSctOperationLogRepository(), new FakeSampleRepository(), new FakeProductionSampleRepository(), new FakeSctStrategyEngine(), new FakeWorkflowOrchestrator(), new FakeUiDispatcher(), new FakeErrorCollector(), new FakeDialogService(), new FakeSampleRegistrationService()),
-        new ConsoleViewModel(new FakeErrorCollector(), new SystemLogCollector(), new FakeSampleRepository(), new FakeProductionSampleRepository(), new FakeUiDispatcher(), new LaserMarkingViewModel(new FakeLaserMarkingService())),
+        new ConsoleViewModel(new FakeErrorCollector(), new SystemLogCollector(), new FakeSampleRepository(), new FakeProductionSampleRepository(), new FakeUiDispatcher(), new LaserMarkingViewModel(new FakeLaserMarkingService(), new FakeEzCad2Controller(), new FakeUiDispatcher())),
         new SamplesViewModel(new FakeSampleRepository(), new FakeProductionSampleRepository(), new FakeCertifiedValueRepository(), new FakeControlLimitRepository(),
             new FakeCoefficientRepository(), new FakeOperationLogRepository(), new FakeSctStrategyEngine(),
             new FakeUiDispatcher(), new FakeDialogService(), new FakeErrorCollector()),

@@ -13,6 +13,11 @@ public sealed partial class LaserMarkingViewModel : ObservableObject, IPageLifec
 {
     private readonly ILaserMarkingService _laserMarkingService;
 
+    /// <summary>EzCad2 在线状态（进程存活=在线；与顶栏状态点同源 IEzCad2Controller）。
+    /// OnlineStateChanged 可在任意线程触发，经 IUiDispatcher 切回 UI 线程（开发规范第 4 节）。</summary>
+    [ObservableProperty]
+    private bool _isOnline;
+
     /// <summary>加载/回写过程中的回填标志：回填触发的属性变更不写回文件，避免无意义落盘与循环覆盖。</summary>
     private bool _isLoading;
 
@@ -38,9 +43,12 @@ public sealed partial class LaserMarkingViewModel : ObservableObject, IPageLifec
     /// <summary>打标方式切换执行中标志（防重入）。</summary>
     private bool _isSwitchingMode;
 
-    public LaserMarkingViewModel(ILaserMarkingService laserMarkingService)
+    public LaserMarkingViewModel(ILaserMarkingService laserMarkingService,
+        IEzCad2Controller ezCad2, Ui.IUiDispatcher ui)
     {
         _laserMarkingService = laserMarkingService;
+        IsOnline = ezCad2.IsOnline;
+        ezCad2.OnlineStateChanged += () => ui.Invoke(() => IsOnline = ezCad2.IsOnline);
     }
 
     /// <summary>进入页面时加载打标文本文件内容（导航生命周期）。</summary>

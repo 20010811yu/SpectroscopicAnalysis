@@ -2,7 +2,7 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="样品注册" WindowStartupLocation="CenterOwner"
-        ResizeMode="NoResize" SizeToContent="Height"
+        ResizeMode="NoResize" SizeToContent="WidthAndHeight"
         ShowInTaskbar="False" Background="{DynamicResource Brush.Bg.Page}">
     <!-- 样品注册弹窗（主控台「＋ 样品注册」入口；业务在注册服务）。
          布局：表单区限宽居中（消除右侧空白），双列字段 Grid + Star 弹性（界面规范第 5 节）；错误就地红字。 -->
@@ -65,8 +65,8 @@
         </Style>
     </Window.Resources>
 
-    <!-- 表单区限宽：内容容器不写固定宽高，仅以 MaxWidth 约束上限（界面规范第 5 节弹性布局） -->
-    <Border Style="{StaticResource Card}" Margin="16" MaxWidth="720" HorizontalAlignment="Center">
+    <!-- 表单区：窗口随内容收缩（只保留中间表单卡）；内容以 MinWidth 保底防 Star 列塌缩（SizeToContent 宽度下 * 列按内容测量） -->
+    <Border Style="{StaticResource Card}" Margin="16" MinWidth="640" HorizontalAlignment="Center">
         <StackPanel>
             <TextBlock Text="样品注册" Style="{StaticResource Text.CardTitle}" Margin="0,0,0,12" />
             <StackPanel>
@@ -177,7 +177,7 @@
 
             <!-- 服务端校验错误（编号重复/架位占用等）就地红字（弹窗不关闭，便于修正后重试） -->
             <Border Margin="0,4,0,8" Padding="8,6" CornerRadius="4" Background="{DynamicResource Brush.Badge.Failed.Bg}"
-                    Visibility="{Binding RegisterError, Converter={StaticResource NullToVisibility.Inverse}}">
+                    Visibility="{Binding RegisterError, Converter={StaticResource NullToVisibility}}">
                 <TextBlock Text="{Binding RegisterError}" TextWrapping="Wrap"
                            Foreground="{DynamicResource Brush.Status.Failed}" Style="{StaticResource Text.Caption}" />
             </Border>

@@ -94,6 +94,7 @@
                                Visibility="{Binding HasCoefficients, Converter={StaticResource BoolToVisibility.Inverse}}" />
                     <!-- 系数表：只读展示 -->
                     <DataGrid ItemsSource="{Binding CoefficientRows}" Visibility="{Binding HasCoefficients, Converter={StaticResource BoolToVisibility}}"
+                              PreviewMouseWheel="CoeffGrid_PreviewMouseWheel"
                               AutoGenerateColumns="False" IsReadOnly="True"
                               CanUserAddRows="False" CanUserSortColumns="False"
                               CanUserResizeColumns="True" CanUserResizeRows="False"
@@ -150,6 +151,7 @@
                     <TextBlock Text="暂无系数变更记录（标准化完成后自动留痕）" Style="{StaticResource Text.Caption}" Margin="0,4"
                                Visibility="{Binding HasChanges, Converter={StaticResource BoolToVisibility.Inverse}}" />
                     <DataGrid ItemsSource="{Binding ChangeRows}" Visibility="{Binding HasChanges, Converter={StaticResource BoolToVisibility}}"
+                              PreviewMouseWheel="CoeffGrid_PreviewMouseWheel"
                               AutoGenerateColumns="False" IsReadOnly="True"
                               CanUserAddRows="False" CanUserSortColumns="False"
                               CanUserResizeColumns="True" CanUserResizeRows="False"

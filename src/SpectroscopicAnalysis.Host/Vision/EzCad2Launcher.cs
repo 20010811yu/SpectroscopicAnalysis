@@ -17,6 +17,10 @@ public interface IEzCad2Controller
     /// <summary>切换打标工程文件。返回 null 表示成功；否则为失败原因描述。</summary>
     Task<string?> SwitchEzdFileAsync(string ezdPath, CancellationToken cancellationToken = default);
 
+    /// <summary>按配置的工程文件重新拉起 EzCad2（掉线恢复用；内部走切换流程，含互斥与报警抑制）。
+    /// 返回 null 表示成功；否则为失败原因描述。</summary>
+    Task<string?> RelaunchAsync(CancellationToken cancellationToken = default);
+
     /// <summary>EzCad2 是否在线（进程存活 = 在线；未启动或已退出 = 掉线）。设备常驻栏状态源。</summary>
     bool IsOnline { get; }
 
@@ -306,6 +310,10 @@ public class EzCad2Launcher : BackgroundService, IEzCad2Controller
             _launchLock.Release();
         }
     }
+
+    /// <summary>按配置的工程文件重新拉起 EzCad2（报警面板「重新加载」用；路径封装在本层，调用方无需感知 .ezd 路径）。</summary>
+    public Task<string?> RelaunchAsync(CancellationToken cancellationToken = default) =>
+        SwitchEzdFileAsync(_options.EzdFilePath, cancellationToken);
 
     private void Launch(CancellationToken stoppingToken, string ezdFilePath)
     {

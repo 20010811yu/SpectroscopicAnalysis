@@ -80,6 +80,36 @@ public sealed partial class ConsoleViewModel : ObservableObject, IPageLifecycle
         RefreshAlarms();
     }
 
+    /// <summary>激光打标掉线（9004）条目「重新加载」：一键重新拉起 EzCad2；
+    /// 成功后自动确认该条掉线报警（故障已消除，无需人工再确认），失败保留报警由用户处理。参数类型同 AckAlarm（long）。</summary>
+    [RelayCommand]
+    private async Task ReloadLaserAsync(long alarmId)
+    {
+        if (_isReloadingLaser)
+        {
+            return;   // 防重入：重新拉起耗时数秒，期间忽略重复点击
+        }
+
+        _isReloadingLaser = true;
+        try
+        {
+            var error = await Laser.RelaunchAsync();
+            if (error is null)
+            {
+                _errors.Acknowledge(alarmId);
+            }
+
+            RefreshAlarms();
+        }
+        finally
+        {
+            _isReloadingLaser = false;
+        }
+    }
+
+    /// <summary>激光打标重新加载执行中标志（防重入）。</summary>
+    private bool _isReloadingLaser;
+
     /// <summary>刷新报警列表（调用方须已在 UI 线程；数据源为内存快照，直接同步映射）。</summary>
     private void RefreshAlarms()
     {

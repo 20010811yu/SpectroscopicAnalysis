@@ -12,6 +12,7 @@ namespace SpectroscopicAnalysis.Host.ViewModels;
 public sealed partial class LaserMarkingViewModel : ObservableObject, IPageLifecycle
 {
     private readonly ILaserMarkingService _laserMarkingService;
+    private readonly IEzCad2Controller _ezCad2;
 
     /// <summary>EzCad2 在线状态（进程存活=在线；与顶栏状态点同源 IEzCad2Controller）。
     /// OnlineStateChanged 可在任意线程触发，经 IUiDispatcher 切回 UI 线程（开发规范第 4 节）。</summary>
@@ -47,8 +48,20 @@ public sealed partial class LaserMarkingViewModel : ObservableObject, IPageLifec
         IEzCad2Controller ezCad2, Ui.IUiDispatcher ui)
     {
         _laserMarkingService = laserMarkingService;
+        _ezCad2 = ezCad2;
         IsOnline = ezCad2.IsOnline;
         ezCad2.OnlineStateChanged += () => ui.Invoke(() => IsOnline = ezCad2.IsOnline);
+    }
+
+    /// <summary>
+    /// 重新拉起 EzCad2（报警面板「重新加载」入口）：掉线后一键恢复，结果写 SaveStatus。
+    /// 返回 null 表示成功；否则为失败原因描述（调用方决定后续处理）。
+    /// </summary>
+    public async Task<string?> RelaunchAsync()
+    {
+        var error = await _ezCad2.RelaunchAsync();
+        SaveStatus = error is null ? "打标软件已重新加载" : $"重新加载失败：{error}";
+        return error;
     }
 
     /// <summary>进入页面时加载打标文本文件内容（导航生命周期）。</summary>

@@ -357,6 +357,21 @@
                                             </Style>
                                         </Border.Style>
                                         <DockPanel LastChildFill="True">
+                                            <!-- 重新加载：仅激光打标掉线（9004）条目显示——一键重启 EzCad2 并自动确认本条报警 -->
+                                            <Button DockPanel.Dock="Right" Content="重新加载" VerticalAlignment="Center" Margin="8,0,0,0" Padding="8,2"
+                                                    Command="{Binding DataContext.ReloadLaserCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                    CommandParameter="{Binding AlarmId}">
+                                                <Button.Style>
+                                                    <Style TargetType="Button" BasedOn="{StaticResource SecondaryBtn}">
+                                                        <Setter Property="Visibility" Value="Collapsed" />
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding ErrorCodeText}" Value="9004">
+                                                                <Setter Property="Visibility" Value="Visible" />
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </Button.Style>
+                                            </Button>
                                             <Button DockPanel.Dock="Right" Content="确认" VerticalAlignment="Center" Margin="8,0,0,0" Padding="8,2"
                                                     Command="{Binding DataContext.AckAlarmCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
                                                     CommandParameter="{Binding AlarmId}"

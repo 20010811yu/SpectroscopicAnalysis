@@ -21,6 +21,9 @@ public sealed class MainViewModelTests
         public Task<string?> SwitchEzdFileAsync(string ezdPath, CancellationToken cancellationToken = default) =>
             Task.FromResult<string?>(null);
 
+        public Task<string?> RelaunchAsync(CancellationToken cancellationToken = default) =>
+            Task.FromResult<string?>(null);
+
         /// <summary>模拟进程启动/退出引发的状态变化。</summary>
         internal void SetOnline(bool online)
         {

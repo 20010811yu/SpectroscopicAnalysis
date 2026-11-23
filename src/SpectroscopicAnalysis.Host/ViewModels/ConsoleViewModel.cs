@@ -121,6 +121,9 @@ public sealed partial class ConsoleViewModel : ObservableObject, IPageLifecycle
                 ErrorCodeText = a.ErrorCode.ToString(),
                 MessageText = a.Message,
                 SampleIdText = string.IsNullOrEmpty(a.SampleId) ? "—" : a.SampleId,
+                // 整行文案在 VM 拼接：无样品上下文的报警（如打标机掉线）不追加「（样品 …）」空占位
+                DisplayText = $"✖ {a.Time:yyyy-MM-dd HH:mm:ss}  错误码 {a.ErrorCode}  " +
+                              (string.IsNullOrEmpty(a.SampleId) ? a.Message : $"{a.Message}（样品 {a.SampleId}）"),
                 IsAcknowledged = a.IsAcknowledged,
             }));
         OnPropertyChanged(nameof(HasAlarms));

@@ -377,16 +377,8 @@
                                                     CommandParameter="{Binding AlarmId}"
                                                     Visibility="{Binding IsAcknowledged, Converter={StaticResource BoolToVisibility.Inverse}}" />
                                             <TextBlock Style="{StaticResource Text.Caption}" TextWrapping="Wrap" VerticalAlignment="Center"
-                                                       Foreground="{DynamicResource Brush.Badge.Failed.Fg}">
-                                                <TextBlock.Text>
-                                                    <MultiBinding StringFormat="✖ {0}  错误码 {1}  {2}（样品 {3}）">
-                                                        <Binding Path="TimeText" />
-                                                        <Binding Path="ErrorCodeText" />
-                                                        <Binding Path="MessageText" />
-                                                        <Binding Path="SampleIdText" />
-                                                    </MultiBinding>
-                                                </TextBlock.Text>
-                                            </TextBlock>
+                                                       Foreground="{DynamicResource Brush.Badge.Failed.Fg}"
+                                                       Text="{Binding DisplayText, StringFormat=✖ {0}}" />
                                         </DockPanel>
                                     </Border>
                                 </DataTemplate>

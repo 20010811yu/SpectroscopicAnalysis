@@ -80,8 +80,10 @@ public sealed class AlarmRowItem
     public string TimeText { get; init; } = string.Empty;
     public string ErrorCodeText { get; init; } = string.Empty;
     public string MessageText { get; init; } = string.Empty;
-    /// <summary>样品上下文（无关联显示 —）。</summary>
+    /// <summary>样品上下文（无关联显示 —；仅 ToolTip 用）。</summary>
     public string SampleIdText { get; init; } = "—";
+    /// <summary>整行文案（时间/错误码/消息在 VM 拼接；有样品上下文才追加「（样品 …）」，无样品报警不显示空占位）。</summary>
+    public string DisplayText { get; init; } = string.Empty;
     /// <summary>是否已确认（视图淡化徽章并隐藏确认按钮）。</summary>
     public bool IsAcknowledged { get; init; }
 }

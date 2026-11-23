@@ -77,7 +77,6 @@ public partial class MainWindow : Window
         SamplesViewModel => new SamplesPage(),
         SctViewModel => new SctPage(),
         CoefficientsViewModel => new CoefficientsPage(),
-        AlarmsViewModel => new AlarmsPage(),
         SettingsViewModel => new SettingsPage(),
         _ => throw new ArgumentException($"未登记的页面 ViewModel：{viewModel.GetType().Name}"),
     };

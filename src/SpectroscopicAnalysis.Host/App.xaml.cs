@@ -104,7 +104,6 @@ public partial class App
                 services.AddSingleton<ViewModels.SamplesViewModel>();
                 services.AddSingleton<ViewModels.SctViewModel>();
                 services.AddSingleton<ViewModels.CoefficientsViewModel>();
-                services.AddSingleton<ViewModels.AlarmsViewModel>();
                 services.AddSingleton<ViewModels.SettingsViewModel>();
                 services.AddSingleton<ViewModels.LaserMarkingViewModel>();
                 // 激光打标：打标文本内容读取服务（页面经接口消费，后续打标指令下发在同接口扩展）

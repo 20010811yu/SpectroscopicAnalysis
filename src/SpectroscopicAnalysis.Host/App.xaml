@@ -36,9 +36,6 @@
             <DataTemplate DataType="{x:Type vm:CoefficientsViewModel}">
                 <views:CoefficientsPage />
             </DataTemplate>
-            <DataTemplate DataType="{x:Type vm:AlarmsViewModel}">
-                <views:AlarmsPage />
-            </DataTemplate>
             <DataTemplate DataType="{x:Type vm:SettingsViewModel}">
                 <views:SettingsPage />
             </DataTemplate>

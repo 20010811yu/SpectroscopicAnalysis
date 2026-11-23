@@ -44,7 +44,6 @@ public sealed class MainViewModelTests
         new SctViewModel(new FakeSampleRepository(), new FakeOperationLogRepository(), new FakeSctPolicyStore(),
             new FakeUiDispatcher(), new FakeDialogService(), new FakeErrorCollector()),
         new CoefficientsViewModel(new FakeCoefficientRepository(), new FakeOperationLogRepository(), new FakeUiDispatcher(), new FakeErrorCollector()),
-        new AlarmsViewModel(),
         new SettingsViewModel(),
         controller,
         new FakeUiDispatcher());

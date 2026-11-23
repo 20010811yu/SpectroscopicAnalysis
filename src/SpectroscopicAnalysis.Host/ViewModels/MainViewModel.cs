@@ -49,7 +49,7 @@ public sealed partial class MainViewModel : ObservableObject
     [ObservableProperty]
     private bool _laserOnline;
 
-    /// <summary>导航项（静态七项，无需变更通知；首项为二级分组）。</summary>
+    /// <summary>导航项（静态六项，无需变更通知；首项为二级分组）。</summary>
     public ReadOnlyObservableCollection<NavItem> NavItems { get; }
 
     public MainViewModel(
@@ -58,7 +58,6 @@ public sealed partial class MainViewModel : ObservableObject
         SamplesViewModel samples,
         SctViewModel sct,
         CoefficientsViewModel coefficients,
-        AlarmsViewModel alarms,
         SettingsViewModel settings,
         Vision.IEzCad2Controller ezCad2,
         Ui.IUiDispatcher ui)
@@ -81,7 +80,6 @@ public sealed partial class MainViewModel : ObservableObject
             samplesNav,
             new() { Title = "SCT 管理", Target = sct },
             new() { Title = "系数管理", Target = coefficients },
-            new() { Title = "日志报警", Target = alarms },
             new() { Title = "设置", Target = settings },
         };
         NavItems = new ReadOnlyObservableCollection<NavItem>(items);

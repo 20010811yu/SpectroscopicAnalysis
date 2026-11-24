@@ -20,6 +20,24 @@ internal sealed class FakeSctStrategyEngine : ISctStrategyEngine
         return false;
     }
 
+    /// <summary>镜像引擎语义：仅排队中任务可置顶（同档 ManualSortKey 最小键-1 秒）。</summary>
+    public bool MoveToTop(int taskId)
+    {
+        var task = RecentTasks.FirstOrDefault(t => t.TaskId == taskId && t.Status == SctTaskStatus.Queued);
+        if (task is null)
+        {
+            return false;
+        }
+
+        var tierMinKey = RecentTasks
+            .Where(t => t.Priority == task.Priority)
+            .Select(t => t.ManualSortKey ?? t.EnqueueTime)
+            .DefaultIfEmpty(task.EnqueueTime)
+            .Min();
+        task.ManualSortKey = tierMinKey - TimeSpan.FromSeconds(1);
+        return true;
+    }
+
     public IReadOnlyList<SctTask> GetQueuedTasks() => RecentTasks
         .Where(t => t.Status == SctTaskStatus.Queued)
         .ToList();

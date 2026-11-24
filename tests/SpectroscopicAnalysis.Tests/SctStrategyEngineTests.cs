@@ -109,6 +109,56 @@ public sealed class SctStrategyEngineTests
     }
 
     [Fact]
+    public void 队列_手动置顶同档提前_多次置顶逆序()
+    {
+        var engine = Create();
+        var id1 = engine.SubmitTask(SctTaskType.Production, "PL-001", "注册入队");
+        var id2 = engine.SubmitTask(SctTaskType.Production, "PL-002", "注册入队");
+        var id3 = engine.SubmitTask(SctTaskType.Production, "PL-003", "注册入队");
+
+        // 初始 FIFO：PL-001 最先
+        Assert.Equal(id1, engine.GetQueuedTasks().First().TaskId);
+
+        // 置顶 PL-003 → 排到队首；再置顶 PL-002 → 两次点击逆序，PL-002 最新最前
+        Assert.True(engine.MoveToTop(id3));
+        Assert.Equal(id3, engine.GetQueuedTasks().First().TaskId);
+        Assert.True(engine.MoveToTop(id2));
+        var order = engine.GetQueuedTasks().Select(t => t.TaskId).ToList();
+        Assert.Equal(new[] { id2, id3, id1 }, order);
+
+        // 出队按同样次序取任务
+        Assert.True(engine.TryDequeue(out var t));
+        Assert.Equal(id2, t.TaskId);
+    }
+
+    [Fact]
+    public void 队列_手动置顶不越过更高档位_不可调整非排队任务()
+    {
+        var engine = Create();
+        var prodId = engine.SubmitTask(SctTaskType.Production, "PL-001", "注册入队");
+        engine.SubmitTask(SctTaskType.ControlCheck, "CTL-001", "按数量插入");
+        engine.SubmitTask(SctTaskType.Standardize, "SUS-001", "人工触发");
+
+        Assert.True(engine.MoveToTop(prodId));
+
+        // P29 不被破坏：标准化(1) > 控制检查(2) > 置顶后的生产任务(5)
+        var queued = engine.GetQueuedTasks().Select(t => t.TaskType).ToList();
+        Assert.Equal(new[] { SctTaskType.Standardize, SctTaskType.ControlCheck, SctTaskType.Production }, queued);
+
+        // 逐个出队（互斥：先完成再出队下一个）让生产任务变为执行中，再尝试置顶 → 拒绝
+        Assert.True(engine.TryDequeue(out var t1));
+        engine.CompleteTask(t1.TaskId, true, null);
+        Assert.True(engine.TryDequeue(out var t2));
+        engine.CompleteTask(t2.TaskId, true, null);
+        Assert.True(engine.TryDequeue(out var t3));
+        Assert.Equal(SctTaskType.Production, t3.TaskType);
+        Assert.False(engine.MoveToTop(t3.TaskId));      // 执行中不可调整
+
+        // 不存在的任务号同样拒绝
+        Assert.False(engine.MoveToTop(9999));
+    }
+
+    [Fact]
     public void 队列_重复目标同类型去重合并()
     {
         var engine = Create();

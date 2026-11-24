@@ -13,6 +13,9 @@ public interface ISctStrategyEngine
     /// <summary>尝试出队下一个可执行任务（优先级序，同优先级 FIFO；同时仅一个任务 Running）。</summary>
     bool TryDequeue(out SctTask task);
 
+    /// <summary>手动调整优先级：把排队任务在本优先级档内置顶（人工调整仅同档生效，不越过更高档任务；执行中任务不可调整）。成功返回 true。</summary>
+    bool MoveToTop(int taskId);
+
     /// <summary>当前排队任务快照（优先级序，同优先级 FIFO；与 TryDequeue 取序一致，供队列面板展示）。</summary>
     IReadOnlyList<SctTask> GetQueuedTasks();
 

@@ -15,6 +15,8 @@ namespace SpectroscopicAnalysis.Host.ViewModels;
 /// <summary>任务队列行展示模型（生产监控「任务队列」模块，来源策略引擎队列快照）。</summary>
 public sealed class QueueTaskItem
 {
+    /// <summary>任务编号（原始 int，置顶命令参数用）。</summary>
+    public required int TaskId { get; init; }
     public required string TaskIdText { get; init; }
     public required string TaskTypeText { get; init; }
     public required string SampleIdText { get; init; }
@@ -24,6 +26,8 @@ public sealed class QueueTaskItem
     public required string EnqueueTimeText { get; init; }
     /// <summary>是否执行中（视图切绿色徽章）。</summary>
     public bool IsRunning { get; init; }
+    /// <summary>是否可手动置顶（排队中的生产任务；SCT 任务保持 P29 自动调度，执行中不可调整）。</summary>
+    public bool CanMoveTop { get; init; }
     /// <summary>任务状态文本（排队中/执行中/已完成/失败）。</summary>
     public required string StatusText { get; init; }
 }
@@ -269,12 +273,14 @@ public sealed partial class ProductionMonitorViewModel : ObservableObject, IPage
         }
 
         // 只显示等待（排队中）与进行中（执行中）的任务，已完成/失败/已取消不进队列（历史看板归日志页）；
-        // 排序按入队时间正序（先来先执行，与引擎同优先级 FIFO 一致）
+        // 排序与引擎出队一致：优先级档位 → 手动置顶键/入队时间（手动调整只影响同档位次序）
         var items = _engine.GetRecentTasks()
             .Where(t => t.Status is SctTaskStatus.Queued or SctTaskStatus.Running)
-            .OrderBy(t => t.EnqueueTime)
+            .OrderBy(t => t.Priority)
+            .ThenBy(t => t.ManualSortKey ?? t.EnqueueTime)
             .Select(t => new QueueTaskItem
         {
+            TaskId = t.TaskId,
             TaskIdText = $"#{t.TaskId}",
             TaskTypeText = TypeText(t.TaskType),
             SampleIdText = t.SampleId ?? "—",
@@ -282,6 +288,7 @@ public sealed partial class ProductionMonitorViewModel : ObservableObject, IPage
             ReasonText = t.Reason ?? "—",
             EnqueueTimeText = t.Status == SctTaskStatus.Running ? string.Empty : t.EnqueueTime.ToString("yyyy-MM-dd HH:mm:ss"),
             IsRunning = t.Status == SctTaskStatus.Running,
+            CanMoveTop = t.Status == SctTaskStatus.Queued && t.TaskType == SctTaskType.Production,
             StatusText = t.Status switch
             {
                 SctTaskStatus.Queued => "排队中",
@@ -339,6 +346,18 @@ public sealed partial class ProductionMonitorViewModel : ObservableObject, IPage
 
         QueuePageJumpInput = string.Empty;
         QueuePage = Math.Clamp(page, 1, QueueTotalPages);
+    }
+
+    /// <summary>手动调整任务优先级：把等待中的生产任务在队列内置顶（引擎同档生效，留痕全流程日志），成功后即时刷新队列。</summary>
+    [RelayCommand]
+    private void MoveTaskTop(int taskId)
+    {
+        if (!_engine.MoveToTop(taskId))
+        {
+            return; // 非排队中任务（已执行/已终结）：引擎拒绝，界面刷新后按钮随 CanMoveTop 隐藏
+        }
+
+        RefreshQueue();
     }
 
     // ==================== 样品注册（弹窗） ====================

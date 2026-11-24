@@ -133,7 +133,7 @@ public sealed class SctStrategyEngine : ISctStrategyEngine
 
             task = _queue
                 .OrderBy(t => t.Priority)               // P29 优先级序
-                .ThenBy(t => t.EnqueueTime)             // 同优先级 FIFO
+                .ThenBy(QueuedSortKey)                  // 同优先级：手动置顶优先，其余 FIFO
                 .First();
             _queue.Remove(task);
             task.Status = SctTaskStatus.Running;
@@ -142,11 +142,39 @@ public sealed class SctStrategyEngine : ISctStrategyEngine
         }
     }
 
+    /// <summary>排队任务同档排序键：手动置顶键优先，未调整的按入队时间 FIFO。</summary>
+    private static DateTime QueuedSortKey(SctTask t) => t.ManualSortKey ?? t.EnqueueTime;
+
+    /// <inheritdoc />
+    public bool MoveToTop(int taskId)
+    {
+        lock (_gate)
+        {
+            var task = _queue.FirstOrDefault(t => t.TaskId == taskId && t.Status == SctTaskStatus.Queued);
+            if (task is null)
+            {
+                return false;   // 不在排队中（不存在/执行中/已终结）不可调整
+            }
+
+            // 同档位内取最小排序键再前移 1 秒：多次置顶按点击逆序，且不越过更高优先级档位
+            var tierMinKey = _queue
+                .Where(t => t.Priority == task.Priority)
+                .Select(QueuedSortKey)
+                .DefaultIfEmpty(task.EnqueueTime)
+                .Min();
+            task.ManualSortKey = tierMinKey - TimeSpan.FromSeconds(1);
+
+            _systemLog.Log("策略引擎",
+                $"任务置顶：#{task.TaskId}（样品 {task.SampleId ?? "—"}），人工调整优先级（同档内置顶）");
+            return true;
+        }
+    }
+
     /// <inheritdoc />
     public IReadOnlyList<SctTask> GetQueuedTasks() =>
         _queue
             .OrderBy(t => t.Priority)
-            .ThenBy(t => t.EnqueueTime)
+            .ThenBy(QueuedSortKey)
             .ToList();
 
     /// <inheritdoc />
@@ -155,7 +183,7 @@ public sealed class SctStrategyEngine : ISctStrategyEngine
         var running = _running is not null ? new[] { _running } : Array.Empty<SctTask>();
         return running.Concat(_queue
                 .OrderBy(t => t.Priority)
-                .ThenBy(t => t.EnqueueTime))
+                .ThenBy(QueuedSortKey))
             .Concat(_history)
             .ToList();
     }

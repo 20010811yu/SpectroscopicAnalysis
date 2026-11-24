@@ -62,6 +62,9 @@ public sealed class SctTask
     /// <summary>优先级档位（P29 固定次序，数值小者先执行；引擎设计文档 §6.1）。</summary>
     public int Priority { get; init; }
 
+    /// <summary>手动置顶排序键（同档位内生效；null=未手动调整，按入队时间 FIFO。取值=同档最小键-1 秒，多次置顶按点击逆序）。</summary>
+    public DateTime? ManualSortKey { get; set; }
+
     /// <summary>任务状态（SctTaskStatus 常量）。</summary>
     public string Status { get; set; } = SctTaskStatus.Queued;
 

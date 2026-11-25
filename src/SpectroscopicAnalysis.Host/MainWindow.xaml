@@ -29,16 +29,16 @@
 
                 <!-- 右侧状态/操作组（右对齐；模式按钮组移入右侧原缩放档位处） -->
                 <StackPanel Grid.Column="3" Orientation="Horizontal" VerticalAlignment="Center">
-                    <!-- 模式按钮组（静态占位，切换交互随功能阶段接入） -->
-                    <Button Style="{StaticResource ModeBtn}" Content="自动" />
-                    <Button Style="{StaticResource ModeBtn}" Content="手动" Margin="4,0,0,0" />
-                    <Button Style="{StaticResource ModeBtn}" Content="维护" Margin="4,0,16,0" />
                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,16,0">
                         <Ellipse Style="{StaticResource StatusDot}" Fill="{DynamicResource Brush.Status.Running}" />
                         <TextBlock Text="PLC" Style="{StaticResource Text.Caption}" Margin="6,0,0,0" VerticalAlignment="Center" />
                     </StackPanel>
                     <TextBlock Text="{Binding ClockText}" FontFamily="Consolas" VerticalAlignment="Center" Margin="0,0,16,0"
                                FontSize="{DynamicResource FontSize.Caption}" Foreground="{DynamicResource Brush.Text.Secondary}" />
+                    <!-- 模式按钮组（静态占位，切换交互随功能阶段接入） -->
+                    <Button Style="{StaticResource ModeBtn}" Content="自动" />
+                    <Button Style="{StaticResource ModeBtn}" Content="手动" Margin="4,0,0,0" />
+                    <Button Style="{StaticResource ModeBtn}" Content="维护" Margin="4,0,16,0" />
                     <Button Style="{StaticResource EStopBtn}" Content="急停" ToolTip="急停（需二次确认，功能随 D9 接入）" />
                 </StackPanel>
             </Grid>

@@ -19,9 +19,9 @@ public sealed partial class ConsoleViewModel : ObservableObject, IPageLifecycle
     /// <summary>面板定时刷新周期（报警/日志/货架共用一轮）。</summary>
     private static readonly TimeSpan RefreshInterval = TimeSpan.FromSeconds(30);
 
-    /// <summary>货架示意规格（暂定 5 行 × 8 列；行标识 A–E）。</summary>
+    /// <summary>货架示意规格（暂定 5 行 × 5 列；行标识 A–E）。</summary>
     public const int RackRowsCount = 5;
-    public const int RackColumnsCount = 8;
+    public const int RackColumnsCount = 5;
     private static readonly string[] RackRowLabels = { "A", "B", "C", "D", "E" };
 
     private readonly IErrorCollector _errors;
@@ -152,7 +152,7 @@ public sealed partial class ConsoleViewModel : ObservableObject, IPageLifecycle
         OnPropertyChanged(nameof(HasSystemLogs));
     }
 
-    // ==================== 货架示意（5×8） ====================
+    // ==================== 货架示意（5×5） ====================
 
     /// <summary>示意范围内占用数。</summary>
     public int RackOccupiedCount => RackRows.Sum(r => r.Slots.Count(s => s.IsOccupied));

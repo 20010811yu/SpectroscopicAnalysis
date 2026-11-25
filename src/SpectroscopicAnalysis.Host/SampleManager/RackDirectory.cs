@@ -4,7 +4,7 @@ namespace SpectroscopicAnalysis.Host.SampleManager;
 
 /// <summary>
 /// 货架目录：静态布局常量 + 可用架位查询（注册下拉选择用）。
-/// 布局与控制台货架示意一致（5 行 × 8 列，架位码 A01–E08）；
+/// 布局与控制台货架示意一致（5 行 × 5 列，架位码 A01–E05）；
 /// 架位无独立表，占用即样品库中 RackPosition 的出现。
 /// </summary>
 public static class RackDirectory
@@ -13,12 +13,12 @@ public static class RackDirectory
     public const int Rows = 5;
 
     /// <summary>每列架位数。</summary>
-    public const int Columns = 8;
+    public const int Columns = 5;
 
     /// <summary>行标签（与控制台货架示意一致）。</summary>
     public static readonly string[] RowLabels = { "A", "B", "C", "D", "E" };
 
-    /// <summary>全部架位码（A01–E08，行优先排序）。</summary>
+    /// <summary>全部架位码（A01–E05，行优先排序）。</summary>
     public static IReadOnlyList<string> AllPositions { get; } =
         RowLabels.SelectMany(r => Enumerable.Range(1, Columns).Select(c => $"{r}{c:00}")).ToList();
 

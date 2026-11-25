@@ -8,21 +8,21 @@ namespace SpectroscopicAnalysis.Tests;
 public sealed class RackDirectoryTests
 {
     [Fact]
-    public void AllPositions_布局为5行8列共40个架位_按行优先排序()
+    public void AllPositions_布局为5行5列共25个架位_按行优先排序()
     {
-        Assert.Equal(40, RackDirectory.AllPositions.Count);
+        Assert.Equal(25, RackDirectory.AllPositions.Count);
         Assert.Equal("A01", RackDirectory.AllPositions[0]);
-        Assert.Equal("A08", RackDirectory.AllPositions[7]);
-        Assert.Equal("B01", RackDirectory.AllPositions[8]);
-        Assert.Equal("E08", RackDirectory.AllPositions[^1]);
+        Assert.Equal("A05", RackDirectory.AllPositions[4]);
+        Assert.Equal("B01", RackDirectory.AllPositions[5]);
+        Assert.Equal("E05", RackDirectory.AllPositions[^1]);
     }
 
     [Fact]
-    public void AvailablePositions_空库_返回全部40个空闲架位()
+    public void AvailablePositions_空库_返回全部25个空闲架位()
     {
         var available = RackDirectory.AvailablePositions([], []);
 
-        Assert.Equal(40, available.Count);
+        Assert.Equal(25, available.Count);
         Assert.Equal(RackDirectory.AllPositions, available);
     }
 
@@ -33,7 +33,7 @@ public sealed class RackDirectoryTests
 
         var available = RackDirectory.AvailablePositions(sct, []);
 
-        Assert.Equal(39, available.Count);
+        Assert.Equal(24, available.Count);
         Assert.DoesNotContain("A01", available);
     }
 
@@ -44,7 +44,7 @@ public sealed class RackDirectoryTests
 
         var available = RackDirectory.AvailablePositions([], production);
 
-        Assert.Equal(39, available.Count);
+        Assert.Equal(24, available.Count);
         Assert.DoesNotContain("C04", available);
     }
 
@@ -66,7 +66,7 @@ public sealed class RackDirectoryTests
 
         var available = RackDirectory.AvailablePositions(sct, []);
 
-        Assert.Equal(40, available.Count);
+        Assert.Equal(25, available.Count);
     }
 
     [Fact]
@@ -76,7 +76,7 @@ public sealed class RackDirectoryTests
 
         var available = RackDirectory.AvailablePositions(sct, []);
 
-        // A12 不在布局内：布局 40 位不受影响，仍全部可用
-        Assert.Equal(40, available.Count);
+        // A12 不在布局内：布局 25 位不受影响，仍全部可用
+        Assert.Equal(25, available.Count);
     }
 }

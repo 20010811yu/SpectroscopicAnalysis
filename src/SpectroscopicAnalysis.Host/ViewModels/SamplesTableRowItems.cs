@@ -99,7 +99,7 @@ public sealed class SystemLogRowItem
     public string Level { get; init; } = "Info";
 }
 
-/// <summary>货架示意库位（主控台「货架示意」模块；5 行×8 列）。颜色按样品状态区分。</summary>
+/// <summary>货架示意库位（主控台「货架示意」模块；5 行×5 列）。颜色按样品状态区分。</summary>
 public sealed class RackSlotItem
 {
     /// <summary>库位状态：Empty（灰）/ Normal（蓝=可用）/ NeedMeasure（黄）/ Disabled（红）。</summary>

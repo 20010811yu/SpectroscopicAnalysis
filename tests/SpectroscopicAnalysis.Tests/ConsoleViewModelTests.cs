@@ -152,7 +152,7 @@ public sealed class ConsoleViewModelTests
         vm.RefreshRack();                           // 货架查询为后台任务，同步再刷一轮保证确定性
 
         Assert.Equal(5, vm.RackRows.Count);
-        Assert.All(vm.RackRows, r => Assert.Equal(8, r.Slots.Count));
+        Assert.All(vm.RackRows, r => Assert.Equal(5, r.Slots.Count));
 
         // 库位状态着色：可用=Normal（蓝）/ 需测高（黄）/ 禁用（红）/ 空位（灰）
         Assert.Equal(RackSlotItem.StateNormal, vm.RackRows[0].Slots[0].SlotState);        // A01 可用
@@ -166,7 +166,7 @@ public sealed class ConsoleViewModelTests
 
         Assert.Equal(4, vm.RackOccupiedCount);
         Assert.Equal(1, vm.RackOutOfRangeCount);                                 // B12 示意外
-        Assert.Equal(40, vm.RackTotalCount);
+        Assert.Equal(25, vm.RackTotalCount);
     }
 
     // ==================== 全流程运行日志 ====================

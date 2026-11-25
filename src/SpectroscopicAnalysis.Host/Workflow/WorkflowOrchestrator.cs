@@ -35,6 +35,9 @@ public sealed class WorkflowOrchestrator : IWorkflowOrchestrator
 
     /// <summary>当前任务开始时间（生产样=注册提交时刻/入队时间；SCT 样=指令下发时刻；主循环单任务串行，字段安全）。</summary>
     private DateTime? _currentTaskStartTime;
+
+    /// <summary>当前任务执行开始时刻（UTC；生产流程补足 TaskDurationMs 的计时基准）。</summary>
+    private DateTime _taskStartedUtc;
     private string? _sctSubState;
     private volatile bool _emergency;
 
@@ -184,12 +187,6 @@ public sealed class WorkflowOrchestrator : IWorkflowOrchestrator
                     RaiseStateChanged();
                 }
 
-                // 任务间隔：仅在队列仍有排队任务时等待，模拟真实执行节拍；空队不等待（不阻塞引擎节拍）
-                if (_engine.GetQueuedTasks().Count > 0)
-                {
-                    await Task.Delay(_options.TaskIntervalMs, ct);
-                }
-
                 continue;
             }
 
@@ -210,6 +207,7 @@ public sealed class WorkflowOrchestrator : IWorkflowOrchestrator
     /// <summary>执行单任务：预检 → 按类型编排 → 回执（编排设计文档 §5/§6）。</summary>
     private async Task ExecuteTaskAsync(SctTask task, CancellationToken ct)
     {
+        _taskStartedUtc = DateTime.UtcNow;   // 执行时长起点（生产流程补足 TaskDurationMs 用；与日志 StartTime 口径不同）
         // 开始时间采集：生产样 = 注册提交时刻（注册即入队，取任务入队时间）；其余类型在指令下发点采集
         _currentTaskStartTime = task.TaskType == SctTaskType.Production ? task.EnqueueTime : null;
         lock (_gate)
@@ -272,6 +270,8 @@ public sealed class WorkflowOrchestrator : IWorkflowOrchestrator
                 return;
         }
 
+        // 模拟真实流程耗时：生产任务在 RunProductionAsync 内补足（见该处注释），其余类型步骤瞬时即回执
+
         _engine.CompleteTask(task.TaskId, success: true, null);
         // 一行一任务：触发原因携带任务下发原因（原入队行信息并入完成行，StartTime=入队/下发时刻）；
         // 控制检查/测高的结果数据（合格判定、厚度前后值）由编排层并入本行——引擎回喂不再单独写日志
@@ -291,6 +291,15 @@ public sealed class WorkflowOrchestrator : IWorkflowOrchestrator
 
         await TransitionToAsync(TaskState.Milling, ct);
         await TransitionToAsync(TaskState.Placing, ct);
+
+        // 模拟真实流程耗时：抓取/铣样/放置瞬时（Stub）时在此等待补足整体时长，
+        // 使激发、归档、完成都落在流程末尾（分析进行中状态持续约 TaskDurationMs）
+        var elapsed = DateTime.UtcNow - _taskStartedUtc;
+        var remain = TimeSpan.FromMilliseconds(_options.TaskDurationMs) - elapsed;
+        if (remain > TimeSpan.Zero)
+        {
+            await Task.Delay(remain, ct);
+        }
 
         await TransitionToAsync(TaskState.Analyzing, ct);
         var spark = await _locks.RunWithLockAsync(WorkflowLockName.SparkStand, _options.LockTimeoutMs, async () =>

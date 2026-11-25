@@ -18,8 +18,8 @@ public sealed class WorkflowOptions
     /// <summary>主循环轮询间隔（毫秒）。</summary>
     public int PollIntervalMs { get; set; } = 500;
 
-    /// <summary>任务间隔（毫秒）：上一任务完成后到下一任务出队前的等待，模拟真实执行节拍；仅队列仍有排队任务时生效。</summary>
-    public int TaskIntervalMs { get; set; } = 60_000;
+    /// <summary>单任务执行时长（毫秒）：步骤瞬时完成（Stub）时由执行末尾等待补足，模拟真实流程耗时。</summary>
+    public int TaskDurationMs { get; set; } = 180_000;
 
     /// <summary>策略引擎时钟节拍间隔（毫秒；定时/按时间触发判定）。</summary>
     public int EngineTickIntervalMs { get; set; } = 60_000;

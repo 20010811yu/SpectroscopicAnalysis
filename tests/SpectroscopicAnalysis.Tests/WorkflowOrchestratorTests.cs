@@ -20,11 +20,11 @@ public sealed class WorkflowOrchestratorTests
     private readonly FakeErrorCollector _errors = new();
     private readonly StubDeviceGateway _gateway = new();
 
-    /// <summary>快轮询配置（测试无需等 500ms；任务间隔同归零）。</summary>
+    /// <summary>快轮询配置（测试无需等 500ms；任务时长补足同归零）。</summary>
     private static WorkflowOptions FastOptions() => new()
     {
         PollIntervalMs = 10,
-        TaskIntervalMs = 0,
+        TaskDurationMs = 0,
         EngineTickIntervalMs = 600_000,
         LockTimeoutMs = 1_000,
         StepTimeoutMs = 1_000,
@@ -221,19 +221,14 @@ public sealed class WorkflowOrchestratorTests
     }
 
     [Fact]
-    public async Task 任务间隔_队列有后续任务时按配置等待()
+    public async Task 任务时长_执行过程补足到配置时长()
     {
-        // 快速档但间隔 300ms：连续两个生产任务，完成时刻应拉开 ≥300ms（模拟真实执行节拍）
+        // 时长 300ms：单个 Stub 生产任务从开始到结果归档应历时 ≥300ms（模拟真实流程耗时）
         var options = FastOptions();
-        options.TaskIntervalMs = 300;
+        options.TaskDurationMs = 300;
         _production.Store.Add(new ProductionSample
         {
             SampleId = "P-001", SampleName = "生产样 1", SampleType = "Production",
-            AssociatedMethod = "M-1", Status = ProductionStatus.Pending, CreatedTime = DateTime.Now,
-        });
-        _production.Store.Add(new ProductionSample
-        {
-            SampleId = "P-002", SampleName = "生产样 2", SampleType = "Production",
             AssociatedMethod = "M-1", Status = ProductionStatus.Pending, CreatedTime = DateTime.Now,
         });
         var engine = new SctStrategyEngine(_policy, _samples, _logs, _errors);
@@ -241,17 +236,15 @@ public sealed class WorkflowOrchestratorTests
             engine, _gateway, _gateway, _gateway, _gateway, _logs, _samples, _production, _errors, new SystemLogCollector(),
             new SampleDataChangeNotifier(), options);
         engine.SubmitTask(SctTaskType.Production, "P-001", "样品注册自动入队");
-        engine.SubmitTask(SctTaskType.Production, "P-002", "样品注册自动入队");
 
         var start = DateTime.UtcNow;
         await orchestrator.StartAsync(CancellationToken.None);
-        await WaitUntilAsync(() => _production.GetResults("P-002").Any());
+        await WaitUntilAsync(() => _production.GetResults("P-001").Any());
         await orchestrator.StopAsync(CancellationToken.None);
         var elapsed = DateTime.UtcNow - start;
 
-        // 两个 Stub 任务本身瞬时完成，总耗时主要由任务间隔贡献
-        Assert.True(elapsed.TotalMilliseconds >= 300, $"两任务总耗时 {elapsed.TotalMilliseconds}ms，未体现任务间隔");
-        Assert.Equal(ProductionStatus.Completed, _production.Store.Single(p => p.SampleId == "P-002").Status);
+        Assert.True(elapsed.TotalMilliseconds >= 300, $"任务耗时 {elapsed.TotalMilliseconds}ms，未补足配置时长");
+        Assert.Equal(ProductionStatus.Completed, _production.Store.Single(p => p.SampleId == "P-001").Status);
     }
 
     [Fact]

@@ -184,6 +184,12 @@ public sealed class WorkflowOrchestrator : IWorkflowOrchestrator
                     RaiseStateChanged();
                 }
 
+                // 任务间隔：仅在队列仍有排队任务时等待，模拟真实执行节拍；空队不等待（不阻塞引擎节拍）
+                if (_engine.GetQueuedTasks().Count > 0)
+                {
+                    await Task.Delay(_options.TaskIntervalMs, ct);
+                }
+
                 continue;
             }
 

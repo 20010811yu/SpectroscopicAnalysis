@@ -27,8 +27,13 @@
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
 
+                <!-- 项目系统名称标题（顶栏最左侧） -->
+                <TextBlock Grid.Column="0" Text="Automated Sample Analysis System" VerticalAlignment="Center"
+                           FontSize="{DynamicResource FontSize.PageTitle}" FontWeight="SemiBold"
+                           Foreground="{DynamicResource Brush.Text.Primary}" Margin="0,0,24,0" />
+
                 <!-- 模式按钮组（静态占位，切换交互随功能阶段接入；置于顶栏最左侧；字体加大+间距加宽） -->
-                <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
                     <StackPanel.Resources>
                         <Style TargetType="Button" BasedOn="{StaticResource ModeBtn}">
                             <Setter Property="FontSize" Value="{DynamicResource FontSize.Body}" />

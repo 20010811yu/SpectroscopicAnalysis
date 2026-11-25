@@ -480,7 +480,7 @@
                                    VerticalAlignment="Center" Margin="12,0,0,0">
                             <TextBlock.Style>
                                 <Style TargetType="TextBlock" BasedOn="{StaticResource Text.Caption}">
-                                    <Setter Property="Visibility" Value="Collapsed" />
+                                    <Setter Property="Visibility" Value="Visible" />
                                     <Style.Triggers>
                                         <DataTrigger Binding="{Binding PolicyConfigSavedMessage}" Value="{x:Null}">
                                             <Setter Property="Visibility" Value="Collapsed" />

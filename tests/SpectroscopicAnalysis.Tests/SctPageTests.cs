@@ -293,6 +293,24 @@ public sealed class SctPageTests
     }
 
     [Fact]
+    public void Policy_内容无变化保存_不写全流程日志()
+    {
+        var systemLog = new SystemLogCollector();
+        var policy = new FakeSctPolicyStore();
+        var vm = new SctViewModel(new FakeSampleRepository(), new FakeOperationLogRepository(), policy,
+            new FakeUiDispatcher(), new FakeDialogService(), new FakeErrorCollector(),
+            strategyEngine: null, sampleDataChanged: null, systemLog: systemLog);
+
+        // 加载当前配置后不做任何修改直接保存：配置写入成功但不写全流程日志
+        vm.LoadCommand.Execute(null);
+        vm.SavePolicyCommand.Execute(null);
+
+        Assert.Null(vm.PolicyError);
+        Assert.NotNull(policy.LastSaved);
+        Assert.Empty(systemLog.GetEntries());
+    }
+
+    [Fact]
     public void Policy_保存校验与往返()
     {
         var (vm, _, _, policy, _) = Create();

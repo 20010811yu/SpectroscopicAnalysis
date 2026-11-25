@@ -846,8 +846,12 @@ public sealed partial class SctViewModel : ObservableObject, IPageLifecycle
                 PeriodicStandardizeHours = periodicHours,
             };
             _policyStore.Save(newPolicy);
-            // 全流程日志：策略配置保存留痕（关键项旧→新；无变化也要留痕，证明保存动作发生过）
-            _systemLog.Log("SCT策略", $"策略配置已保存（{DescribePolicyChanges(oldPolicy, newPolicy)}）");
+            // 全流程日志：策略配置保存留痕（关键项旧→新；内容无变化不写日志——无修改的保存不产生变更记录）
+            var changeText = DescribePolicyChanges(oldPolicy, newPolicy);
+            if (changeText != "内容无变化")
+            {
+                _systemLog.Log("SCT策略", $"策略配置已保存（{changeText}）");
+            }
             PolicySavedMessage = "✓ 策略配置已保存";
             ScheduleSavedMessageHide(PolicySavedMessage);
         }

@@ -322,6 +322,13 @@ public sealed partial class SctViewModel : ObservableObject, IPageLifecycle
     /// <summary>保存成功提示自动隐藏的取消源（再次设置提示时重置计时）。</summary>
     private CancellationTokenSource? _savedMessageCts;
 
+    /// <summary>策略配置保存成功提示（仅显示在配置卡片保存按钮右侧；与顶部工具栏操作提示分槽互不干扰）。</summary>
+    [ObservableProperty]
+    private string? _policyConfigSavedMessage;
+
+    /// <summary>配置保存提示自动隐藏的取消源。</summary>
+    private CancellationTokenSource? _configSavedMessageCts;
+
     /// <summary>单行显示约定：新成功提示出现时覆盖尚未消失的错误提示（二者共用按钮下方一个提示槽位）。</summary>
     partial void OnPolicySavedMessageChanged(string? value)
     {
@@ -785,7 +792,7 @@ public sealed partial class SctViewModel : ObservableObject, IPageLifecycle
     private void SavePolicy()
     {
         PolicyError = null;
-        PolicySavedMessage = null;
+        PolicyConfigSavedMessage = null;
 
         if (!int.TryParse(PolicyInsertCount, out var insertCount) || insertCount < 1)
         {
@@ -852,8 +859,8 @@ public sealed partial class SctViewModel : ObservableObject, IPageLifecycle
             {
                 _systemLog.Log("SCT策略", $"策略配置已保存（{changeText}）");
             }
-            PolicySavedMessage = "✓ 策略配置已保存";
-            ScheduleSavedMessageHide(PolicySavedMessage);
+            PolicyConfigSavedMessage = "✓ 策略配置已保存";
+            ScheduleConfigSavedMessageHide(PolicyConfigSavedMessage);
         }
         catch (IOException ex)
         {
@@ -863,13 +870,24 @@ public sealed partial class SctViewModel : ObservableObject, IPageLifecycle
     }
 
     /// <summary>保存成功提示 5 秒后自动隐藏（再次设置提示时重置计时，取消旧计时）。</summary>
-    private void ScheduleSavedMessageHide(string message)
-    {
-        _savedMessageCts?.Cancel();
-        _savedMessageCts?.Dispose();
-        _savedMessageCts = new CancellationTokenSource();
+    private void ScheduleSavedMessageHide(string message) =>
+        ScheduleHide(message, () => _savedMessageCts, v => _savedMessageCts = v,
+            isActive: () => PolicySavedMessage == message, clear: () => PolicySavedMessage = null);
 
-        var token = _savedMessageCts.Token;
+    /// <summary>配置卡片保存成功提示 5 秒后自动隐藏（与顶部工具栏操作提示独立计时互不影响）。</summary>
+    private void ScheduleConfigSavedMessageHide(string message) =>
+        ScheduleHide(message, () => _configSavedMessageCts, v => _configSavedMessageCts = v,
+            isActive: () => PolicyConfigSavedMessage == message, clear: () => PolicyConfigSavedMessage = null);
+
+    /// <summary>5 秒计时隐藏公共体：到期时仅当提示仍是本次内容才清空（避免覆盖新提示）。</summary>
+    private void ScheduleHide(string message, Func<CancellationTokenSource?> getCts, Action<CancellationTokenSource> setCts,
+        Func<bool> isActive, Action clear)
+    {
+        getCts()?.Cancel();
+        getCts()?.Dispose();
+        setCts(new CancellationTokenSource());
+
+        var token = getCts()!.Token;
         _ = Task.Run(async () =>
         {
             try
@@ -883,9 +901,9 @@ public sealed partial class SctViewModel : ObservableObject, IPageLifecycle
 
             _ui.Invoke(() =>
             {
-                if (PolicySavedMessage == message)
+                if (isActive())
                 {
-                    PolicySavedMessage = null;
+                    clear();
                 }
             });
         }, CancellationToken.None);

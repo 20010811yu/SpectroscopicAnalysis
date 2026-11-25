@@ -306,7 +306,7 @@ public sealed class SctPageTests
         vm.SavePolicyCommand.Execute(null);
 
         Assert.Null(vm.PolicyError);
-        Assert.Equal("✓ 策略配置已保存", vm.PolicySavedMessage);   // 保存成功提示正常显示
+        Assert.Equal("✓ 策略配置已保存", vm.PolicyConfigSavedMessage);   // 保存成功提示正常显示（配置卡片独立槽位）
         var entry = Assert.Single(systemLog.GetEntries());
         Assert.Contains("策略配置已保存", entry.Message);
         Assert.Contains("合金切换执行类型标准化", entry.Message);

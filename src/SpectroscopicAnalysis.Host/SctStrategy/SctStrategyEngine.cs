@@ -440,6 +440,15 @@ public sealed class SctStrategyEngine : ISctStrategyEngine
     }
 
     /// <inheritdoc />
+    public void UpdateCurrentAlloy(string alloyType)
+    {
+        lock (_gate)
+        {
+            _currentAlloy = alloyType;   // 仅同步（Workflow 生产前合金切换检测已自行编排前置类型标准化，不再重复入队）
+        }
+    }
+
+    /// <inheritdoc />
     public void OnTick()
     {
         var policy = _policyStore.Load();

@@ -30,6 +30,9 @@ public sealed class WorkflowOrchestrator : IWorkflowOrchestrator
     private Task? _loop;
     private DateTime _lastEngineTick = DateTime.MinValue;
 
+    /// <summary>上一个生产样关联的合金类型（生产流程前置合金切换检测基准；null=尚无生产记录）。</summary>
+    private string? _lastProductionAlloy;
+
     private SctTask? _current;
     private string _taskState = TaskState.Idle;
 
@@ -292,10 +295,14 @@ public sealed class WorkflowOrchestrator : IWorkflowOrchestrator
         }
     }
 
-    /// <summary>生产任务：Registered→…→Archiving（编排设计文档 §5；激发结果回喂引擎）。</summary>
+    /// <summary>生产任务：Registered→…→Archiving（编排设计文档 §5；激发结果回喂引擎）。
+    /// 流程前做合金切换检测：与上一个生产样合金不同时，先对本次合金执行类型标准化再进入生产。</summary>
     private async Task RunProductionAsync(SctTask task, CancellationToken ct)
     {
         var sampleId = task.SampleId ?? "Unknown";
+        await RunAlloySwitchPreCheckAsync(sampleId, ct);
+        _taskStartedUtc = DateTime.UtcNow;   // 前置类型标准化耗时另计：生产流程时长补足基准重新起算
+
         await TransitionToAsync(TaskState.Preparing, ct);
         await _send.SendCycleStartAsync(idCycle: 1, sampleId, gripHeight: 0, ct);   // 抓取（含抓取高度，当前默认 0）
 
@@ -334,6 +341,68 @@ public sealed class WorkflowOrchestrator : IWorkflowOrchestrator
 
         await TransitionToAsync(TaskState.Completed, ct);
         _engine.NotifyAnalysisCompleted(sampleId);
+    }
+
+    /// <summary>
+    /// 生产流程前置合金切换检测（需求：相邻生产样合金不同时先做本次合金的类型标准化）：
+    /// 与上一个生产样合金类型不同（双方均有值）→ 先选匹配合金的类型标准化样执行完整类型标准化链
+    /// （含系数更新与引擎回喂，时长与常规任务一致），完成后再进入本次生产流程；
+    /// 无匹配类型标准化样 → 5103 报警不阻断（与引擎选样失败同语义），生产照常继续。
+    /// </summary>
+    private async Task RunAlloySwitchPreCheckAsync(string sampleId, CancellationToken ct)
+    {
+        var currentAlloy = _production.GetAll().FirstOrDefault(p => p.SampleId == sampleId)?.AlloyType;
+        var previousAlloy = _lastProductionAlloy;
+        _lastProductionAlloy = currentAlloy;    // 串行主循环内更新：本任务即下一次检测的"上一个生产样"
+
+        // 首个生产任务 / 任一方合金未知 → 无可比基准，直接生产
+        if (string.IsNullOrWhiteSpace(previousAlloy) || string.IsNullOrWhiteSpace(currentAlloy))
+        {
+            if (!string.IsNullOrWhiteSpace(currentAlloy))
+            {
+                _engine.UpdateCurrentAlloy(currentAlloy);   // 同步引擎当前合金（期限届满判定用）
+            }
+            return;
+        }
+
+        if (string.Equals(previousAlloy.Trim(), currentAlloy.Trim(), StringComparison.Ordinal))
+        {
+            return;     // 同合金：直接执行生产流程
+        }
+
+        // 合金切换：选本次合金匹配的类型标准化样（TypeStd/Normal/启用，使用次数最少优先——与引擎选样规则一致）
+        var typeStd = _samples.GetAll()
+            .Where(s => s.SampleType == SampleType.TypeStd && s.Status == SampleStatus.Normal && s.IsActive)
+            .Where(s => string.Equals(s.AlloyType?.Trim(), currentAlloy.Trim(), StringComparison.Ordinal))
+            .OrderBy(s => s.UsageCount)
+            .FirstOrDefault();
+
+        _systemLog.Log("设备操作",
+            $"生产合金切换检测：{previousAlloy} → {currentAlloy}（样品 {sampleId}）", "Warning");
+
+        if (typeStd is null)
+        {
+            // 无匹配类型标准化样：报警（5103 同语义），不阻断生产（避免产线卡死）
+            _errors.Collect(ErrorCodes.SctTypeStdUnavailable,
+                $"合金 {currentAlloy} 无匹配的类型标准化样，跳过前置类型标准化", sampleId);
+            _engine.UpdateCurrentAlloy(currentAlloy);
+            return;
+        }
+
+        // 前置类型标准化：完整 SCT 分析链（选样→取放→铣削→激发→系数更新→放回），时长补足与常规任务一致
+        var preTask = new SctTask
+        {
+            TaskType = SctTaskType.TypeStandardize,
+            SampleId = typeStd.SampleId,
+            Reason = $"生产合金切换前置类型标准化（{previousAlloy}→{currentAlloy}）",
+            EnqueueTime = DateTime.Now,
+        };
+        _systemLog.Log("标准化", $"前置类型标准化开始（样品 {typeStd.SampleId}，合金 {currentAlloy}）");
+        await RunSctAnalysisAsync(preTask, withCoeffUpdate: true, ct);
+        // 一行一任务：完成行落库（StartTime=激发指令下发时刻，由分析链内采集）
+        WriteTrace(typeStd.SampleId, SctTaskType.TypeStandardize, preTask.Reason, "Success",
+            _currentTaskStartTime?.ToString("yyyy-MM-dd HH:mm:ss"));
+        _engine.UpdateCurrentAlloy(currentAlloy);
     }
 
     /// <summary>SCT 分析类任务（标准化/类型标准化）：SCT 子状态链 + 系数更新 + 引擎回喂（编排设计文档 §6）。</summary>

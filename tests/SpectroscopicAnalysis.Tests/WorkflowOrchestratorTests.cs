@@ -281,4 +281,76 @@ public sealed class WorkflowOrchestratorTests
         Assert.False(snapshot.IsRunning);
         Assert.Contains(WorkflowLockName.Robot, snapshot.LockOccupancy.Keys);
     }
+
+    // ==================== 生产前合金切换前置类型标准化 ====================
+
+    [Fact]
+    public async Task 合金切换_生产前先执行匹配合金的类型标准化()
+    {
+        // 生产样 1（合金 3003）→ 生产样 2（合金 6061）：第二个生产任务前应先对 6061 的类型标准化样执行 ID_CYCLE=2
+        _production.Store.Add(new ProductionSample
+        {
+            SampleId = "P-3003", SampleName = "生产样 3003", SampleType = "Production",
+            AlloyType = "3003", AssociatedMethod = "M-1", Status = ProductionStatus.Pending, CreatedTime = DateTime.Now,
+        });
+        _production.Store.Add(new ProductionSample
+        {
+            SampleId = "P-6061", SampleName = "生产样 6061", SampleType = "Production",
+            AlloyType = "6061", AssociatedMethod = "M-1", Status = ProductionStatus.Pending, CreatedTime = DateTime.Now,
+        });
+        var typeStd6061 = MakeSample("TYP-6061", type: SampleType.TypeStd);
+        typeStd6061.AlloyType = "6061";
+        _samples.Store.Add(typeStd6061);
+
+        var (engine, orchestrator) = Create();
+        engine.SubmitTask(SctTaskType.Production, "P-3003", "样品注册自动入队");
+        engine.SubmitTask(SctTaskType.Production, "P-6061", "样品注册自动入队");
+
+        await orchestrator.StartAsync(CancellationToken.None);
+        await WaitUntilAsync(() => _production.GetResults("P-6061").Any());
+        await orchestrator.StopAsync(CancellationToken.None);
+
+        // 执行次序：P-3003 生产 → TYP-6061 类型标准化（ID_CYCLE=2）→ P-6061 生产
+        var cycles = _gateway.SentCycles.Select(c => (c.SampleId, c.IdCycle)).ToList();
+        Assert.Equal(3, cycles.Count);
+        Assert.Equal(("P-3003", 1), cycles[0]);
+        Assert.Equal(("TYP-6061", 2), cycles[1]);       // 前置类型标准化（合金匹配 6061）
+        Assert.Equal(("P-6061", 1), cycles[2]);
+        // 前置类型标准化完成行落库（一行一任务）
+        Assert.Contains(_logs.Store, l => l.OperationType == "TypeStandardize" && l.SampleId == "TYP-6061"
+            && (l.TriggerReason ?? string.Empty).Contains("前置类型标准化") && l.ResultStatus == "Success");
+        // 两生产样均正常完成
+        Assert.Equal(ProductionStatus.Completed, _production.Store.Single(p => p.SampleId == "P-6061").Status);
+    }
+
+    [Fact]
+    public async Task 同合金_生产前不插入类型标准化()
+    {
+        _production.Store.Add(new ProductionSample
+        {
+            SampleId = "P-A", SampleName = "生产样 A", SampleType = "Production",
+            AlloyType = "3003", AssociatedMethod = "M-1", Status = ProductionStatus.Pending, CreatedTime = DateTime.Now,
+        });
+        _production.Store.Add(new ProductionSample
+        {
+            SampleId = "P-B", SampleName = "生产样 B", SampleType = "Production",
+            AlloyType = "3003", AssociatedMethod = "M-1", Status = ProductionStatus.Pending, CreatedTime = DateTime.Now,
+        });
+        var typeStd3003 = MakeSample("TYP-3003", type: SampleType.TypeStd);
+        typeStd3003.AlloyType = "3003";
+        _samples.Store.Add(typeStd3003);
+
+        var (engine, orchestrator) = Create();
+        engine.SubmitTask(SctTaskType.Production, "P-A", "样品注册自动入队");
+        engine.SubmitTask(SctTaskType.Production, "P-B", "样品注册自动入队");
+
+        await orchestrator.StartAsync(CancellationToken.None);
+        await WaitUntilAsync(() => _production.GetResults("P-B").Any());
+        await orchestrator.StopAsync(CancellationToken.None);
+
+        // 同合金直接生产：仅两次 ID_CYCLE=1，无前置类型标准化
+        Assert.All(_gateway.SentCycles, c => Assert.Equal(1, c.IdCycle));
+        Assert.Equal(2, _gateway.SentCycles.Count);
+        Assert.DoesNotContain(_logs.Store, l => l.OperationType == "TypeStandardize");
+    }
 }

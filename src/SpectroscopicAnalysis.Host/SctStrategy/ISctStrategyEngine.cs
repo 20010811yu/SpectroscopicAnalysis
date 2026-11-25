@@ -43,6 +43,9 @@ public interface ISctStrategyEngine
     /// <summary>合金类型切换（按配置触发类型标准化，引擎设计 §5）。</summary>
     void NotifyAlloySwitched(string alloyType);
 
+    /// <summary>仅同步当前合金（不触发类型标准化入队；Workflow 生产流程前置检测合金切换后调用，供期限届满等判定使用）。</summary>
+    void UpdateCurrentAlloy(string alloyType);
+
     /// <summary>时钟节拍（定时标准化/按时间插入检查样/类型标准化期限判定；由宿主定期调用）。</summary>
     void OnTick();
 

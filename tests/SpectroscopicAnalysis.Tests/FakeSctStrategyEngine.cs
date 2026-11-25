@@ -75,6 +75,10 @@ internal sealed class FakeSctStrategyEngine : ISctStrategyEngine
     {
     }
 
+    public void UpdateCurrentAlloy(string alloyType)
+    {
+    }
+
     public void OnTick()
     {
     }

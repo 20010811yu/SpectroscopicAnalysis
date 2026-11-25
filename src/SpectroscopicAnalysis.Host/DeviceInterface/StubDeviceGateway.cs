@@ -12,11 +12,15 @@ namespace SpectroscopicAnalysis.Host.DeviceInterface;
 public sealed class StubDeviceGateway :
     ISendTask, IGetTaskStatus, IGetSafetyStatus, ISpectrometer, IHeartbeat, INotifyTaskEnd
 {
-    /// <summary>逻辑寄存器地址（Stub 阶段占位名；Modbus 真实现后替换为真实寄存器地址）。</summary>
-    private const string AddrCommand = "命令寄存器 4xxxx";
-    private const string AddrStatus = "状态寄存器 4xxxx";
-    private const string AddrSafety = "安全寄存器 4xxxx";
-    private const string AddrHeartbeat = "心跳寄存器 4xxxx";
+    /// <summary>逻辑寄存器地址（单一来源见 <see cref="PlcAddressTable"/>；Modbus 真实现后在其常量处替换为真实寄存器地址）。</summary>
+    private const string AddrCommand = PlcAddressTable.AddrCommand;
+    private const string AddrStatus = PlcAddressTable.AddrStatus;
+    private const string AddrSafety = PlcAddressTable.AddrSafety;
+    private const string AddrHeartbeat = PlcAddressTable.AddrHeartbeat;
+
+    // TODO(Modbus 真实现): 网关与实际 PLC 连接成功的回调中调用
+    // PlcAddressTable.WriteCsv(Path.Combine(AppContext.BaseDirectory, "logs", "plc"))
+    // ——连通后自动在 PLC 日志目录生成/更新「地址数据表.csv」（地址/收发/内容说明，不含具体数据）。
 
     private readonly ConcurrentDictionary<string, string> _taskStates = new();
 

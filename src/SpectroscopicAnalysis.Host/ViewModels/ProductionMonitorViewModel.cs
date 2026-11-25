@@ -22,6 +22,8 @@ public sealed class QueueTaskItem
     public required string SampleIdText { get; init; }
     /// <summary>样品名称（SCT/生产样档案查询；无档案时显示 —）。</summary>
     public required string SampleNameText { get; init; }
+    /// <summary>合金类型（SCT/生产样档案查询；无档案或未填时显示 —）。</summary>
+    public required string AlloyTypeText { get; init; }
     public required string ReasonText { get; init; }
     public required string EnqueueTimeText { get; init; }
     /// <summary>是否执行中（视图切绿色徽章）。</summary>
@@ -272,6 +274,18 @@ public sealed partial class ProductionMonitorViewModel : ObservableObject, IPage
             nameMap[p.SampleId] = p.SampleName;
         }
 
+        // SampleID → 合金类型映射（生产样必填合金；SCT 样仅类型标准化样有值；队列行展示用）
+        var alloyMap = new Dictionary<string, string?>();
+        foreach (var s in _samples.GetAll())
+        {
+            alloyMap[s.SampleId] = s.AlloyType;
+        }
+
+        foreach (var p in _production.GetAll())
+        {
+            alloyMap[p.SampleId] = p.AlloyType;
+        }
+
         // 只显示等待（排队中）与进行中（执行中）的任务，已完成/失败/已取消不进队列（历史看板归日志页）；
         // 排序与引擎出队一致：优先级档位 → 手动置顶键/入队时间（手动调整只影响同档位次序）
         var items = _engine.GetRecentTasks()
@@ -285,6 +299,7 @@ public sealed partial class ProductionMonitorViewModel : ObservableObject, IPage
             TaskTypeText = TypeText(t.TaskType),
             SampleIdText = t.SampleId ?? "—",
             SampleNameText = t.SampleId is not null && nameMap.TryGetValue(t.SampleId, out var name) && !string.IsNullOrWhiteSpace(name) ? name : "—",
+            AlloyTypeText = t.SampleId is not null && alloyMap.TryGetValue(t.SampleId, out var alloy) && !string.IsNullOrWhiteSpace(alloy) ? alloy : "—",
             ReasonText = t.Reason ?? "—",
             EnqueueTimeText = t.Status == SctTaskStatus.Running ? string.Empty : t.EnqueueTime.ToString("yyyy-MM-dd HH:mm:ss"),
             IsRunning = t.Status == SctTaskStatus.Running,

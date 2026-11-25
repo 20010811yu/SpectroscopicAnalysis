@@ -122,6 +122,7 @@ public sealed class SampleRegisterFormViewModelTests
         vm.SampleId = "P-2";
         vm.SampleName = "生产样";
         vm.AnalysisMethod = "GB/T 7999-A";
+        vm.AlloyType = "3003";   // 生产样合金必填
 
         await vm.ConfirmCommand.ExecuteAsync(null);
 
@@ -152,6 +153,7 @@ public sealed class SampleRegisterFormViewModelTests
         vm.SampleId = "P-3";
         vm.SampleName = "生产样";
         vm.AnalysisMethod = "GB/T 7999-A";
+        vm.AlloyType = "3003";   // 生产样合金必填
         await vm.ConfirmCommand.ExecuteAsync(null);     // 成功 → Confirmed=true 通知
         vm.CancelCommand.Execute(null);                 // 取消 → Confirmed=false 通知
 

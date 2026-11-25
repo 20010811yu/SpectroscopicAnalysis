@@ -104,6 +104,11 @@
                             <TextBlock Text="分析方法*" Style="{StaticResource Text.Caption}" Width="110" VerticalAlignment="Center" />
                             <ComboBox ItemsSource="{Binding AnalysisMethodOptions}" SelectedItem="{Binding RegAnalysisMethod}" />
                         </StackPanel>
+                        <!-- 生产样：合金类型（必填；与类型标准样「关联合金」共用 RegAlloyType，按类型互斥显示） -->
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,8" Style="{StaticResource ProductionRow}">
+                            <TextBlock Text="合金类型*" Style="{StaticResource Text.Caption}" Width="110" VerticalAlignment="Center" />
+                            <TextBox Text="{Binding RegAlloyType, UpdateSourceTrigger=PropertyChanged}" />
+                        </StackPanel>
                         <!-- 控样/检查样/类型标准样：架位（下拉选择当前可用架位）+ 最大使用次数 -->
                         <StackPanel Orientation="Horizontal" Margin="0,0,0,8" Style="{StaticResource StdRow}">
                             <TextBlock Text="样品架位置*" Style="{StaticResource Text.Caption}" Width="110" VerticalAlignment="Center" />
@@ -578,6 +583,7 @@
                         <DataGrid.Columns>
                             <DataGridTextColumn Header="SampleID" Binding="{Binding SampleId}" FontFamily="Consolas" Width="1.2*" MinWidth="70" ElementStyle="{StaticResource GridCellText}" />
                             <DataGridTextColumn Header="样品名称" Binding="{Binding SampleName}" Width="1.2*" MinWidth="70" ElementStyle="{StaticResource GridCellText}" />
+                            <DataGridTextColumn Header="合金" Binding="{Binding AlloyType}" Width="0.7*" MinWidth="40" ElementStyle="{StaticResource GridCellText}" />
                                                         <DataGridTemplateColumn Header="状态" Width="1*" MinWidth="70">
                                 <DataGridTemplateColumn.CellTemplate>
                                     <DataTemplate>
@@ -905,8 +911,8 @@
                                         </Grid.Resources>
                                         <TextBlock Grid.Row="0" Grid.Column="0" Text="类型" Style="{StaticResource Text.Caption}" Margin="0,4" />
                                         <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding Detail.TypeDisplay}" Style="{StaticResource DetailValue}" />
-                                        <TextBlock Grid.Row="1" Grid.Column="0" Text="关联合金" Style="{StaticResource SctOnlyCaption}" />
-                                        <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding Detail.AlloyTypeText}" Style="{StaticResource SctOnlyValue}" />
+                                        <TextBlock Grid.Row="1" Grid.Column="0" Text="关联合金" Style="{StaticResource Text.Caption}" Margin="0,4" />
+                                        <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding Detail.AlloyTypeText}" Style="{StaticResource DetailValue}" />
                                         <TextBlock Grid.Row="2" Grid.Column="0" Text="架位" Style="{StaticResource SctOnlyCaption}" />
                                         <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding Detail.RackPositionText}" Style="{StaticResource SctOnlyValue}" FontFamily="Consolas" />
                                         <TextBlock Grid.Row="3" Grid.Column="0" Text="关联方法" Style="{StaticResource Text.Caption}" Margin="0,4" />

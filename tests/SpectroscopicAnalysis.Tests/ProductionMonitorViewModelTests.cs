@@ -53,6 +53,7 @@ public sealed class ProductionMonitorViewModelTests
             form.SampleId = "P-100";
             form.SampleName = "测试样品";
             form.AnalysisMethod = "GB/T 7999-A";
+            form.AlloyType = "3003";   // 生产样合金必填
             await form.ConfirmCommand.ExecuteAsync(null);
         };
 
@@ -79,6 +80,7 @@ public sealed class ProductionMonitorViewModelTests
         form.SampleId = "P-ERR";
         form.SampleName = "测试样品";
         form.AnalysisMethod = "GB/T 7999-A";
+        form.AlloyType = "3003";   // 生产样合金必填
         await form.ConfirmCommand.ExecuteAsync(null);
 
         Assert.False(form.Confirmed);

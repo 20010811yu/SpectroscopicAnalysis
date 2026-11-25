@@ -125,10 +125,14 @@ public sealed class SampleRegistrationService : ISampleRegistrationService
 
         if (form.SampleType == SampleType.Production)
         {
-            // 生产样：编号/名称 + 分析方法
+            // 生产样：编号/名称 + 分析方法 + 合金类型（必填）
             if (string.IsNullOrWhiteSpace(form.AnalysisMethod))
             {
                 return "请选择分析方法";
+            }
+            if (string.IsNullOrWhiteSpace(form.AlloyType))
+            {
+                return "请填写合金类型";
             }
             return null;
         }
@@ -154,14 +158,14 @@ public sealed class SampleRegistrationService : ISampleRegistrationService
         {
             return "最大使用次数必须为不小于 1 的整数";
         }
-        // 合金约束：仅类型标准化样必填合金（数据库触发器兜底，此处前置校验）
+        // 合金约束：类型标准化样必填合金（数据库触发器兜底，此处前置校验）；生产样合金已在上分支校验必填
         if (form.SampleType == SampleType.TypeStd && string.IsNullOrWhiteSpace(form.AlloyType))
         {
             return "类型标准化样必须填写关联合金";
         }
-        if (form.SampleType != SampleType.TypeStd && !string.IsNullOrWhiteSpace(form.AlloyType))
+        if (form.SampleType != SampleType.TypeStd && form.SampleType != SampleType.Production && !string.IsNullOrWhiteSpace(form.AlloyType))
         {
-            return "仅类型标准化样可关联合金，控样/检查样请留空合金";
+            return "仅类型标准化样/生产样可关联合金，控样/检查样请留空合金";
         }
         return null;
     }
@@ -172,6 +176,7 @@ public sealed class SampleRegistrationService : ISampleRegistrationService
         SampleId = form.SampleId.Trim(),
         SampleName = form.SampleName.Trim(),
         SampleType = SampleType.Production,
+        AlloyType = form.AlloyType!.Trim(),             // 校验已确保非空
         AssociatedMethod = form.AnalysisMethod!.Trim(), // 校验已确保非空
         Status = ProductionStatus.Pending,
         CreatedTime = DateTime.Now,

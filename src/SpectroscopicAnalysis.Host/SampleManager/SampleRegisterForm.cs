@@ -18,7 +18,7 @@ public sealed class SampleRegisterForm
     /// <summary>分析方法（生产样必选）。</summary>
     public string? AnalysisMethod { get; set; }
 
-    /// <summary>关联合金（仅类型标准化样允许且必填）。</summary>
+    /// <summary>关联合金（生产样与类型标准化样必填；控样/检查样禁填）。</summary>
     public string? AlloyType { get; set; }
 
     /// <summary>货架位置（SCT 样必填，全库唯一）。</summary>

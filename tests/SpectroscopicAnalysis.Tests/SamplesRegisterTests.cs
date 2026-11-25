@@ -58,7 +58,7 @@ public sealed class SamplesRegisterTests
         await vm.RegisterCommand.ExecuteAsync(null);
 
         Assert.NotNull(vm.RegisterError);
-        Assert.Contains("仅类型标准化样可关联合金", vm.RegisterError);
+        Assert.Contains("仅类型标准化样/生产样可关联合金", vm.RegisterError);
         Assert.Empty(repo.Store);
     }
 
@@ -271,6 +271,7 @@ public sealed class SamplesRegisterTests
             RegSampleName = "注册生产样",
             RegSampleType = SampleType.Production,
             RegAnalysisMethod = "GB/T 7999-A",
+            RegAlloyType = "3003",   // 生产样合金必填
         };
         await prodVm.RegisterCommand.ExecuteAsync(null);
 

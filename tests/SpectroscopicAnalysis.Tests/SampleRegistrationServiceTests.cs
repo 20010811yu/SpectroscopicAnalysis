@@ -15,12 +15,13 @@ public sealed class SampleRegistrationServiceTests
 
     private SampleRegistrationService Create() => new(_samples, _production, _engine, _errors, new SystemLogCollector());
 
-    private static SampleRegisterForm MakeProductionForm(string id = "P-001") => new()
+    private static SampleRegisterForm MakeProductionForm(string id = "P-001", string alloy = "3003") => new()
     {
         SampleType = SampleType.Production,
         SampleId = id,
         SampleName = "生产样",
         AnalysisMethod = "GB/T 7999-A",
+        AlloyType = alloy,
     };
 
     private static SampleRegisterForm MakeSctForm(string type, string id = "SUS-001", string alloy = "") => new()
@@ -46,6 +47,7 @@ public sealed class SampleRegistrationServiceTests
         Assert.Single(_production.Store);
         Assert.Equal(ProductionStatus.Pending, _production.Store[0].Status);
         Assert.Equal("GB/T 7999-A", _production.Store[0].AssociatedMethod);
+        Assert.Equal("3003", _production.Store[0].AlloyType);   // 生产样合金必填并落库
         Assert.Single(_engine.Submitted);
         Assert.Equal(SctTaskType.Production, _engine.Submitted[0].TaskType);
         Assert.Equal("P-001", _engine.Submitted[0].SampleId);
@@ -62,6 +64,16 @@ public sealed class SampleRegistrationServiceTests
         Assert.Equal("请选择分析方法", error);
         Assert.Empty(_production.Store);
         Assert.Empty(_errors.Collected);        // 填写类错误仅 UI 提示，不写日志与报警面板
+    }
+
+    [Fact]
+    public async Task 生产样_缺合金类型被拒且不进错误链()
+    {
+        var error = await Create().RegisterAsync(MakeProductionForm(alloy: ""));
+
+        Assert.Equal("请填写合金类型", error);
+        Assert.Empty(_production.Store);
+        Assert.Empty(_errors.Collected);
     }
 
     [Fact]
@@ -112,7 +124,7 @@ public sealed class SampleRegistrationServiceTests
     {
         var error = await Create().RegisterAsync(MakeSctForm(SampleType.SettingUp, alloy: "3003"));
 
-        Assert.Equal("仅类型标准化样可关联合金，控样/检查样请留空合金", error);
+        Assert.Equal("仅类型标准化样/生产样可关联合金，控样/检查样请留空合金", error);
     }
 
     [Theory]

@@ -182,10 +182,15 @@ public sealed partial class SampleRegisterFormViewModel : ObservableObject
 
         if (SampleType == Data.Models.SampleType.Production)
         {
-            // 生产样：分析方法必选（服务端同规则）
+            // 生产样：分析方法必选 + 合金类型必填（服务端同规则）
             if (string.IsNullOrWhiteSpace(AnalysisMethod))
             {
                 AnalysisMethodError = "请选择分析方法";
+                valid = false;
+            }
+            if (string.IsNullOrWhiteSpace(AlloyType))
+            {
+                AlloyTypeError = "请填写合金类型";
                 valid = false;
             }
 

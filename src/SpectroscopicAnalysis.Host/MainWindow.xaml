@@ -27,11 +27,17 @@
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
 
-                <!-- 模式按钮组（静态占位，切换交互随功能阶段接入；置于顶栏最左侧） -->
+                <!-- 模式按钮组（静态占位，切换交互随功能阶段接入；置于顶栏最左侧；字体加大+间距加宽） -->
                 <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
-                    <Button Style="{StaticResource ModeBtn}" Content="自动" />
-                    <Button Style="{StaticResource ModeBtn}" Content="手动" Margin="4,0,0,0" />
-                    <Button Style="{StaticResource ModeBtn}" Content="维护" Margin="4,0,0,0" />
+                    <StackPanel.Resources>
+                        <Style TargetType="Button" BasedOn="{StaticResource ModeBtn}">
+                            <Setter Property="FontSize" Value="{DynamicResource FontSize.Body}" />
+                            <Setter Property="Margin" Value="0" />
+                        </Style>
+                    </StackPanel.Resources>
+                    <Button Content="自动" />
+                    <Button Content="手动" Margin="16,0,0,0" />
+                    <Button Content="维护" Margin="16,0,0,0" />
                 </StackPanel>
 
                 <!-- 右侧状态/操作组（右对齐） -->

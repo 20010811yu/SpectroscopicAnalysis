@@ -605,6 +605,19 @@
                                     </DataTemplate>
                                 </DataGridTemplateColumn.CellTemplate>
                             </DataGridTemplateColumn>
+                            <DataGridTemplateColumn Header="操作" Width="88" MinWidth="88">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <!-- 手动加入任务队列：仅待分析样可用（已完成置灰；引擎同目标自动去重） -->
+                                        <Button Content="加入队列" HorizontalAlignment="Left" VerticalAlignment="Center"
+                                                Style="{StaticResource SecondaryBtn}"
+                                                IsEnabled="{Binding CanJoinQueue}"
+                                                ToolTip="将待分析样品加入生产任务队列（已在队列中时自动去重）"
+                                                Command="{Binding DataContext.JoinQueueCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                CommandParameter="{Binding SampleId}" />
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
                             <DataGridTextColumn Header="入库时间" Binding="{Binding CreatedText}" FontFamily="Consolas" Width="1*" MinWidth="70" ElementStyle="{StaticResource GridCellText}" />
                         </DataGrid.Columns>
                     </DataGrid>
@@ -710,6 +723,24 @@
 
                                     <!-- 标题行：标题靠左、删除按钮同行最右（仅样品台账详情显示） -->
                                     <DockPanel>
+                                        <!-- 手动加入任务队列：仅生产样详情显示，待分析状态才可用 -->
+                                        <Button DockPanel.Dock="Right" VerticalAlignment="Center" Margin="8,0,0,0"
+                                                Content="加入队列"
+                                                ToolTip="将待分析样品加入生产任务队列（已在队列中时自动去重）"
+                                                Command="{Binding JoinQueueCommand}"
+                                                CommandParameter="{Binding Detail.SampleId}">
+                                            <Button.Style>
+                                                <Style TargetType="Button" BasedOn="{StaticResource SecondaryBtn}">
+                                                    <Setter Property="Visibility" Value="Collapsed" />
+                                                    <Setter Property="IsEnabled" Value="{Binding Detail.CanJoinQueue}" />
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding Detail.Kind}" Value="Production">
+                                                            <Setter Property="Visibility" Value="Visible" />
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Button.Style>
+                                        </Button>
                                         <Button DockPanel.Dock="Right" VerticalAlignment="Center" Margin="8,0,0,0"
                                                 Content="删除样品"
                                                 Command="{Binding DeleteCommand}"

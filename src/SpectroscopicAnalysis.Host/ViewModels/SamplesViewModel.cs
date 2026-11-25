@@ -54,6 +54,9 @@ public sealed class ProductionRowItem
     /// <summary>是否为分析失败回退样（视图按此切失败色徽章）。</summary>
     public bool HasFailure => FailureReason is not null;
 
+    /// <summary>是否允许手动加入任务队列（仅待分析样可入队；已完成样置灰按钮）。</summary>
+    public bool CanJoinQueue => Status == ProductionStatus.Pending;
+
     public required string CreatedText { get; init; }
     public required string Remark { get; init; }
 }
@@ -121,6 +124,8 @@ public sealed class SampleDetailItem
     public required string RemarkText { get; init; }
     /// <summary>失败原因（生产样分析失败回退待分析时展示；其余为空串即隐藏）。</summary>
     public required string FailureReasonText { get; init; }
+    /// <summary>是否允许手动加入任务队列（仅生产样待分析状态为 true，驱动详情卡片按钮可用性）。</summary>
+    public required bool CanJoinQueue { get; init; }
 }
 
 /// <summary>
@@ -638,6 +643,7 @@ public sealed partial class SamplesViewModel : ObservableObject, IPageLifecycle
         CreatedText = "—",
         RemarkText = "—",
         FailureReasonText = string.Empty,
+        CanJoinQueue = false,   // SCT 样不走生产任务队列
     };
 
     private static SampleDetailItem MapProductionDetail(ProductionRowItem p) => new()
@@ -658,6 +664,7 @@ public sealed partial class SamplesViewModel : ObservableObject, IPageLifecycle
         CreatedText = p.CreatedText,
         RemarkText = p.Remark,
         FailureReasonText = p.FailureReason ?? string.Empty,
+        CanJoinQueue = p.CanJoinQueue,
     };
 
     /// <summary>分页/筛选/删除导致行集合整体替换后，按 SampleID 重选保持详情面板；
@@ -874,6 +881,26 @@ public sealed partial class SamplesViewModel : ObservableObject, IPageLifecycle
         {
             _ui.Invoke(() => IsRegistering = false);
         }
+    }
+
+    /// <summary>手动将待分析生产样加入任务队列（重启/分析失败等遗留的 PendingAnalysis 样补入队；
+    /// 引擎按同类型+同目标未完成任务自动去重，重复点击安全；入队留痕由策略引擎写入全流程日志）。</summary>
+    [RelayCommand]
+    private void JoinQueue(string? sampleId)
+    {
+        if (string.IsNullOrWhiteSpace(sampleId))
+        {
+            return;
+        }
+
+        // 仅待分析状态允许入队；行模型不存在或已完成（Completed）直接忽略
+        var row = _allProduction.FirstOrDefault(r => string.Equals(r.SampleId, sampleId, StringComparison.Ordinal));
+        if (row is null || !row.CanJoinQueue)
+        {
+            return;
+        }
+
+        _strategyEngine.SubmitTask(SctTaskType.Production, sampleId, "手动加入任务队列");
     }
 
     /// <summary>表单校验（按注册类型条件化）；返回错误消息，null 表示通过。</summary>

@@ -476,18 +476,33 @@
                     <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
                         <Button Content="保存配置" Command="{Binding SavePolicyCommand}" Style="{StaticResource PrimaryBtn}" Padding="14,5" />
                     </StackPanel>
-                    <TextBlock Text="{Binding PolicyError}" Foreground="{DynamicResource Brush.Status.Failed}" Margin="0,4,0,0">
-                        <TextBlock.Style>
-                            <Style TargetType="TextBlock" BasedOn="{StaticResource Text.Caption}">
-                                <Setter Property="Visibility" Value="Collapsed" />
-                                <Style.Triggers>
-                                    <DataTrigger Binding="{Binding PolicyError}" Value="{x:Null}">
-                                        <Setter Property="Visibility" Value="Collapsed" />
-                                    </DataTrigger>
-                                </Style.Triggers>
-                            </Style>
-                        </TextBlock.Style>
-                    </TextBlock>
+                    <!-- 配置卡片提示行：错误（红）与保存成功（绿，5 秒自动消失，VM 已互斥覆盖）并排显示 -->
+                    <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
+                        <TextBlock Text="{Binding PolicyError}" Foreground="{DynamicResource Brush.Status.Failed}">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock" BasedOn="{StaticResource Text.Caption}">
+                                    <Setter Property="Visibility" Value="Collapsed" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding PolicyError}" Value="{x:Null}">
+                                            <Setter Property="Visibility" Value="Collapsed" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+                        <TextBlock Text="{Binding PolicySavedMessage}" Foreground="{DynamicResource Brush.Status.Running}" Margin="8,0,0,0">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock" BasedOn="{StaticResource Text.Caption}">
+                                    <Setter Property="Visibility" Value="Collapsed" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding PolicySavedMessage}" Value="{x:Null}">
+                                            <Setter Property="Visibility" Value="Collapsed" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+                    </StackPanel>
                     <TextBlock Text="手动触发经 SctStrategyEngine 提交任务队列；策略配置持久化于 config/sct_policy.json"
                                Style="{StaticResource Text.Caption}" Margin="0,8,0,0" />
                 </StackPanel>

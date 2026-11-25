@@ -33,6 +33,12 @@ public sealed class WorkflowOrchestrator : IWorkflowOrchestrator
     /// <summary>上一个生产样关联的合金类型（生产流程前置合金切换检测基准；null=尚无生产记录）。</summary>
     private string? _lastProductionAlloy;
 
+    /// <summary>已入队前置类型标准化等待执行的目标合金（生产任务开始执行后清空；防同合金重复入队）。</summary>
+    private string? _pendingPreStdAlloy;
+
+    /// <summary>最近一次"无匹配类型标准化样"报警键（样品:合金；防主循环轮询重复报警）。</summary>
+    private string? _alloySwitchAlarmKey;
+
     private SctTask? _current;
     private string _taskState = TaskState.Idle;
 
@@ -161,6 +167,9 @@ public sealed class WorkflowOrchestrator : IWorkflowOrchestrator
             {
                 return;     // 急停后主循环退出，恢复须人工复位后重新 StartAsync
             }
+
+            // 出队前合金切换检测：队首为生产任务且合金切换时，先入队前置类型标准化（P3 优先自动先执行）
+            CheckAlloySwitchBeforeDequeue();
 
             if (_engine.TryDequeue(out var task))
             {
@@ -296,12 +305,17 @@ public sealed class WorkflowOrchestrator : IWorkflowOrchestrator
     }
 
     /// <summary>生产任务：Registered→…→Archiving（编排设计文档 §5；激发结果回喂引擎）。
-    /// 流程前做合金切换检测：与上一个生产样合金不同时，先对本次合金执行类型标准化再进入生产。</summary>
+    /// 开始时记录本次合金作为后续合金切换检测的"上一个生产样"基准。</summary>
     private async Task RunProductionAsync(SctTask task, CancellationToken ct)
     {
         var sampleId = task.SampleId ?? "Unknown";
-        await RunAlloySwitchPreCheckAsync(sampleId, ct);
-        _taskStartedUtc = DateTime.UtcNow;   // 前置类型标准化耗时另计：生产流程时长补足基准重新起算
+        var currentAlloy = _production.GetAll().FirstOrDefault(p => p.SampleId == sampleId)?.AlloyType;
+        _lastProductionAlloy = currentAlloy;    // 串行主循环内更新：本任务即下一次检测的"上一个生产样"
+        _pendingPreStdAlloy = null;             // 本生产任务已开始执行，其前置标准化等待结束
+        if (!string.IsNullOrWhiteSpace(currentAlloy))
+        {
+            _engine.UpdateCurrentAlloy(currentAlloy);   // 同步引擎当前合金（期限届满判定用）
+        }
 
         await TransitionToAsync(TaskState.Preparing, ct);
         await _send.SendCycleStartAsync(idCycle: 1, sampleId, gripHeight: 0, ct);   // 抓取（含抓取高度，当前默认 0）
@@ -344,30 +358,36 @@ public sealed class WorkflowOrchestrator : IWorkflowOrchestrator
     }
 
     /// <summary>
-    /// 生产流程前置合金切换检测（需求：相邻生产样合金不同时先做本次合金的类型标准化）：
-    /// 与上一个生产样合金类型不同（双方均有值）→ 先选匹配合金的类型标准化样执行完整类型标准化链
-    /// （含系数更新与引擎回喂，时长与常规任务一致），完成后再进入本次生产流程；
-    /// 无匹配类型标准化样 → 5103 报警不阻断（与引擎选样失败同语义），生产照常继续。
+    /// 生产前合金切换检测（需求：相邻生产样合金不同时先做本次合金的类型标准化，且标准化须加入任务队列）：
+    /// 主循环空闲出队前检查队首——若为生产任务且合金与上一个生产样不同，则将匹配合金的类型标准化任务
+    /// 提交引擎队列（类型标准化 P3 优先于生产 P5，自动先于生产出队执行，队列表同步可见）。
+    /// 无匹配类型标准化样 → 5103 报警一次不阻断（与引擎选样失败同语义），生产照常继续。
     /// </summary>
-    private async Task RunAlloySwitchPreCheckAsync(string sampleId, CancellationToken ct)
+    private void CheckAlloySwitchBeforeDequeue()
     {
-        var currentAlloy = _production.GetAll().FirstOrDefault(p => p.SampleId == sampleId)?.AlloyType;
-        var previousAlloy = _lastProductionAlloy;
-        _lastProductionAlloy = currentAlloy;    // 串行主循环内更新：本任务即下一次检测的"上一个生产样"
-
-        // 首个生产任务 / 任一方合金未知 → 无可比基准，直接生产
-        if (string.IsNullOrWhiteSpace(previousAlloy) || string.IsNullOrWhiteSpace(currentAlloy))
+        var next = _engine.GetQueuedTasks().FirstOrDefault();
+        if (next is null || next.TaskType != SctTaskType.Production || string.IsNullOrEmpty(next.SampleId))
         {
-            if (!string.IsNullOrWhiteSpace(currentAlloy))
-            {
-                _engine.UpdateCurrentAlloy(currentAlloy);   // 同步引擎当前合金（期限届满判定用）
-            }
+            return;     // 仅生产任务需要前置合金检测
+        }
+
+        var currentAlloy = _production.GetAll().FirstOrDefault(p => p.SampleId == next.SampleId)?.AlloyType;
+        if (string.IsNullOrWhiteSpace(currentAlloy))
+        {
+            return;     // 合金未知：无可比基准，直接生产
+        }
+
+        // 已为该合金入队前置标准化（P3 排在队首生产任务之前），等待其执行即可，避免重复入队
+        if (_pendingPreStdAlloy == currentAlloy.Trim())
+        {
             return;
         }
 
-        if (string.Equals(previousAlloy.Trim(), currentAlloy.Trim(), StringComparison.Ordinal))
+        // 首个生产任务 / 同合金：直接生产
+        if (string.IsNullOrWhiteSpace(_lastProductionAlloy) ||
+            string.Equals(_lastProductionAlloy.Trim(), currentAlloy.Trim(), StringComparison.Ordinal))
         {
-            return;     // 同合金：直接执行生产流程
+            return;
         }
 
         // 合金切换：选本次合金匹配的类型标准化样（TypeStd/Normal/启用，使用次数最少优先——与引擎选样规则一致）
@@ -377,32 +397,27 @@ public sealed class WorkflowOrchestrator : IWorkflowOrchestrator
             .OrderBy(s => s.UsageCount)
             .FirstOrDefault();
 
-        _systemLog.Log("设备操作",
-            $"生产合金切换检测：{previousAlloy} → {currentAlloy}（样品 {sampleId}）", "Warning");
-
         if (typeStd is null)
         {
-            // 无匹配类型标准化样：报警（5103 同语义），不阻断生产（避免产线卡死）
-            _errors.Collect(ErrorCodes.SctTypeStdUnavailable,
-                $"合金 {currentAlloy} 无匹配的类型标准化样，跳过前置类型标准化", sampleId);
-            _engine.UpdateCurrentAlloy(currentAlloy);
+            // 无匹配类型标准化样：报警（5103 同语义）不阻断生产；每个样品+合金组合只报一次防轮询刷屏
+            var alarmKey = $"{next.SampleId}:{currentAlloy}";
+            if (_alloySwitchAlarmKey != alarmKey)
+            {
+                _alloySwitchAlarmKey = alarmKey;
+                _errors.Collect(ErrorCodes.SctTypeStdUnavailable,
+                    $"合金 {currentAlloy} 无匹配的类型标准化样，跳过前置类型标准化", next.SampleId);
+                _systemLog.Log("策略引擎",
+                    $"生产合金切换检测：{_lastProductionAlloy} → {currentAlloy}（样品 {next.SampleId}），无匹配类型标准化样", "Warning");
+            }
             return;
         }
 
-        // 前置类型标准化：完整 SCT 分析链（选样→取放→铣削→激发→系数更新→放回），时长补足与常规任务一致
-        var preTask = new SctTask
-        {
-            TaskType = SctTaskType.TypeStandardize,
-            SampleId = typeStd.SampleId,
-            Reason = $"生产合金切换前置类型标准化（{previousAlloy}→{currentAlloy}）",
-            EnqueueTime = DateTime.Now,
-        };
-        _systemLog.Log("标准化", $"前置类型标准化开始（样品 {typeStd.SampleId}，合金 {currentAlloy}）");
-        await RunSctAnalysisAsync(preTask, withCoeffUpdate: true, ct);
-        // 一行一任务：完成行落库（StartTime=激发指令下发时刻，由分析链内采集）
-        WriteTrace(typeStd.SampleId, SctTaskType.TypeStandardize, preTask.Reason, "Success",
-            _currentTaskStartTime?.ToString("yyyy-MM-dd HH:mm:ss"));
-        _engine.UpdateCurrentAlloy(currentAlloy);
+        // 前置类型标准化入队（P3 优先于 P5 生产，自动先出队执行；引擎同类型同目标去重兜底）
+        var reason = $"生产合金切换前置类型标准化（{_lastProductionAlloy}→{currentAlloy}）";
+        _engine.SubmitTask(SctTaskType.TypeStandardize, typeStd.SampleId, reason);
+        _systemLog.Log("策略引擎",
+            $"生产合金切换检测：{_lastProductionAlloy} → {currentAlloy}（样品 {next.SampleId}），前置类型标准化（样品 {typeStd.SampleId}）已加入任务队列", "Warning");
+        _pendingPreStdAlloy = currentAlloy.Trim();
     }
 
     /// <summary>SCT 分析类任务（标准化/类型标准化）：SCT 子状态链 + 系数更新 + 引擎回喂（编排设计文档 §6）。</summary>

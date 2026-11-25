@@ -319,6 +319,10 @@ public sealed class WorkflowOrchestratorTests
         // 前置类型标准化完成行落库（一行一任务）
         Assert.Contains(_logs.Store, l => l.OperationType == "TypeStandardize" && l.SampleId == "TYP-6061"
             && (l.TriggerReason ?? string.Empty).Contains("前置类型标准化") && l.ResultStatus == "Success");
+        // 前置类型标准化经任务队列调度（引擎历史含该任务，状态已完成）而非编排器内联执行
+        Assert.Contains(engine.GetRecentTasks(), t => t.TaskType == SctTaskType.TypeStandardize
+            && t.SampleId == "TYP-6061" && t.Status == SctTaskStatus.Completed
+            && (t.Reason ?? string.Empty).Contains("前置类型标准化"));
         // 两生产样均正常完成
         Assert.Equal(ProductionStatus.Completed, _production.Store.Single(p => p.SampleId == "P-6061").Status);
     }

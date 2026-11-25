@@ -282,6 +282,16 @@ public sealed class WorkflowOrchestrator : IWorkflowOrchestrator
         _sampleDataChanged.NotifySampleDataChanged();
     }
 
+    /// <summary>模拟真实流程耗时：步骤瞬时（Stub）时等待补足整体执行时长，激发/归档/完成随之落在流程末尾。</summary>
+    private async Task WaitTaskDurationAsync(CancellationToken ct)
+    {
+        var remain = TimeSpan.FromMilliseconds(_options.TaskDurationMs) - (DateTime.UtcNow - _taskStartedUtc);
+        if (remain > TimeSpan.Zero)
+        {
+            await Task.Delay(remain, ct);
+        }
+    }
+
     /// <summary>生产任务：Registered→…→Archiving（编排设计文档 §5；激发结果回喂引擎）。</summary>
     private async Task RunProductionAsync(SctTask task, CancellationToken ct)
     {
@@ -294,12 +304,7 @@ public sealed class WorkflowOrchestrator : IWorkflowOrchestrator
 
         // 模拟真实流程耗时：抓取/铣样/放置瞬时（Stub）时在此等待补足整体时长，
         // 使激发、归档、完成都落在流程末尾（分析进行中状态持续约 TaskDurationMs）
-        var elapsed = DateTime.UtcNow - _taskStartedUtc;
-        var remain = TimeSpan.FromMilliseconds(_options.TaskDurationMs) - elapsed;
-        if (remain > TimeSpan.Zero)
-        {
-            await Task.Delay(remain, ct);
-        }
+        await WaitTaskDurationAsync(ct);
 
         await TransitionToAsync(TaskState.Analyzing, ct);
         var spark = await _locks.RunWithLockAsync(WorkflowLockName.SparkStand, _options.LockTimeoutMs, async () =>
@@ -347,6 +352,10 @@ public sealed class WorkflowOrchestrator : IWorkflowOrchestrator
         }, ct);
 
         await EnterSubStateAsync(SctSubState.Milling, ct);
+
+        // 模拟真实流程耗时（与生产任务一致）：激发/系数更新/完成落在流程末尾
+        await WaitTaskDurationAsync(ct);
+
         await EnterSubStateAsync(SctSubState.Analyzing, ct);
         var spark = await _locks.RunWithLockAsync(WorkflowLockName.SparkStand, _options.LockTimeoutMs, async () =>
         {
@@ -398,6 +407,10 @@ public sealed class WorkflowOrchestrator : IWorkflowOrchestrator
         }, ct);
 
         await EnterSubStateAsync(SctSubState.Milling, ct);
+
+        // 模拟真实流程耗时（与生产任务一致）：激发/归档/完成落在流程末尾
+        await WaitTaskDurationAsync(ct);
+
         await EnterSubStateAsync(SctSubState.Analyzing, ct);
         var spark = await _locks.RunWithLockAsync(WorkflowLockName.SparkStand, _options.LockTimeoutMs, async () =>
         {

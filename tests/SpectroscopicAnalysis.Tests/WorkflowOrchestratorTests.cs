@@ -248,6 +248,29 @@ public sealed class WorkflowOrchestratorTests
     }
 
     [Fact]
+    public async Task 任务时长_标准化执行历时补足到配置时长()
+    {
+        // 时长 300ms：标准化任务从开始到完成日志落笔应历时 ≥300ms（与生产任务一致，流程末尾落结果）
+        var options = FastOptions();
+        options.TaskDurationMs = 300;
+        _samples.Store.Add(MakeSample("SUS-001"));
+        var engine = new SctStrategyEngine(_policy, _samples, _logs, _errors);
+        var orchestrator = new WorkflowOrchestrator(
+            engine, _gateway, _gateway, _gateway, _gateway, _logs, _samples, _production, _errors, new SystemLogCollector(),
+            new SampleDataChangeNotifier(), options);
+        engine.SubmitTask(SctTaskType.Standardize, "SUS-001", "人工触发");
+
+        var start = DateTime.UtcNow;
+        await orchestrator.StartAsync(CancellationToken.None);
+        await WaitUntilAsync(() => _logs.Store.Any(l => l.TriggerReason == "人工触发"));
+        await orchestrator.StopAsync(CancellationToken.None);
+        var elapsed = DateTime.UtcNow - start;
+
+        Assert.True(elapsed.TotalMilliseconds >= 300, $"标准化耗时 {elapsed.TotalMilliseconds}ms，未补足配置时长");
+        Assert.Contains(_logs.Store, l => l.TriggerReason == "人工触发" && l.ResultStatus == "Success");   // 完成后写执行日志
+    }
+
+    [Fact]
     public void 快照_初始态与锁占用()
     {
         var (_, orchestrator) = Create();

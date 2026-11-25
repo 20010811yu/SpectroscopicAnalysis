@@ -240,6 +240,18 @@
                               SelectedItem="{Binding StatusFilter}"
                               SelectedValuePath="Key" DisplayMemberPath="DisplayName" />
                 </StackPanel>
+                <!-- 生产样档案筛选（状态 + 入库日期日历；仅生产样档案表显示） -->
+                <StackPanel Orientation="Horizontal" Margin="16,0,0,0"
+                            Visibility="{Binding IsProductionSampleTable, Converter={StaticResource BoolToVisibility}}">
+                    <TextBlock Text="状态" Style="{StaticResource Text.Caption}" VerticalAlignment="Center" Margin="0,0,8,0" />
+                    <ComboBox Width="130" ItemsSource="{Binding ProductionStatusOptions}"
+                              SelectedItem="{Binding ProductionStatusFilter}"
+                              SelectedValuePath="Key" DisplayMemberPath="DisplayName" />
+                    <TextBlock Text="入库日期" Style="{StaticResource Text.Caption}" VerticalAlignment="Center" Margin="16,0,8,0" />
+                    <!-- 参照生产监控页操作日期筛选：单日 DatePicker，清空日期即显示全部 -->
+                    <DatePicker SelectedDate="{Binding ProductionDateFilter}" MinWidth="140"
+                                VerticalAlignment="Center" />
+                </StackPanel>
             </DockPanel>
 
             <!-- 两个独立模块：左=表格卡（标题+表格+分页脚），右=样品详情卡（高度与左卡同行 Stretch 平齐）；

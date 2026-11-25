@@ -59,6 +59,9 @@ public sealed class ProductionRowItem
 
     public required string CreatedText { get; init; }
     public required string Remark { get; init; }
+
+    /// <summary>原始入库时间（入库日期筛选用；不绑定 UI）。</summary>
+    public DateTime? RawCreated { get; init; }
 }
 
 /// <summary>分析结果行展示模型（表 Analysis_Result）。</summary>
@@ -223,6 +226,7 @@ public sealed partial class SamplesViewModel : ObservableObject, IPageLifecycle
     {
         SelectedRow = null;                     // 切表清空选中与详情面板
         CurrentPage = 1;                        // 切表回到第 1 页
+        OnPropertyChanged(nameof(IsProductionSampleTable));   // 生产样筛选控件显隐随表切换
         _activeTableLoad = LoadActiveTableAsync();
     }
 
@@ -299,6 +303,39 @@ public sealed partial class SamplesViewModel : ObservableObject, IPageLifecycle
     private StatusOption _statusFilter = StatusOption.All;
 
     partial void OnStatusFilterChanged(StatusOption value) => RefreshView(resetPage: true);
+
+    // ==================== 生产样档案表筛选（状态 + 入库日期） ====================
+
+    /// <summary>是否处于生产样档案表（控制该表状态筛选/日期筛选的显隐）。</summary>
+    public bool IsProductionSampleTable => ActiveTable == TableProductionSample;
+
+    /// <summary>生产样状态筛选项（Key=null 表示全部；Pending/Completed 对应状态机，Failed 按失败原因非空判定）。</summary>
+    public sealed record ProductionStatusOption(string? Key, string DisplayName)
+    {
+        /// <summary>「全部状态」选项（下拉默认选中项）。</summary>
+        public static ProductionStatusOption All { get; } = new(null, "全部状态");
+    }
+
+    /// <summary>生产样状态下拉可选项（仅两种状态机值 + 失败回退视角，不自创状态名）。</summary>
+    public IReadOnlyList<ProductionStatusOption> ProductionStatusOptions { get; } = new ProductionStatusOption[]
+    {
+        ProductionStatusOption.All,
+        new("Pending", "待分析"),
+        new("Completed", "已完成"),
+        new("Failed", "分析失败"),
+    };
+
+    /// <summary>生产样当前状态筛选（默认「全部状态」；变化后回到第 1 页刷新）。</summary>
+    [ObservableProperty]
+    private ProductionStatusOption _productionStatusFilter = ProductionStatusOption.All;
+
+    partial void OnProductionStatusFilterChanged(ProductionStatusOption value) => RefreshView(resetPage: true);
+
+    /// <summary>生产样入库日期筛选（null=全部日期；变化后回到第 1 页刷新）。</summary>
+    [ObservableProperty]
+    private DateTime? _productionDateFilter;
+
+    partial void OnProductionDateFilterChanged(DateTime? value) => RefreshView(resetPage: true);
 
     /// <summary>各数据表独立缓存的关键词（键 = ActiveTable 表键；切表互不影响）。</summary>
     private readonly Dictionary<string, string> _tableSearchTexts = new();
@@ -1224,6 +1261,7 @@ public sealed partial class SamplesViewModel : ObservableObject, IPageLifecycle
         FailureReason = p.FailureReason,
         CreatedText = p.CreatedTime?.ToString("MM-dd HH:mm") ?? "—",
         Remark = p.Remark ?? "—",
+        RawCreated = p.CreatedTime,
     };
 
     /// <summary>分析结果行映射（sampleName 由调用方按表上下文解析：整表查生产样档案，详情传当前行名称）。</summary>
@@ -1438,8 +1476,22 @@ public sealed partial class SamplesViewModel : ObservableObject, IPageLifecycle
                     page => OperationLogRows = new ObservableCollection<OperationLogRowItem>(page));
                 break;
             case TableProductionSample:
-                // 生产样档案表：关键词按表路由（SearchText 即当前表缓存的关键词）
-                ApplyPagedView(_allProduction, r => Matches(r.SampleId, keyword) || Matches(r.SampleName, keyword)
+                // 生产样档案表：状态筛选 + 入库日期筛选 + 关键词（SearchText 即当前表缓存的关键词）
+                IEnumerable<ProductionRowItem> productionQuery = _allProduction;
+                if (!string.IsNullOrEmpty(ProductionStatusFilter?.Key))
+                {
+                    // "Failed" 非状态机值：按失败原因非空判定（分析失败回退待分析并记录 FailureReason）
+                    productionQuery = ProductionStatusFilter.Key == "Failed"
+                        ? productionQuery.Where(r => r.HasFailure)
+                        : productionQuery.Where(r => r.Status == (ProductionStatusFilter.Key == "Pending" ? ProductionStatus.Pending : ProductionStatus.Completed));
+                }
+
+                if (ProductionDateFilter is { } date)
+                {
+                    productionQuery = productionQuery.Where(r => r.RawCreated?.Date == date.Date);
+                }
+
+                ApplyPagedView(productionQuery.ToList(), r => Matches(r.SampleId, keyword) || Matches(r.SampleName, keyword)
                     || Matches(r.AlloyType, keyword) || Matches(r.Status, keyword), resetPage, keepPageWhenEmpty,
                     page => ProductionRows = new ObservableCollection<ProductionRowItem>(page));
                 break;

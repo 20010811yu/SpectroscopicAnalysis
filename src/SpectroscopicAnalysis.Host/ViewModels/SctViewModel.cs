@@ -923,6 +923,11 @@ public sealed partial class SctViewModel : ObservableObject, IPageLifecycle
             changes.Add($"多块轮换 {(oldPolicy.ControlRotationEnabled ? "开" : "关")}→{(newPolicy.ControlRotationEnabled ? "开" : "关")}");
         }
 
+        if (oldPolicy.TypeStandardizeOnAlloySwitch != newPolicy.TypeStandardizeOnAlloySwitch)
+        {
+            changes.Add($"合金切换执行类型标准化 {(oldPolicy.TypeStandardizeOnAlloySwitch ? "开" : "关")}→{(newPolicy.TypeStandardizeOnAlloySwitch ? "开" : "关")}");
+        }
+
         if (oldPolicy.LimitType != newPolicy.LimitType || oldPolicy.LimitValue != newPolicy.LimitValue)
         {
             changes.Add($"判定限值 {oldPolicy.LimitType}={oldPolicy.LimitValue}→{newPolicy.LimitType}={newPolicy.LimitValue}");

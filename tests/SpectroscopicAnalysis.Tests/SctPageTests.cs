@@ -293,6 +293,26 @@ public sealed class SctPageTests
     }
 
     [Fact]
+    public void Policy_仅勾选合金切换标准化保存_写入日志并显示保存成功()
+    {
+        var systemLog = new SystemLogCollector();
+        var policy = new FakeSctPolicyStore();
+        var vm = new SctViewModel(new FakeSampleRepository(), new FakeOperationLogRepository(), policy,
+            new FakeUiDispatcher(), new FakeDialogService(), new FakeErrorCollector(),
+            strategyEngine: null, sampleDataChanged: null, systemLog: systemLog);
+
+        // 仅切换「合金类型切换时执行类型标准化」勾选后保存：此前该勾选项未纳入变更对比被误判为无变化
+        vm.PolicyTypeOnAlloySwitch = !policy.Load().TypeStandardizeOnAlloySwitch;
+        vm.SavePolicyCommand.Execute(null);
+
+        Assert.Null(vm.PolicyError);
+        Assert.Equal("✓ 策略配置已保存", vm.PolicySavedMessage);   // 保存成功提示正常显示
+        var entry = Assert.Single(systemLog.GetEntries());
+        Assert.Contains("策略配置已保存", entry.Message);
+        Assert.Contains("合金切换执行类型标准化", entry.Message);
+    }
+
+    [Fact]
     public void Policy_内容无变化保存_不写全流程日志()
     {
         var systemLog = new SystemLogCollector();

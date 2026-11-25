@@ -83,9 +83,10 @@
             <!-- 顶行三列：GNR 光谱仪(占位) | 激光打标面板 | 货架示意(5×5) -->
             <Grid Margin="{DynamicResource Spacing.CardGap}">
                 <Grid.ColumnDefinitions>
+                    <!-- 光谱仪列加宽、货架列收窄（货架 5×5 后右侧留白偏大） -->
+                    <ColumnDefinition Width="1.2*" MinWidth="240" />
                     <ColumnDefinition Width="1*" MinWidth="240" />
-                    <ColumnDefinition Width="1*" MinWidth="240" />
-                    <ColumnDefinition Width="1.4*" MinWidth="360" />
+                    <ColumnDefinition Width="0.9*" MinWidth="300" />
                 </Grid.ColumnDefinitions>
 
                 <!-- 列0：GNR 光谱仪（静态占位，真实协议 100 接入后联动） -->
@@ -208,7 +209,7 @@
                                             </ItemsControl.ItemsPanel>
                                             <ItemsControl.ItemTemplate>
                                                 <DataTemplate>
-                                                    <Border Margin="0,0,6,0" Padding="8,4" CornerRadius="4" BorderThickness="1" MinWidth="56"
+                                                    <Border Margin="0,0,4,0" Padding="6,4" CornerRadius="4" BorderThickness="1" MinWidth="44"
                                                             ToolTip="{Binding SampleIdText}">
                                                         <Border.Style>
                                                             <Style TargetType="Border">

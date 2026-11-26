@@ -911,6 +911,7 @@
                                             <RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" />
                                             <RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" />
                                             <RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" />
+                                            <RowDefinition Height="Auto" />
                                         </Grid.RowDefinitions>
                                         <Grid.Resources>
                                             <Style TargetType="TextBlock" BasedOn="{StaticResource Text.Caption}">
@@ -988,6 +989,19 @@
                                         <TextBlock Grid.Row="7" Grid.Column="1" Text="{Binding Detail.LastUseText}" Style="{StaticResource SctOnlyValue}" FontFamily="Consolas" />
                                         <TextBlock Grid.Row="8" Grid.Column="0" Text="上次测高" Style="{StaticResource SctOnlyCaption}" />
                                         <TextBlock Grid.Row="8" Grid.Column="1" Text="{Binding Detail.LastHeightText}" Style="{StaticResource SctOnlyValue}" FontFamily="Consolas" />
+                                        <!-- 启用状态（SCT 管理页"禁用标样"只翻转 IsActive，本行让档案详情同步可见；已停用红色提示） -->
+                                        <TextBlock Grid.Row="9" Grid.Column="0" Text="启用状态" Style="{StaticResource SctOnlyCaption}" />
+                                        <TextBlock Grid.Row="9" Grid.Column="1" Text="{Binding Detail.ActiveText}">
+                                            <TextBlock.Style>
+                                                <Style TargetType="TextBlock" BasedOn="{StaticResource SctOnlyValue}">
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding Detail.ActiveText}" Value="已停用">
+                                                            <Setter Property="Foreground" Value="{DynamicResource Brush.Status.Failed}" />
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </TextBlock.Style>
+                                        </TextBlock>
                                     </Grid>
 
                                     <!-- SCT 样：标准值子表 -->

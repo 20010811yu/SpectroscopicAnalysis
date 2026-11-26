@@ -241,6 +241,36 @@ public sealed class SamplesSubTablePagingTests
     }
 
     [Fact]
+    public async Task 详情启用状态_停用样显示已停用_启用样显示启用()
+    {
+        var samples = new FakeSampleRepository();
+        samples.Store.Add(new SctSample { SampleId = "HC-ON", SampleName = "启用样", SampleType = SampleType.Control, RackPosition = "B05", InitialThickness = 10, CurrentThickness = 10, MinThickness = 5, MaxUsageCount = 60, Status = SampleStatus.Normal, IsActive = true });
+        samples.Store.Add(new SctSample { SampleId = "HC-OFF", SampleName = "停用样", SampleType = SampleType.Control, RackPosition = "C01", InitialThickness = 10, CurrentThickness = 10, MinThickness = 5, MaxUsageCount = 60, Status = SampleStatus.Normal, IsActive = false });
+        var vm = Create(samples: samples);
+        await vm.SetTableCommand.ExecuteAsync(SamplesViewModel.TableCertifiedValue);    // 先切走再切回，确保重载
+        await vm.SetTableCommand.ExecuteAsync(SamplesViewModel.TableSample);
+        await vm.LoadCommand.ExecuteAsync(null);
+        for (var i = 0; i < 50 && vm.SctSamples.Count < 2; i++)
+        {
+            await Task.Delay(10);
+        }
+
+        vm.SelectedRow = vm.SctSamples.First(r => r.SampleId == "HC-OFF");
+        for (var i = 0; i < 50 && vm.Detail?.ActiveText != "已停用"; i++)
+        {
+            await Task.Delay(10);               // 等详情加载（停用 → 已停用）
+        }
+        Assert.Equal("已停用", vm.Detail!.ActiveText);
+
+        vm.SelectedRow = vm.SctSamples.First(r => r.SampleId == "HC-ON");
+        for (var i = 0; i < 50 && vm.Detail?.ActiveText != "启用"; i++)
+        {
+            await Task.Delay(10);               // 启用 → 启用
+        }
+        Assert.Equal("启用", vm.Detail!.ActiveText);
+    }
+
+    [Fact]
     public async Task 切换选中样_轨迹日志页码重置第1页()
     {
         var samples = new FakeSampleRepository();

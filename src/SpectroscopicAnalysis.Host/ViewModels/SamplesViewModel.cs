@@ -22,6 +22,8 @@ public sealed partial class SampleRowItem : ObservableObject
     public string? AlloyType { get; init; }
     /// <summary>兼任孪生提示（PairSampleId 非空时显示孪生编号，空为 "—"）。</summary>
     public required string PairText { get; init; }
+    /// <summary>启停用标志（详情面板"启用状态"展示；false=SCT 管理页人工停用，不参与选样）。</summary>
+    public required bool IsActive { get; init; }
     public string? RackPosition { get; init; }
     public required string AssociatedMethodText { get; init; }
     public required string ThicknessText { get; init; }
@@ -116,6 +118,8 @@ public sealed class SampleDetailItem
     public required string SampleId { get; init; }
     public required string TypeDisplay { get; init; }
     public required string AlloyTypeText { get; init; }
+    /// <summary>启用状态文案（SCT 样展示"启用/已停用"；生产样恒"启用"且视图隐藏）。</summary>
+    public required string ActiveText { get; init; }
     public required string RackPositionText { get; init; }
     public required string MethodText { get; init; }
     public required string ThicknessText { get; init; }
@@ -792,6 +796,7 @@ public sealed partial class SamplesViewModel : ObservableObject, IPageLifecycle
         TypeDisplay = s.TypeDisplay,
         // 关联合金值内并孪生提示（如 "6063（兼任 HC-01-T）"；检查样本体合金为空时显示 "—"）
         AlloyTypeText = (s.AlloyType ?? "—") + (s.PairText == "—" ? string.Empty : $"（兼任 {s.PairText}）"),
+        ActiveText = s.IsActive ? "启用" : "已停用",
         RackPositionText = s.RackPosition ?? "—",
         MethodText = string.IsNullOrEmpty(s.AssociatedMethodText) ? "—" : s.AssociatedMethodText,
         ThicknessText = s.ThicknessText,
@@ -813,6 +818,7 @@ public sealed partial class SamplesViewModel : ObservableObject, IPageLifecycle
         SampleId = p.SampleId,
         TypeDisplay = "生产样",
         AlloyTypeText = p.AlloyType ?? "—",
+        ActiveText = "启用",
         RackPositionText = p.RackPosition ?? "—",
         MethodText = p.MethodText,
         ThicknessText = "—",
@@ -1904,6 +1910,7 @@ public sealed partial class SamplesViewModel : ObservableObject, IPageLifecycle
         },
         AlloyType = s.AlloyType,
         PairText = s.PairSampleId ?? "—",
+        IsActive = s.IsActive,
         RackPosition = s.RackPosition,
         AssociatedMethodText = s.AssociatedMethod ?? string.Empty,
         ThicknessText = $"{s.CurrentThickness:0.0#} / {s.InitialThickness:0.0#}",

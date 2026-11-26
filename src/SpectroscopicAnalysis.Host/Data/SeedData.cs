@@ -5,7 +5,10 @@ using SpectroscopicAnalysis.Host.Data.Repositories;
 
 namespace SpectroscopicAnalysis.Host.Data;
 
-/// <summary>演示种子数据：与界面原型（docs/prototypes）中展示的样品一致；单事务、幂等，仅空库注入。</summary>
+/// <summary>
+/// 演示种子数据：标样按电解铝厂行业标配（设置样 3、控制样 6 低/中/高各 2、类型标准化样 8 合金系列，
+/// 总 17 块；架位对齐货架示意 A01–E05）；单事务、幂等，仅空库注入。
+/// </summary>
 public sealed class SeedData
 {
     private readonly Db _db;
@@ -37,32 +40,42 @@ public sealed class SeedData
         SeedDemo();
     }
 
-    /// <summary>种子数据目标总量（演示用途：手工演示样 + 生成样凑满 3000 条）。</summary>
-    private const int SeedTargetCount = 3000;
-
-    /// <summary>操作日志种子行数（无外键表，承担大部分数据量；全表总量目标 > 10 万行）。</summary>
-    private const int LogSeedCount = 70000;
+    /// <summary>操作日志种子行数（无外键表，承担大部分数据量；标样收敛到 17 块标配后由本表保住全表总量 > 10 万行）。</summary>
+    private const int LogSeedCount = 80000;
 
     /// <summary>生产样种子条数（配套扩容；每 Completed 样再带 1~2 条分析结果）。</summary>
     private const int ProductionSeedTargetCount = 10000;
 
-    /// <summary>注入演示样品与各子表数据（INSERT OR IGNORE 幂等，单事务）。</summary>
+    /// <summary>
+    /// 注入演示样品与各子表数据（INSERT OR IGNORE 幂等，单事务）。
+    /// 标样配置按电解铝厂行业标准（任务清单补充）：设置样 3 块（2–4）、控制样 6 块低/中/高各 2（3–6）、
+    /// 类型标准化样 8 个合金系列（5–10），总 17 块（12–25）；架位全部落在货架示意 A01–E05（RackDirectory 5×5）。
+    /// </summary>
     public void SeedDemo()
     {
         var samples = new List<SctSample>
         {
-            new() { SampleId = "SUS-001", SampleName = "控样 1", SampleType = SampleType.SettingUp, RackPosition = "A01", InitialThickness = 12.0, CurrentThickness = 9.8, MinThickness = 8.0, UsageCount = 50, MaxUsageCount = 50, Status = SampleStatus.NeedMeasure, LastUseTime = DateTime.Parse("2026-11-09 09:40"), LastHeightCheckTime = DateTime.Parse("2026-11-07 08:00") },
-            new() { SampleId = "SUS-002", SampleName = "控样 2", SampleType = SampleType.SettingUp, RackPosition = "A02", InitialThickness = 11.5, CurrentThickness = 11.4, MinThickness = 8.0, UsageCount = 18, MaxUsageCount = 50, Status = SampleStatus.Normal, LastUseTime = DateTime.Parse("2026-11-09 08:02"), LastHeightCheckTime = DateTime.Parse("2026-11-08 08:00") },
-            new() { SampleId = "SUS-003", SampleName = "控样 3", SampleType = SampleType.SettingUp, RackPosition = "A03", InitialThickness = 10.0, CurrentThickness = 7.2, MinThickness = 8.0, UsageCount = 33, MaxUsageCount = 50, Status = SampleStatus.Disabled, LastUseTime = DateTime.Parse("2026-11-05 10:12"), LastHeightCheckTime = DateTime.Parse("2026-11-05 14:20") },
-            new() { SampleId = "CTL-001", SampleName = "检查样（低）", SampleType = SampleType.Control, RackPosition = "B01", InitialThickness = 17.0, CurrentThickness = 16.9, MinThickness = 6.0, UsageCount = 22, MaxUsageCount = 60, Status = SampleStatus.Normal, LastHeightCheckTime = DateTime.Parse("2026-11-06 08:00") },
-            new() { SampleId = "CTL-002", SampleName = "检查样（中）", SampleType = SampleType.Control, RackPosition = "B02", InitialThickness = 19.0, CurrentThickness = 18.6, MinThickness = 6.0, UsageCount = 41, MaxUsageCount = 60, Status = SampleStatus.Normal, LastHeightCheckTime = DateTime.Parse("2026-11-08 08:00") },
-            new() { SampleId = "CTL-003", SampleName = "检查样（高）", SampleType = SampleType.Control, RackPosition = "B03", InitialThickness = 18.0, CurrentThickness = 17.8, MinThickness = 6.0, UsageCount = 9, MaxUsageCount = 60, Status = SampleStatus.Normal, LastHeightCheckTime = DateTime.Parse("2026-11-08 08:00") },
-            new() { SampleId = "CTL-004", SampleName = "检查样（低）", SampleType = SampleType.Control, RackPosition = "B04", InitialThickness = 17.5, CurrentThickness = 17.5, MinThickness = 6.0, UsageCount = 0, MaxUsageCount = 60, Status = SampleStatus.Normal },
-            new() { SampleId = "TS-6061-01", SampleName = "类型标准化样 6061", SampleType = SampleType.TypeStd, AlloyType = "6061", RackPosition = "C01", InitialThickness = 16.0, CurrentThickness = 15.2, MinThickness = 7.0, UsageCount = 12, MaxUsageCount = 40, Status = SampleStatus.Normal, LastHeightCheckTime = DateTime.Parse("2026-11-01 09:30") },
-            new() { SampleId = "TS-1050-01", SampleName = "类型标准化样 1050", SampleType = SampleType.TypeStd, AlloyType = "1050", RackPosition = "C02", InitialThickness = 15.0, CurrentThickness = 14.7, MinThickness = 7.0, UsageCount = 28, MaxUsageCount = 40, Status = SampleStatus.Normal, LastHeightCheckTime = DateTime.Parse("2026-10-30 16:00") },
+            // 设置样（Setting-up/漂移校正样）×3：适中含量、稳定性好，日常标准化用
+            new() { SampleId = "SUS-101", SampleName = "设置样 1", SampleType = SampleType.SettingUp, RackPosition = "A01", InitialThickness = 12.0, CurrentThickness = 11.8, MinThickness = 8.0, UsageCount = 18, MaxUsageCount = 50, Status = SampleStatus.Normal, LastUseTime = DateTime.Parse("2026-11-09 08:02"), LastHeightCheckTime = DateTime.Parse("2026-11-08 08:00") },
+            new() { SampleId = "SUS-102", SampleName = "设置样 2", SampleType = SampleType.SettingUp, RackPosition = "A02", InitialThickness = 11.5, CurrentThickness = 11.4, MinThickness = 8.0, UsageCount = 12, MaxUsageCount = 50, Status = SampleStatus.Normal, LastUseTime = DateTime.Parse("2026-11-09 09:40"), LastHeightCheckTime = DateTime.Parse("2026-11-07 08:00") },
+            new() { SampleId = "SUS-103", SampleName = "设置样 3", SampleType = SampleType.SettingUp, RackPosition = "A03", InitialThickness = 12.0, CurrentThickness = 8.5, MinThickness = 8.0, UsageCount = 48, MaxUsageCount = 50, Status = SampleStatus.NeedMeasure, LastUseTime = DateTime.Parse("2026-11-09 10:12"), LastHeightCheckTime = DateTime.Parse("2026-11-05 14:20") },
+            // 控制样（Control Sample）×6：低/中/高杂质水平各 2 块，监控仪器状态
+            new() { SampleId = "CTL-101", SampleName = "控制样（低）1", SampleType = SampleType.Control, RackPosition = "B01", InitialThickness = 17.0, CurrentThickness = 16.9, MinThickness = 6.0, UsageCount = 22, MaxUsageCount = 60, Status = SampleStatus.Normal, LastHeightCheckTime = DateTime.Parse("2026-11-06 08:00") },
+            new() { SampleId = "CTL-102", SampleName = "控制样（低）2", SampleType = SampleType.Control, RackPosition = "B02", InitialThickness = 17.5, CurrentThickness = 17.5, MinThickness = 6.0, UsageCount = 0, MaxUsageCount = 60, Status = SampleStatus.Normal },
+            new() { SampleId = "CTL-103", SampleName = "控制样（中）1", SampleType = SampleType.Control, RackPosition = "B03", InitialThickness = 19.0, CurrentThickness = 18.6, MinThickness = 6.0, UsageCount = 41, MaxUsageCount = 60, Status = SampleStatus.Normal, LastHeightCheckTime = DateTime.Parse("2026-11-08 08:00") },
+            new() { SampleId = "CTL-104", SampleName = "控制样（中）2", SampleType = SampleType.Control, RackPosition = "B04", InitialThickness = 18.5, CurrentThickness = 18.2, MinThickness = 6.0, UsageCount = 15, MaxUsageCount = 60, Status = SampleStatus.Normal, LastHeightCheckTime = DateTime.Parse("2026-11-04 08:00") },
+            new() { SampleId = "CTL-105", SampleName = "控制样（高）1", SampleType = SampleType.Control, RackPosition = "B05", InitialThickness = 18.0, CurrentThickness = 17.8, MinThickness = 6.0, UsageCount = 9, MaxUsageCount = 60, Status = SampleStatus.Normal, LastHeightCheckTime = DateTime.Parse("2026-11-08 08:00") },
+            new() { SampleId = "CTL-106", SampleName = "控制样（高）2", SampleType = SampleType.Control, RackPosition = "C01", InitialThickness = 18.0, CurrentThickness = 17.6, MinThickness = 6.0, UsageCount = 30, MaxUsageCount = 60, Status = SampleStatus.Normal, LastHeightCheckTime = DateTime.Parse("2026-11-03 08:00") },
+            // 类型标准化样（Type Standardization）×8：按合金系列配置
+            new() { SampleId = "TS-1050", SampleName = "类型标准化样 1050", SampleType = SampleType.TypeStd, AlloyType = "1050", RackPosition = "C02", InitialThickness = 15.0, CurrentThickness = 14.7, MinThickness = 7.0, UsageCount = 28, MaxUsageCount = 40, Status = SampleStatus.Normal, LastHeightCheckTime = DateTime.Parse("2026-10-30 16:00") },
+            new() { SampleId = "TS-1060", SampleName = "类型标准化样 1060", SampleType = SampleType.TypeStd, AlloyType = "1060", RackPosition = "C03", InitialThickness = 16.0, CurrentThickness = 15.5, MinThickness = 7.0, UsageCount = 8, MaxUsageCount = 40, Status = SampleStatus.Normal, LastHeightCheckTime = DateTime.Parse("2026-11-02 09:30") },
+            new() { SampleId = "TS-1100", SampleName = "类型标准化样 1100", SampleType = SampleType.TypeStd, AlloyType = "1100", RackPosition = "C04", InitialThickness = 15.5, CurrentThickness = 15.2, MinThickness = 7.0, UsageCount = 20, MaxUsageCount = 40, Status = SampleStatus.Normal, LastHeightCheckTime = DateTime.Parse("2026-11-01 09:30") },
+            new() { SampleId = "TS-3003", SampleName = "类型标准化样 3003", SampleType = SampleType.TypeStd, AlloyType = "3003", RackPosition = "C05", InitialThickness = 16.0, CurrentThickness = 15.2, MinThickness = 7.0, UsageCount = 12, MaxUsageCount = 40, Status = SampleStatus.Normal, LastHeightCheckTime = DateTime.Parse("2026-11-01 09:30") },
+            new() { SampleId = "TS-3005", SampleName = "类型标准化样 3005", SampleType = SampleType.TypeStd, AlloyType = "3005", RackPosition = "D01", InitialThickness = 15.0, CurrentThickness = 14.9, MinThickness = 7.0, UsageCount = 5, MaxUsageCount = 40, Status = SampleStatus.Normal },
+            new() { SampleId = "TS-5052", SampleName = "类型标准化样 5052", SampleType = SampleType.TypeStd, AlloyType = "5052", RackPosition = "D02", InitialThickness = 16.5, CurrentThickness = 16.0, MinThickness = 7.0, UsageCount = 35, MaxUsageCount = 40, Status = SampleStatus.Normal, LastHeightCheckTime = DateTime.Parse("2026-10-28 16:00") },
+            new() { SampleId = "TS-5083", SampleName = "类型标准化样 5083", SampleType = SampleType.TypeStd, AlloyType = "5083", RackPosition = "D03", InitialThickness = 16.0, CurrentThickness = 15.6, MinThickness = 7.0, UsageCount = 17, MaxUsageCount = 40, Status = SampleStatus.Normal, LastHeightCheckTime = DateTime.Parse("2026-11-05 09:30") },
+            new() { SampleId = "TS-6061", SampleName = "类型标准化样 6061", SampleType = SampleType.TypeStd, AlloyType = "6061", RackPosition = "D04", InitialThickness = 16.0, CurrentThickness = 15.2, MinThickness = 7.0, UsageCount = 12, MaxUsageCount = 40, Status = SampleStatus.Normal, LastHeightCheckTime = DateTime.Parse("2026-11-01 09:30") },
         };
-
-        samples.AddRange(GenerateSamples(samples.Count));
 
         using var conn = _db.Open();
         using var tx = conn.BeginTransaction();
@@ -94,15 +107,15 @@ public sealed class SeedData
             cmd.ExecuteNonQuery();
         }
 
-        // SUS-002 标准值（演示）
-        InsertCertifiedValue(conn, tx, "SUS-002", "Si", 0.0812, 0.0008);
-        InsertCertifiedValue(conn, tx, "SUS-002", "Fe", 0.2045, 0.0015);
-        InsertCertifiedValue(conn, tx, "SUS-002", "Cu", 0.0018, 0.0002);
+        // 设置样-102 标准值（演示）
+        InsertCertifiedValue(conn, tx, "SUS-102", "Si", 0.0812, 0.0008);
+        InsertCertifiedValue(conn, tx, "SUS-102", "Fe", 0.2045, 0.0015);
+        InsertCertifiedValue(conn, tx, "SUS-102", "Cu", 0.0018, 0.0002);
 
-        // CTL-002 控制限（±2σ 示例）
-        InsertControlLimit(conn, tx, "CTL-002", "Si", 0.90, 0.70, "Sigma");
-        InsertControlLimit(conn, tx, "CTL-002", "Fe", 0.28, 0.14, "Sigma");
-        InsertControlLimit(conn, tx, "CTL-002", "Mg", 1.05, 0.85, "Sigma");
+        // 控制样-103 控制限（±2σ 示例）
+        InsertControlLimit(conn, tx, "CTL-103", "Si", 0.90, 0.70, "Sigma");
+        InsertControlLimit(conn, tx, "CTL-103", "Fe", 0.28, 0.14, "Sigma");
+        InsertControlLimit(conn, tx, "CTL-103", "Mg", 1.05, 0.85, "Sigma");
 
         // 批量子表数据：标准值/控制限/校正系数/操作日志各 ≥5000 行（确定性生成）
         SeedBulkSubTables(conn, tx, samples);
@@ -114,11 +127,11 @@ public sealed class SeedData
     }
 
     /// <summary>
-    /// 批量生成 4 张子表演示数据（确定性：按索引取模，每次种子一致）：
-    /// 标准值 = 每样品 2 个元素 × 3000 样品 = 6000 行；
-    /// 控制限 = 检查样（约 1000 条）× 5 元素 = 5000 行；
-    /// 校正系数 = 4 方法 × 10 元素 × 125 版本 = 5000 行；
-    /// 操作日志 = 70000 行（轮转类型/结果状态，时间递减）。
+    /// 批量生成子表演示数据（确定性：按索引取模，每次种子一致；标样为 17 块行业标配，见 SeedDemo）：
+    /// 标准值 = 每样品 2 个元素 × 17 样品 = 34 行；
+    /// 控制限 = 6 块控制样 × 5 元素（轮转）= 30 行；
+    /// 校正系数 = 4 方法 × 10 元素 × 125 版本 = 5000 行（来源轮转设置样/类型标准化样共 11 块）；
+    /// 操作日志 = 80000 行（轮转类型/结果状态，时间递减，样品轮转 17 块）。
     /// </summary>
     private static void SeedBulkSubTables(SqliteConnection conn, SqliteTransaction tx, List<SctSample> samples)
     {
@@ -128,7 +141,7 @@ public sealed class SeedData
         var controlSamples = samples.Where(s => s.SampleType == SampleType.Control).ToList();
         var baseTime = DateTime.Parse("2026-11-10 08:00");
 
-        // 标准值：每个样品 2 个元素（轮转取元素表），6000 行
+        // 标准值：每个样品 2 个元素（轮转取元素表），34 行
         for (var i = 0; i < samples.Count; i++)
         {
             var s = samples[i];
@@ -136,7 +149,7 @@ public sealed class SeedData
             InsertCertifiedValue(conn, tx, s.SampleId, elements[(i + 3) % elements.Length], 0.10 + (i % 50) / 100.0, 0.002 + (i % 3) / 10000.0);
         }
 
-        // 控制限：检查样（约 1004 条）× 5 个元素（轮转），≥5000 行
+        // 控制限：6 块控制样 × 5 个元素（轮转）= 30 行
         for (var i = 0; i < controlSamples.Count; i++)
         {
             var s = controlSamples[i];
@@ -152,7 +165,7 @@ public sealed class SeedData
         // 校正系数：4 方法 × 10 元素 × 125 版本 = 5000 行（来源必填，轮转控样/类型标准化样）
         SeedCoefficients(conn, tx, samples);
 
-        // 操作日志：70000 行（类型/结果轮转，时间按小时递减，关联样品轮转；无外键表承担主要数据量）
+        // 操作日志：80000 行（类型/结果轮转，时间按小时递减，关联样品轮转；无外键表承担主要数据量）
         for (var i = 0; i < LogSeedCount; i++)
         {
             var opType = opTypes[i % opTypes.Length];
@@ -163,7 +176,7 @@ public sealed class SeedData
                 "ControlCheck" => i % 3 == 0 ? "定时插入" : "人工触发",
                 _ => "测高提醒触发",
             };
-            var sampleId = samples[i % samples.Count].SampleId;
+            var sampleId = samples[i % samples.Count].SampleId;   // 操作日志轮转引用 17 块标配标样
             InsertOperationLog(conn, tx, i + 1, sampleId, opType, reason,
                 baseTime.AddHours(-i).ToString("yyyy-MM-dd HH:mm:ss"), status);
         }
@@ -324,53 +337,8 @@ public sealed class SeedData
     }
 
     /// <summary>
-    /// 生成补充演示样品（确定性：按索引取模生成，保证每次种子一致）。
-    /// 三类轮转覆盖 控样/检查样/类型标准化样 各类型，编号带 G 前缀与手工演示样区分。
-    /// 生产样不再入 SCT_Sample——由 SeedProductionSamples 独立生成到 Production_Sample 表。
-    /// </summary>
-    private static IEnumerable<SctSample> GenerateSamples(int existingCount)
-    {
-        var alloys = new[] { "1xxx", "3xxx", "5xxx", "6xxx" };
-        var tsAlloys = new[] { "6061", "1050", "3003", "5052" };
-        var baseTime = DateTime.Parse("2026-11-09 08:00");
-
-        for (var i = existingCount; i < SeedTargetCount; i++)
-        {
-            // 三类轮转：0=控样，1=检查样，2=类型标准化样
-            var kind = i % 3;
-            var seq = i / 3 + 1;
-            // 状态轮转：5 个一组 [正常, 正常, 需测高, 正常, 禁用]
-            var status = (seq % 5) switch
-            {
-                2 => SampleStatus.NeedMeasure,
-                4 => SampleStatus.Disabled,
-                _ => SampleStatus.Normal,
-            };
-            var maxUsage = kind switch { 1 => 60, _ => 50 };
-            var usage = status == SampleStatus.Disabled ? maxUsage : seq * 7 % (maxUsage + 1);
-            var initThk = 10.0 + seq % 10 + 0.5; // 10.5 ~ 19.5
-            var minThk = kind switch { 0 => 8.0, _ => 6.0 };
-            // 当前厚度：禁用（过薄）压到最小值以下，需测高接近最小值，正常小幅磨损
-            var curThk = status == SampleStatus.Disabled
-                ? minThk - 0.5
-                : status == SampleStatus.NeedMeasure
-                    ? minThk + 0.5
-                    : initThk - (seq % 4) * 0.3;
-            var lastHeight = seq % 3 == 0 ? (DateTime?)baseTime.AddDays(-seq % 15) : null;
-            var lastUse = status == SampleStatus.Disabled ? null : seq % 2 == 0 ? (DateTime?)baseTime.AddHours(-seq) : null;
-
-            SctSample s = kind switch
-            {
-                1 => new() { SampleId = $"CTL-G{seq:000}", SampleName = $"检查样 G-{seq:000}", SampleType = SampleType.Control, RackPosition = $"B{seq % 60 + 10:00}", InitialThickness = initThk, CurrentThickness = curThk, MinThickness = minThk, UsageCount = usage, MaxUsageCount = maxUsage, Status = status, LastUseTime = lastUse, LastHeightCheckTime = lastHeight },
-                2 => new() { SampleId = $"TS-{tsAlloys[seq % tsAlloys.Length]}-G{seq:00}", SampleName = $"类型标准化样 G-{seq:000}", SampleType = SampleType.TypeStd, AlloyType = tsAlloys[seq % tsAlloys.Length], RackPosition = $"C{seq % 60 + 10:00}", InitialThickness = initThk, CurrentThickness = curThk, MinThickness = minThk, UsageCount = usage, MaxUsageCount = maxUsage, Status = status, LastUseTime = lastUse, LastHeightCheckTime = lastHeight },
-                _ => new() { SampleId = $"SUS-G{seq:000}", SampleName = $"控样 G-{seq:000}", SampleType = SampleType.SettingUp, RackPosition = $"A{seq % 60 + 10:00}", InitialThickness = initThk, CurrentThickness = curThk, MinThickness = minThk, UsageCount = usage, MaxUsageCount = maxUsage, Status = status, LastUseTime = lastUse, LastHeightCheckTime = lastHeight },
-            };
-            yield return s;
-        }
-    }
-
-    /// <summary>
-    /// 生产样演示数据（确定性）：10000 条生产样（入库时间近 30 天内多日期分布）
+    /// 生产样演示数据（确定性）：10000 条生产样（入库时间近 30 天内多日期分布；架位循环复用货架示意 E 行，
+    /// RackPosition 码均在示意范围 A01–E05 内；与标样占用互斥由 AvailablePositions 按占用集合保证）
     /// + 每样 1~2 条分析结果（共约 7500 条，原始/校正后双存、系数版本可追溯）。
     /// </summary>
     private static void SeedProductionSamples(SqliteConnection conn, SqliteTransaction tx)
@@ -396,7 +364,7 @@ public sealed class SeedData
                 cmd.Parameters.AddWithValue("$id", $"PRD-G{seq:000}");
                 cmd.Parameters.AddWithValue("$name", $"生产样 G-{seq:000}");
                 cmd.Parameters.AddWithValue("$alloy", alloys[seq % alloys.Length]);
-                cmd.Parameters.AddWithValue("$rack", $"D{seq % 60 + 10:00}");
+                cmd.Parameters.AddWithValue("$rack", $"E{seq % 5 + 1:00}");   // 货架示意 E 行循环复用（E01–E05）
                 cmd.Parameters.AddWithValue("$method", methods[seq % methods.Length]);
                 cmd.Parameters.AddWithValue("$status", status);
                 cmd.Parameters.AddWithValue("$created", created.ToString("yyyy-MM-dd HH:mm:ss"));

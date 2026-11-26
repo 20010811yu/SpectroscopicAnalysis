@@ -230,6 +230,43 @@ public sealed class ProductionMonitorViewModelTests
     }
 
     [Fact]
+    public async Task RefreshKpis_标准化期限倒计时_三种文案()
+    {
+        // 开关关闭=未启用；定期标准化剩余时间=hh:mm:ss；类型标准化超 24h=剩余 X天 hh:mm:ss；类型标准化无记录=到期待执行
+        var engine = new FakeSctStrategyEngine
+        {
+            StandardizeCountdown = new SctStandardizeCountdown(
+                PeriodicEnabled: true,
+                StandardizeDueTime: DateTime.Now.AddSeconds(90),
+                TypeStdEnabled: true,
+                TypeStdDueTime: DateTime.Now.AddDays(2).AddHours(3)),
+        };
+        var vm = new ProductionMonitorViewModel(new FakeSctOperationLogRepository(), new FakeSampleRepository(),
+            new FakeProductionSampleRepository(), engine, new FakeWorkflowOrchestrator(),
+            new FakeUiDispatcher(), new FakeErrorCollector(), new FakeDialogService(), new FakeSampleRegistrationService(), new SampleDataChangeNotifier());
+
+        vm.OnNavigatedTo();
+        // 注意 1 秒节拍会先按默认缓存算出"未启用"，需等到首次 KPI 刷新后出现"剩余"文案
+        for (var i = 0; i < 100 && !vm.StandardizeCountdownText.StartsWith("剩余"); i++)
+        {
+            await Task.Delay(10);
+        }
+
+        Assert.Matches(@"^剩余 \d{2}:\d{2}:\d{2}$", vm.StandardizeCountdownText);
+        Assert.Matches(@"^剩余 \d+天 \d{2}:\d{2}:\d{2}$", vm.TypeStdCountdownText);
+
+        // 关闭开关 → 未启用；开启但无记录（DueTime=null）→ 到期待执行
+        engine.StandardizeCountdown = new SctStandardizeCountdown(
+            PeriodicEnabled: false, StandardizeDueTime: null,
+            TypeStdEnabled: true, TypeStdDueTime: null);
+        vm.OnNavigatedTo();     // 再次导航触发一次 KPI 刷新（StartKpiTimer 幂等，仅重查快照）
+        await Task.Delay(50);
+
+        Assert.Equal("未启用", vm.StandardizeCountdownText);
+        Assert.Equal("到期待执行", vm.TypeStdCountdownText);
+    }
+
+    [Fact]
     public async Task Load_日志进入表格_映射正确()
     {
         var vm = CreateWithLogs(

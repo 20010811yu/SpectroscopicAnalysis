@@ -14,12 +14,14 @@
 
             <!-- 当前任务卡已迁至主控台页顶部（占位模块原样搬移） -->
 
-            <!-- KPI 三卡（弹性：等比例列） -->
+            <!-- KPI 五卡（弹性：等比例列） -->
             <Grid Margin="{DynamicResource Spacing.CardGap}">
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*" MinWidth="120" />
-                    <ColumnDefinition Width="*" MinWidth="120" />
-                    <ColumnDefinition Width="*" MinWidth="120" />
+                    <ColumnDefinition Width="*" MinWidth="110" />
+                    <ColumnDefinition Width="*" MinWidth="110" />
+                    <ColumnDefinition Width="*" MinWidth="110" />
+                    <ColumnDefinition Width="*" MinWidth="110" />
+                    <ColumnDefinition Width="*" MinWidth="110" />
                 </Grid.ColumnDefinitions>
                 <Border Style="{StaticResource Card}" Margin="0,0,6,0" Grid.Column="0">
                     <StackPanel>
@@ -33,10 +35,22 @@
                         <TextBlock Text="队列待分析" Style="{StaticResource Text.Caption}" HorizontalAlignment="Center" />
                     </StackPanel>
                 </Border>
-                <Border Style="{StaticResource Card}" Margin="6,0,0,0" Grid.Column="2">
+                <Border Style="{StaticResource Card}" Margin="6,0" Grid.Column="2">
                     <StackPanel>
                         <TextBlock Text="{Binding ControlCountdownText}" Style="{StaticResource Text.Display}" Foreground="{DynamicResource Brush.Primary}" HorizontalAlignment="Center" />
                         <TextBlock Text="{Binding ControlCountdownTitle}" Style="{StaticResource Text.Caption}" HorizontalAlignment="Center" />
+                    </StackPanel>
+                </Border>
+                <Border Style="{StaticResource Card}" Margin="6,0" Grid.Column="3">
+                    <StackPanel>
+                        <TextBlock Text="{Binding StandardizeCountdownText}" Style="{StaticResource Text.Display}" Foreground="{DynamicResource Brush.Primary}" HorizontalAlignment="Center" />
+                        <TextBlock Text="定期标准化倒计时" Style="{StaticResource Text.Caption}" HorizontalAlignment="Center" />
+                    </StackPanel>
+                </Border>
+                <Border Style="{StaticResource Card}" Margin="6,0,0,0" Grid.Column="4">
+                    <StackPanel>
+                        <TextBlock Text="{Binding TypeStdCountdownText}" Style="{StaticResource Text.Display}" Foreground="{DynamicResource Brush.Primary}" HorizontalAlignment="Center" />
+                        <TextBlock Text="类型标准化期限倒计时" Style="{StaticResource Text.Caption}" HorizontalAlignment="Center" />
                     </StackPanel>
                 </Border>
             </Grid>

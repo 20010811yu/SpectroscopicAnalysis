@@ -93,6 +93,39 @@ public sealed partial class ProductionMonitorViewModel : ObservableObject, IPage
     private int _productionSinceControl;
     private int _controlInsertCount;
 
+    /// <summary>「定期标准化倒计时」文本（未启用/到期待执行/剩余时间）。</summary>
+    [ObservableProperty]
+    private string _standardizeCountdownText = "—";
+
+    /// <summary>「类型标准化期限倒计时」文本（未启用/到期待执行/剩余时间）。</summary>
+    [ObservableProperty]
+    private string _typeStdCountdownText = "—";
+
+    /// <summary>标准化期限缓存快照：开关与到期时刻（null = 未启用或无记录已到期）。</summary>
+    private bool _stdEnabled;
+    private DateTime? _stdDueTime;
+    private bool _typeStdEnabled;
+    private DateTime? _typeStdDueTime;
+
+    /// <summary>剩余时间文本：未启用→"未启用"；到期/无记录→"到期待执行"；未到期→"剩余 hh:mm:ss"（超 24h 带"X天"）。</summary>
+    private static string FormatCountdown(bool enabled, DateTime? dueTime)
+    {
+        if (!enabled)
+        {
+            return "未启用";
+        }
+
+        if (dueTime is not { } due || due <= DateTime.Now)
+        {
+            return "到期待执行";
+        }
+
+        var remain = due - DateTime.Now;
+        return remain.TotalDays >= 1
+            ? $"剩余 {remain.Days}天 {remain.Hours:00}:{remain.Minutes:00}:{remain.Seconds:00}"
+            : $"剩余 {remain:hh\\:mm\\:ss}";
+    }
+
     /// <summary>启动 KPI 定时刷新循环（重复导航防重启；取消/异常静默收尾——宿主关闭路径）。</summary>
     private void StartKpiTimer()
     {
@@ -127,6 +160,10 @@ public sealed partial class ProductionMonitorViewModel : ObservableObject, IPage
     /// <summary>按缓存快照重算倒计时文本（须在 UI 线程；纯内存计算，秒级精度）。</summary>
     private void UpdateCountdownText()
     {
+        // 标准化期限倒计时（两种插入模式下都需逐秒刷新，先于检查样分支重算）
+        StandardizeCountdownText = FormatCountdown(_stdEnabled, _stdDueTime);
+        TypeStdCountdownText = FormatCountdown(_typeStdEnabled, _typeStdDueTime);
+
         if (_countdownMode != ControlInsertMode.ByTime)
         {
             ControlCountdownText = $"{_productionSinceControl} / {_controlInsertCount}";
@@ -175,6 +212,7 @@ public sealed partial class ProductionMonitorViewModel : ObservableObject, IPage
                     .Count(p => p.Status == ProductionStatus.Completed &&
                         (!latestResultTime.TryGetValue(p.SampleId, out var t) || t?.Date == today));
                 var countdown = _engine.GetControlCountdown();
+                var stdCountdown = _engine.GetStandardizeCountdown();
 
                 _ui.Invoke(() =>
                 {
@@ -189,6 +227,10 @@ public sealed partial class ProductionMonitorViewModel : ObservableObject, IPage
                     _controlDueTime = countdown.ControlDueTime;
                     _productionSinceControl = countdown.ProductionSinceControl;
                     _controlInsertCount = countdown.ControlInsertCount;
+                    _stdEnabled = stdCountdown.PeriodicEnabled;
+                    _stdDueTime = stdCountdown.StandardizeDueTime;
+                    _typeStdEnabled = stdCountdown.TypeStdEnabled;
+                    _typeStdDueTime = stdCountdown.TypeStdDueTime;
                     UpdateCountdownText();      // 按最新快照立即重算文本（后续由 1 秒节拍维持秒级精度）
                 });
             }

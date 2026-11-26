@@ -344,15 +344,10 @@ public sealed class WorkflowOrchestratorTests
         typeStd3003.AlloyType = "3003";
         _samples.Store.Add(typeStd3003);
 
-        // 从日志恢复上次生产合金基准：上次成功生产的 P-OLD 同为 3003 → 同合金直接生产
-        _production.Store.Add(new ProductionSample
-        {
-            SampleId = "P-OLD", SampleName = "上次生产样", SampleType = "Production",
-            AlloyType = "3003", AssociatedMethod = "M-1", Status = ProductionStatus.Completed, CreatedTime = DateTime.Now,
-        });
+        // 从日志恢复最近一次类型标准化合金基准：TYP-3003 为 3003 → 同合金直接生产
         _logs.Store.Add(new SctOperationLog
         {
-            SampleId = "P-OLD", OperationType = "Production", TriggerReason = "样品注册自动入队",
+            SampleId = "TYP-3003", OperationType = "TypeStandardize", TriggerReason = "手动触发",
             OperationTime = DateTime.Now.AddMinutes(-30).ToString("yyyy-MM-dd HH:mm:ss"), ResultStatus = "Success",
         });
 
@@ -364,10 +359,10 @@ public sealed class WorkflowOrchestratorTests
         await WaitUntilAsync(() => _production.GetResults("P-B").Any());
         await orchestrator.StopAsync(CancellationToken.None);
 
-        // 同合金直接生产：仅两次 ID_CYCLE=1，无前置类型标准化
+        // 同合金直接生产：仅两次 ID_CYCLE=1，无前置类型标准化（种子基准日志除外）
         Assert.All(_gateway.SentCycles, c => Assert.Equal(1, c.IdCycle));
         Assert.Equal(2, _gateway.SentCycles.Count);
-        Assert.DoesNotContain(_logs.Store, l => l.OperationType == "TypeStandardize");
+        Assert.DoesNotContain(_logs.Store, l => l.OperationType == "TypeStandardize" && (l.TriggerReason ?? string.Empty).Contains("前置"));
     }
 
     [Fact]

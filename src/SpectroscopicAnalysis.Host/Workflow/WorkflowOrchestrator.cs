@@ -30,8 +30,8 @@ public sealed class WorkflowOrchestrator : IWorkflowOrchestrator
     private Task? _loop;
     private DateTime _lastEngineTick = DateTime.MinValue;
 
-    /// <summary>上一个生产样关联的合金类型（生产流程前置合金切换检测基准；null=尚无生产记录）。</summary>
-    private string? _lastProductionAlloy;
+    /// <summary>最近一次类型标准化的合金类型（生产流程前置合金切换检测基准；系数有效性由类型标准化建立，生产本身不改变基准；null=尚无记录）。</summary>
+    private string? _lastTypeStdAlloy;
 
     /// <summary>已入队前置类型标准化等待执行的目标合金（生产任务开始执行后清空；防同合金重复入队）。</summary>
     private string? _pendingPreStdAlloy;
@@ -271,6 +271,13 @@ public sealed class WorkflowOrchestrator : IWorkflowOrchestrator
             case SctTaskType.Standardize:
             case SctTaskType.TypeStandardize:
                 await RunSctAnalysisAsync(task, withCoeffUpdate: true, ct);
+                if (task.TaskType == SctTaskType.TypeStandardize && !string.IsNullOrWhiteSpace(task.SampleId))
+                {
+                    // 类型标准化完成：系数基准切至该合金（此后生产同合金免检，异合金仍触发前置标准化）
+                    _lastTypeStdAlloy = _samples.GetAll()
+                        .FirstOrDefault(s => string.Equals(s.SampleId, task.SampleId, StringComparison.Ordinal))?.AlloyType;
+                }
+
                 break;
             case SctTaskType.ControlCheck:
                 isPass = await RunControlCheckAsync(task, ct);
@@ -311,7 +318,6 @@ public sealed class WorkflowOrchestrator : IWorkflowOrchestrator
     {
         var sampleId = task.SampleId ?? "Unknown";
         var currentAlloy = _production.GetAll().FirstOrDefault(p => p.SampleId == sampleId)?.AlloyType;
-        _lastProductionAlloy = currentAlloy;    // 串行主循环内更新：本任务即下一次检测的"上一个生产样"
         _pendingPreStdAlloy = null;             // 本生产任务已开始执行，其前置标准化等待结束
         if (!string.IsNullOrWhiteSpace(currentAlloy))
         {
@@ -360,7 +366,7 @@ public sealed class WorkflowOrchestrator : IWorkflowOrchestrator
 
     /// <summary>
     /// 生产前合金切换检测（需求：相邻生产样合金不同时先做本次合金的类型标准化，且标准化须加入任务队列）：
-    /// 主循环空闲出队前检查队首——若为生产任务且合金与上一个生产样不同（或基准未知：无生产历史/档案缺失/合金为空，
+    /// 主循环空闲出队前检查队首——若为生产任务且合金与最近一次类型标准化不同（或基准未知：无类型标准化历史/档案缺失/合金为空，
     /// 均视作需要类型标准化），则将匹配合金的类型标准化任务提交引擎队列（类型标准化 P3 优先于生产 P5，
     /// 自动先于生产出队执行，队列表同步可见）。
     /// 无匹配类型标准化样 → 5103 报警一次不阻断（与引擎选样失败同语义），生产照常继续。
@@ -379,15 +385,14 @@ public sealed class WorkflowOrchestrator : IWorkflowOrchestrator
             return;     // 合金未知：无可比基准，直接生产
         }
 
-        // 重启后首次检测：从生产日志恢复上一个生产样的合金作为比对基准（跨重启延续合金切换检测，
-        // 否则重启后第一个生产样会被误判为"首个生产任务"跳过前置类型标准化）
-        if (string.IsNullOrWhiteSpace(_lastProductionAlloy))
+        // 重启后首次检测：从运行日志恢复最近一次类型标准化的合金作为比对基准（跨重启延续检测）
+        if (string.IsNullOrWhiteSpace(_lastTypeStdAlloy))
         {
-            _lastProductionAlloy = GetLastProductionAlloyFromLog();
-            if (!string.IsNullOrWhiteSpace(_lastProductionAlloy))
+            _lastTypeStdAlloy = GetLastTypeStdAlloyFromLog();
+            if (!string.IsNullOrWhiteSpace(_lastTypeStdAlloy))
             {
                 _systemLog.Log("策略引擎",
-                    $"生产合金切换检测：从运行日志恢复上次生产合金 {_lastProductionAlloy}（重启延续检测基准）", "Info");
+                    $"生产合金切换检测：从运行日志恢复最近一次类型标准化合金 {_lastTypeStdAlloy}（重启延续检测基准）", "Info");
             }
         }
 
@@ -399,8 +404,8 @@ public sealed class WorkflowOrchestrator : IWorkflowOrchestrator
 
         // 基准合金未知（日志无生产历史 / 上次生产样已删除或合金为空）同样需要前置类型标准化：
         // 系数对当前合金是否有效无法确认，按"类型不匹配"处理，先做本次合金的类型标准化再生产
-        if (!string.IsNullOrWhiteSpace(_lastProductionAlloy) &&
-            string.Equals(_lastProductionAlloy.Trim(), currentAlloy.Trim(), StringComparison.Ordinal))
+        if (!string.IsNullOrWhiteSpace(_lastTypeStdAlloy) &&
+            string.Equals(_lastTypeStdAlloy.Trim(), currentAlloy.Trim(), StringComparison.Ordinal))
         {
             return;     // 同合金：直接生产
         }
@@ -422,13 +427,13 @@ public sealed class WorkflowOrchestrator : IWorkflowOrchestrator
                 _errors.Collect(ErrorCodes.SctTypeStdUnavailable,
                     $"合金 {currentAlloy} 无匹配的类型标准化样，跳过前置类型标准化", next.SampleId);
                 _systemLog.Log("策略引擎",
-                    $"生产合金切换检测：{_lastProductionAlloy} → {currentAlloy}（样品 {next.SampleId}），无匹配类型标准化样", "Warning");
+                    $"生产合金切换检测：{_lastTypeStdAlloy} → {currentAlloy}（样品 {next.SampleId}），无匹配类型标准化样", "Warning");
             }
             return;
         }
 
         // 前置类型标准化入队（P3 优先于 P5 生产，自动先出队执行；引擎同类型同目标去重兜底）
-        var baselineText = string.IsNullOrWhiteSpace(_lastProductionAlloy) ? "未知" : _lastProductionAlloy;
+        var baselineText = string.IsNullOrWhiteSpace(_lastTypeStdAlloy) ? "未知" : _lastTypeStdAlloy;
         var reason = $"生产前置类型标准化（{baselineText}→{currentAlloy}）";
         _engine.SubmitTask(SctTaskType.TypeStandardize, typeStd.SampleId, reason);
         _systemLog.Log("策略引擎",
@@ -436,13 +441,13 @@ public sealed class WorkflowOrchestrator : IWorkflowOrchestrator
         _pendingPreStdAlloy = currentAlloy.Trim();
     }
 
-    /// <summary>从生产日志恢复上次生产的合金（最近一条成功 Production 记录的样品 → 生产样档案合金；无记录返回 null）。</summary>
-    private string? GetLastProductionAlloyFromLog()
+    /// <summary>从运行日志恢复最近一次类型标准化的合金（最近一条成功 TypeStandardize 记录的样品 → 类型标准化样档案合金；无记录返回 null 视为基准未知）。</summary>
+    private string? GetLastTypeStdAlloyFromLog()
     {
         try
         {
             var lastSampleId = _logs.GetAll()
-                .Where(l => l.OperationType == SctTaskType.Production &&
+                .Where(l => l.OperationType == SctTaskType.TypeStandardize &&
                             l.ResultStatus == "Success" &&
                             !string.IsNullOrEmpty(l.SampleId))
                 .OrderByDescending(l => l.OperationTime)
@@ -452,13 +457,13 @@ public sealed class WorkflowOrchestrator : IWorkflowOrchestrator
                 return null;
             }
 
-            return _production.GetAll()
-                .FirstOrDefault(p => string.Equals(p.SampleId, lastSampleId, StringComparison.Ordinal))?.AlloyType;
+            return _samples.GetAll()
+                .FirstOrDefault(s => string.Equals(s.SampleId, lastSampleId, StringComparison.Ordinal))?.AlloyType;
         }
         catch (Exception ex)
         {
             // 恢复失败不阻断合金切换检测（退化为"基准未知"，仍会对首个生产样做前置类型标准化），仅记错误链
-            _errors.Collect(ErrorCodes.UnhandledException, "从运行日志恢复上次生产合金失败", null, ex);
+            _errors.Collect(ErrorCodes.UnhandledException, "从运行日志恢复最近一次类型标准化合金失败", null, ex);
             return null;
         }
     }

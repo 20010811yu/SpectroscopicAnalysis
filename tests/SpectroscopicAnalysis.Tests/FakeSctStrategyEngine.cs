@@ -42,6 +42,32 @@ internal sealed class FakeSctStrategyEngine : ISctStrategyEngine
         .Where(t => t.Status == SctTaskStatus.Queued)
         .ToList();
 
+    /// <summary>镜像引擎语义：仅排队中任务可删除（置 Cancelled 留在 RecentTasks 供断言）。</summary>
+    public bool RemoveQueuedTask(int taskId)
+    {
+        var task = RecentTasks.FirstOrDefault(t => t.TaskId == taskId && t.Status == SctTaskStatus.Queued);
+        if (task is null)
+        {
+            return false;
+        }
+
+        task.Status = SctTaskStatus.Cancelled;
+        return true;
+    }
+
+    /// <summary>移除指定样品全部排队任务，RemovedSampleLogIds 记录被删 TaskId 供断言。</summary>
+    public int RemoveQueuedTasksBySample(string sampleId)
+    {
+        var targets = RecentTasks.Where(t => t.Status == SctTaskStatus.Queued &&
+                                            string.Equals(t.SampleId, sampleId, StringComparison.Ordinal)).ToList();
+        foreach (var task in targets)
+        {
+            task.Status = SctTaskStatus.Cancelled;
+        }
+
+        return targets.Count;
+    }
+
     /// <summary>GetRecentTasks 返回值（测试可预置：验证任务队列展示过滤与排序）。</summary>
     public List<SctTask> RecentTasks { get; } = new();
 

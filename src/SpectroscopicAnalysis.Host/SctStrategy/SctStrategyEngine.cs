@@ -178,6 +178,54 @@ public sealed class SctStrategyEngine : ISctStrategyEngine
             .ToList();
 
     /// <inheritdoc />
+    public bool RemoveQueuedTask(int taskId)
+    {
+        lock (_gate)
+        {
+            var task = _queue.FirstOrDefault(t => t.TaskId == taskId && t.Status == SctTaskStatus.Queued);
+            if (task is null)
+            {
+                return false;   // 不在排队中（不存在/执行中/已终结）不可删除
+            }
+
+            RemoveCore(task);
+            return true;
+        }
+    }
+
+    /// <inheritdoc />
+    public int RemoveQueuedTasksBySample(string sampleId)
+    {
+        lock (_gate)
+        {
+            // 仅移除仍在排队的任务；执行中/已终结的不受影响
+            var targets = _queue.Where(t => t.Status == SctTaskStatus.Queued &&
+                                           string.Equals(t.SampleId, sampleId, StringComparison.Ordinal)).ToList();
+            foreach (var task in targets)
+            {
+                RemoveCore(task);
+            }
+
+            return targets.Count;
+        }
+    }
+
+    /// <summary>删除核心：置 Cancelled 并移入历史留痕（任务不凭空消失），出队并写系统日志。须在 _gate 内调用。</summary>
+    private void RemoveCore(SctTask task)
+    {
+        task.Status = SctTaskStatus.Cancelled;
+        _queue.Remove(task);
+        _history.Insert(0, task);
+        if (_history.Count > 50)
+        {
+            _history.RemoveAt(_history.Count - 1);
+        }
+
+        _systemLog.Log("策略引擎",
+            $"任务删除：#{task.TaskId}（样品 {task.SampleId ?? "—"}，{task.TaskType}），人工从队列移除（不删除样品档案与数据）");
+    }
+
+    /// <inheritdoc />
     public IReadOnlyList<SctTask> GetRecentTasks()
     {
         var running = _running is not null ? new[] { _running } : Array.Empty<SctTask>();

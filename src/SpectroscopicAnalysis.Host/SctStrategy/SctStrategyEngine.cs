@@ -136,20 +136,34 @@ public sealed class SctStrategyEngine : ISctStrategyEngine
     {
         lock (_gate)
         {
-            task = null!;
-            if (_running is not null || _queue.Count == 0)
-            {
-                return false;   // 同一时刻仅一个任务 Running（互斥）
-            }
-
-            task = _queue
+        task = null!;
+        while (_running is null && _queue.Count > 0)
+        {
+            var candidate = _queue
                 .OrderBy(t => t.Priority)               // P29 优先级序
                 .ThenBy(QueuedSortKey)                  // 同优先级：手动置顶优先，其余 FIFO
                 .First();
-            _queue.Remove(task);
-            task.Status = SctTaskStatus.Running;
-            _running = task;
+            _queue.Remove(candidate);
+
+            // 出队兜底复检（混用策略可能在入队后被关闭）：队列遗留的跨类型任务此刻拦截，
+            // 跳过被拦任务继续取下一个合规任务，避免一个遗留任务卡死整条队列
+            if (!IsTaskSampleTypeAllowed(candidate.TaskType, candidate.SampleId))
+            {
+                candidate.Status = SctTaskStatus.Cancelled;
+                _errors.Collect(ErrorCodes.SctTaskSampleTypeMismatch,
+                    $"任务类型与样品类型不匹配，出队拦截：{TaskTypeText(candidate.TaskType)}（样品 {candidate.SampleId}）", candidate.SampleId);
+                _systemLog.Log("策略引擎",
+                    $"任务出队被拦：{TaskTypeText(candidate.TaskType)}（样品 {candidate.SampleId}），原因：未启用检查样与类型标准化样混用");
+                continue;
+            }
+
+            candidate.Status = SctTaskStatus.Running;
+            _running = candidate;
+            task = candidate;
             return true;
+        }
+
+        return false;   // 同一时刻仅一个任务 Running（互斥）；队列空或全部被拦
         }
     }
 

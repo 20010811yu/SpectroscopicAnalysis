@@ -660,6 +660,39 @@ public sealed class SctStrategyEngineTests
     }
 
     [Fact]
+    public void 未混用_勾选期间入队的跨类型任务出队被拦()
+    {
+        // 混用勾选期间：检查样经回退入队类型标准化（合法）；之后取消勾选，队列遗留任务出队时兜底拦截
+        _policy.Current.ControlTypeStdMixed = true;
+        _samples.Store.Add(MakeSample("HC-01", SampleType.Control));
+        var engine = Create();
+        engine.NotifyAlloySwitched("3003");
+        Assert.Contains(engine.GetQueuedTasks(), t => t.TaskType == SctTaskType.TypeStandardize);
+
+        _policy.Current.ControlTypeStdMixed = false;
+        Assert.False(engine.TryDequeue(out _));                     // 遗留跨类型任务被拦不出队
+        Assert.Contains(_errors.Collected, c => c.Code == ErrorCodes.SctTaskSampleTypeMismatch);
+        Assert.Empty(engine.GetQueuedTasks());                      // 被拦任务移出队列
+    }
+
+    [Fact]
+    public void 未混用_出队拦截跨类型任务后继续放行后续合规任务()
+    {
+        // 遗留跨类型任务不卡死队列：其后入队的合规类型标准化任务（TypeStd 样）正常出队
+        _policy.Current.ControlTypeStdMixed = true;
+        _samples.Store.Add(MakeSample("HC-01", SampleType.Control));
+        _samples.Store.Add(MakeSample("TS-01", SampleType.TypeStd, alloy: "6063"));
+        var engine = Create();
+        engine.NotifyAlloySwitched("3003");                         // 回退选 HC-01（先入队）
+        engine.SubmitTask(SctTaskType.TypeStandardize, "TS-01", "人工触发");
+
+        _policy.Current.ControlTypeStdMixed = false;
+        Assert.True(engine.TryDequeue(out var task));               // 跨类型被跳过，取到合规任务
+        Assert.Equal("TS-01", task.SampleId);
+        Assert.False(engine.TryDequeue(out _));
+    }
+
+    [Fact]
     public void 混用_计时按任务用途归属()
     {
         _policy.Current.ControlTypeStdMixed = true;

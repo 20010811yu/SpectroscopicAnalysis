@@ -360,8 +360,9 @@ public sealed class WorkflowOrchestrator : IWorkflowOrchestrator
 
     /// <summary>
     /// 生产前合金切换检测（需求：相邻生产样合金不同时先做本次合金的类型标准化，且标准化须加入任务队列）：
-    /// 主循环空闲出队前检查队首——若为生产任务且合金与上一个生产样不同，则将匹配合金的类型标准化任务
-    /// 提交引擎队列（类型标准化 P3 优先于生产 P5，自动先于生产出队执行，队列表同步可见）。
+    /// 主循环空闲出队前检查队首——若为生产任务且合金与上一个生产样不同（或基准未知：无生产历史/档案缺失/合金为空，
+    /// 均视作需要类型标准化），则将匹配合金的类型标准化任务提交引擎队列（类型标准化 P3 优先于生产 P5，
+    /// 自动先于生产出队执行，队列表同步可见）。
     /// 无匹配类型标准化样 → 5103 报警一次不阻断（与引擎选样失败同语义），生产照常继续。
     /// </summary>
     private void CheckAlloySwitchBeforeDequeue()
@@ -396,14 +397,15 @@ public sealed class WorkflowOrchestrator : IWorkflowOrchestrator
             return;
         }
 
-        // 日志无生产历史（真正的首个生产任务）/ 同合金：直接生产
-        if (string.IsNullOrWhiteSpace(_lastProductionAlloy) ||
+        // 基准合金未知（日志无生产历史 / 上次生产样已删除或合金为空）同样需要前置类型标准化：
+        // 系数对当前合金是否有效无法确认，按"类型不匹配"处理，先做本次合金的类型标准化再生产
+        if (!string.IsNullOrWhiteSpace(_lastProductionAlloy) &&
             string.Equals(_lastProductionAlloy.Trim(), currentAlloy.Trim(), StringComparison.Ordinal))
         {
-            return;
+            return;     // 同合金：直接生产
         }
 
-        // 合金切换：选本次合金匹配的类型标准化样（TypeStd/Normal/启用，使用次数最少优先——与引擎选样规则一致）
+        // 合金切换（或基准未知）：选本次合金匹配的类型标准化样（TypeStd/Normal/启用，使用次数最少优先——与引擎选样规则一致）
         var typeStd = _samples.GetAll()
             .Where(s => s.SampleType == SampleType.TypeStd && s.Status == SampleStatus.Normal && s.IsActive)
             .Where(s => string.Equals(s.AlloyType?.Trim(), currentAlloy.Trim(), StringComparison.Ordinal))
@@ -426,10 +428,11 @@ public sealed class WorkflowOrchestrator : IWorkflowOrchestrator
         }
 
         // 前置类型标准化入队（P3 优先于 P5 生产，自动先出队执行；引擎同类型同目标去重兜底）
-        var reason = $"生产合金切换前置类型标准化（{_lastProductionAlloy}→{currentAlloy}）";
+        var baselineText = string.IsNullOrWhiteSpace(_lastProductionAlloy) ? "未知" : _lastProductionAlloy;
+        var reason = $"生产前置类型标准化（{baselineText}→{currentAlloy}）";
         _engine.SubmitTask(SctTaskType.TypeStandardize, typeStd.SampleId, reason);
         _systemLog.Log("策略引擎",
-            $"生产合金切换检测：{_lastProductionAlloy} → {currentAlloy}（样品 {next.SampleId}），前置类型标准化（样品 {typeStd.SampleId}）已加入任务队列", "Warning");
+            $"生产合金切换检测：{baselineText} → {currentAlloy}（样品 {next.SampleId}），前置类型标准化（样品 {typeStd.SampleId}）已加入任务队列", "Warning");
         _pendingPreStdAlloy = currentAlloy.Trim();
     }
 
@@ -454,7 +457,7 @@ public sealed class WorkflowOrchestrator : IWorkflowOrchestrator
         }
         catch (Exception ex)
         {
-            // 恢复失败不阻断合金切换检测（退化为"首个生产任务直接生产"语义），仅记错误链
+            // 恢复失败不阻断合金切换检测（退化为"基准未知"，仍会对首个生产样做前置类型标准化），仅记错误链
             _errors.Collect(ErrorCodes.UnhandledException, "从运行日志恢复上次生产合金失败", null, ex);
             return null;
         }

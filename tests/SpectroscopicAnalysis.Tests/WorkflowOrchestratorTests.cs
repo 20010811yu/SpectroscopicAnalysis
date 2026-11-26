@@ -344,6 +344,18 @@ public sealed class WorkflowOrchestratorTests
         typeStd3003.AlloyType = "3003";
         _samples.Store.Add(typeStd3003);
 
+        // 从日志恢复上次生产合金基准：上次成功生产的 P-OLD 同为 3003 → 同合金直接生产
+        _production.Store.Add(new ProductionSample
+        {
+            SampleId = "P-OLD", SampleName = "上次生产样", SampleType = "Production",
+            AlloyType = "3003", AssociatedMethod = "M-1", Status = ProductionStatus.Completed, CreatedTime = DateTime.Now,
+        });
+        _logs.Store.Add(new SctOperationLog
+        {
+            SampleId = "P-OLD", OperationType = "Production", TriggerReason = "样品注册自动入队",
+            OperationTime = DateTime.Now.AddMinutes(-30).ToString("yyyy-MM-dd HH:mm:ss"), ResultStatus = "Success",
+        });
+
         var (engine, orchestrator) = Create();
         engine.SubmitTask(SctTaskType.Production, "P-A", "样品注册自动入队");
         engine.SubmitTask(SctTaskType.Production, "P-B", "样品注册自动入队");
@@ -356,5 +368,37 @@ public sealed class WorkflowOrchestratorTests
         Assert.All(_gateway.SentCycles, c => Assert.Equal(1, c.IdCycle));
         Assert.Equal(2, _gateway.SentCycles.Count);
         Assert.DoesNotContain(_logs.Store, l => l.OperationType == "TypeStandardize");
+    }
+
+    [Fact]
+    public async Task 基准未知_首个生产样前置类型标准化()
+    {
+        _production.Store.Add(new ProductionSample
+        {
+            SampleId = "P-A", SampleName = "生产样 A", SampleType = "Production",
+            AlloyType = "3003", AssociatedMethod = "M-1", Status = ProductionStatus.Pending, CreatedTime = DateTime.Now,
+        });
+        var typeStd3003 = MakeSample("TYP-3003", type: SampleType.TypeStd);
+        typeStd3003.AlloyType = "3003";
+        _samples.Store.Add(typeStd3003);
+
+        // 日志无生产历史（基准未知）：首个生产样也须先做本次合金的类型标准化再生产
+        var (engine, orchestrator) = Create();
+        engine.SubmitTask(SctTaskType.Production, "P-A", "样品注册自动入队");
+
+        await orchestrator.StartAsync(CancellationToken.None);
+        await WaitUntilAsync(() => _production.GetResults("P-A").Any());
+        await orchestrator.StopAsync(CancellationToken.None);
+
+        // 执行次序：TYP-3003 类型标准化（ID_CYCLE=2）先于 P-A 生产（ID_CYCLE=1）
+        var cycles = _gateway.SentCycles.Select(c => (c.SampleId, c.IdCycle)).ToList();
+        Assert.Equal(2, cycles.Count);
+        Assert.Equal(("TYP-3003", 2), cycles[0]);
+        Assert.Equal(("P-A", 1), cycles[1]);
+        // 前置类型标准化经任务队列调度且完成行落库
+        Assert.Contains(engine.GetRecentTasks(), t => t.TaskType == SctTaskType.TypeStandardize
+            && t.SampleId == "TYP-3003" && t.Status == SctTaskStatus.Completed);
+        Assert.Contains(_logs.Store, l => l.OperationType == "TypeStandardize" && l.SampleId == "TYP-3003"
+            && (l.TriggerReason ?? string.Empty).Contains("前置类型标准化") && l.ResultStatus == "Success");
     }
 }

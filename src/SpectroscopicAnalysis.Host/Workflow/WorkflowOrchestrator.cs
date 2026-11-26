@@ -378,13 +378,25 @@ public sealed class WorkflowOrchestrator : IWorkflowOrchestrator
             return;     // 合金未知：无可比基准，直接生产
         }
 
+        // 重启后首次检测：从生产日志恢复上一个生产样的合金作为比对基准（跨重启延续合金切换检测，
+        // 否则重启后第一个生产样会被误判为"首个生产任务"跳过前置类型标准化）
+        if (string.IsNullOrWhiteSpace(_lastProductionAlloy))
+        {
+            _lastProductionAlloy = GetLastProductionAlloyFromLog();
+            if (!string.IsNullOrWhiteSpace(_lastProductionAlloy))
+            {
+                _systemLog.Log("策略引擎",
+                    $"生产合金切换检测：从运行日志恢复上次生产合金 {_lastProductionAlloy}（重启延续检测基准）", "Info");
+            }
+        }
+
         // 已为该合金入队前置标准化（P3 排在队首生产任务之前），等待其执行即可，避免重复入队
         if (_pendingPreStdAlloy == currentAlloy.Trim())
         {
             return;
         }
 
-        // 首个生产任务 / 同合金：直接生产
+        // 日志无生产历史（真正的首个生产任务）/ 同合金：直接生产
         if (string.IsNullOrWhiteSpace(_lastProductionAlloy) ||
             string.Equals(_lastProductionAlloy.Trim(), currentAlloy.Trim(), StringComparison.Ordinal))
         {
@@ -419,6 +431,33 @@ public sealed class WorkflowOrchestrator : IWorkflowOrchestrator
         _systemLog.Log("策略引擎",
             $"生产合金切换检测：{_lastProductionAlloy} → {currentAlloy}（样品 {next.SampleId}），前置类型标准化（样品 {typeStd.SampleId}）已加入任务队列", "Warning");
         _pendingPreStdAlloy = currentAlloy.Trim();
+    }
+
+    /// <summary>从生产日志恢复上次生产的合金（最近一条成功 Production 记录的样品 → 生产样档案合金；无记录返回 null）。</summary>
+    private string? GetLastProductionAlloyFromLog()
+    {
+        try
+        {
+            var lastSampleId = _logs.GetAll()
+                .Where(l => l.OperationType == SctTaskType.Production &&
+                            l.ResultStatus == "Success" &&
+                            !string.IsNullOrEmpty(l.SampleId))
+                .OrderByDescending(l => l.OperationTime)
+                .FirstOrDefault()?.SampleId;
+            if (lastSampleId is null)
+            {
+                return null;
+            }
+
+            return _production.GetAll()
+                .FirstOrDefault(p => string.Equals(p.SampleId, lastSampleId, StringComparison.Ordinal))?.AlloyType;
+        }
+        catch (Exception ex)
+        {
+            // 恢复失败不阻断合金切换检测（退化为"首个生产任务直接生产"语义），仅记错误链
+            _errors.Collect(ErrorCodes.UnhandledException, "从运行日志恢复上次生产合金失败", null, ex);
+            return null;
+        }
     }
 
     /// <summary>SCT 分析类任务（标准化/类型标准化）：SCT 子状态链 + 系数更新 + 引擎回喂（编排设计文档 §6）。</summary>

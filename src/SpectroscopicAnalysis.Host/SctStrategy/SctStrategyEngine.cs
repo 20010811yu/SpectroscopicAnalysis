@@ -547,7 +547,7 @@ public sealed class SctStrategyEngine : ISctStrategyEngine
 
     /// <summary>
     /// 从 SCT 运行日志统计"最近一次成功检查样之后已完成的生产样个数"（按数量插入计数跨重启恢复用）。
-    /// 无检查样历史时按 0 处理（历史过久不再追溯，重启后从零重新计数）。失败走错误链返回 0，不阻断节拍。
+    /// 无检查样历史时统计全部历史生产样（从未清算过，均应计入累加）。失败走错误链返回 0，不阻断节拍。
     /// </summary>
     private int CountProductionSinceLastControlFromLog()
     {
@@ -561,10 +561,6 @@ public sealed class SctStrategyEngine : ISctStrategyEngine
                 .Select(l => DateTime.Parse(l.OperationTime!))
                 .DefaultIfEmpty(DateTime.MinValue)
                 .Max();
-            if (lastControlTime == DateTime.MinValue)
-            {
-                return 0;
-            }
 
             return logs.Count(l => l.OperationType == "Production" &&
                                    l.ResultStatus == "Success" &&

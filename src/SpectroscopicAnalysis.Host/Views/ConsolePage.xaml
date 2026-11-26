@@ -10,13 +10,34 @@
                 <TextBlock Text="主控台" Style="{StaticResource Text.PageTitle}" VerticalAlignment="Center" />
             </DockPanel>
 
-            <!-- 当前任务卡（步骤进度占位：抓取→铣削→放置→激发→完成；自生产监控页迁入） -->
+            <!-- 当前任务卡（与任务队列执行中任务绑定：编排器快照驱动标题/徽章/详情；StepBar 仍为占位） -->
             <Border Style="{StaticResource Card}" Margin="{DynamicResource Spacing.CardGap}">
                 <StackPanel>
                     <DockPanel>
-                        <TextBlock Text="当前任务 #10086" Style="{StaticResource Text.CardTitle}" />
-                        <Border Style="{StaticResource Badge.Base}" Background="{DynamicResource Brush.Badge.Running.Bg}" HorizontalAlignment="Right">
-                            <TextBlock Text="● 激发中" Style="{StaticResource Text.Caption}" Foreground="{DynamicResource Brush.Status.Running}" />
+                        <TextBlock Text="{Binding CurrentTaskTitle}" Style="{StaticResource Text.CardTitle}" />
+                        <Border HorizontalAlignment="Right">
+                            <Border.Style>
+                                <Style TargetType="Border" BasedOn="{StaticResource Badge.Base}">
+                                    <Setter Property="Background" Value="{DynamicResource Brush.Badge.Idle.Bg}" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding CurrentTaskRunning}" Value="True">
+                                            <Setter Property="Background" Value="{DynamicResource Brush.Badge.Running.Bg}" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Border.Style>
+                            <TextBlock Text="{Binding CurrentTaskBadgeText}">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock" BasedOn="{StaticResource Text.Caption}">
+                                        <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Secondary}" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding CurrentTaskRunning}" Value="True">
+                                                <Setter Property="Foreground" Value="{DynamicResource Brush.Status.Running}" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
                         </Border>
                     </DockPanel>
                     <!-- StepBar 占位（图标白名单：节点 24px） -->
@@ -68,7 +89,7 @@
                             <TextBlock Text="完成/归档" Style="{StaticResource StepLabel}" />
                         </StackPanel>
                     </StackPanel>
-                    <TextBlock Text="激发台力控下压完成，等待 GNR RESULT_REQUEST…（占位）" Style="{StaticResource Text.Caption}" />
+                    <TextBlock Text="{Binding CurrentTaskDesc}" Style="{StaticResource Text.Caption}" />
                     <!-- SCT 当前策略摘要：选样规则 / 检查样插入模式 / 超差重测上限（30 秒定时刷新，SCT 管理页保存后自动更新） -->
                     <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
                         <TextBlock Text="{Binding SettingRuleText}" Style="{StaticResource Text.Caption}" Foreground="{DynamicResource Brush.Text.Secondary}" />

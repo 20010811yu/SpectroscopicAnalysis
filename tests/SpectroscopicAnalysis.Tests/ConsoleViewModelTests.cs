@@ -3,6 +3,7 @@ using SpectroscopicAnalysis.Host.Data.Models;
 using SpectroscopicAnalysis.Host.LoggingAlarm;
 using SpectroscopicAnalysis.Host.SctStrategy;
 using SpectroscopicAnalysis.Host.ViewModels;
+using SpectroscopicAnalysis.Host.Workflow;
 
 namespace SpectroscopicAnalysis.Tests;
 
@@ -13,12 +14,55 @@ public sealed class ConsoleViewModelTests
         FakeErrorCollector? errors = null,
         FakeSampleRepository? samples = null,
         FakeProductionSampleRepository? production = null,
-        FakeSctPolicyStore? policy = null)
+        FakeSctPolicyStore? policy = null,
+        FakeWorkflowOrchestrator? orchestrator = null)
     {
         return new ConsoleViewModel(errors ?? new FakeErrorCollector(), new SystemLogCollector(),
             samples ?? new FakeSampleRepository(), production ?? new FakeProductionSampleRepository(),
             policy ?? new FakeSctPolicyStore(),
-            new FakeUiDispatcher(), new LaserMarkingViewModel(new FakeLaserMarkingService(), new MainViewModelTests.FakeEzCad2Controller(), new FakeUiDispatcher()));
+            new FakeUiDispatcher(), new LaserMarkingViewModel(new FakeLaserMarkingService(), new MainViewModelTests.FakeEzCad2Controller(), new FakeUiDispatcher()),
+            orchestrator ?? new FakeWorkflowOrchestrator());
+    }
+
+    // ==================== 当前任务卡（与任务队列执行中任务绑定） ====================
+
+    [Fact]
+    public void RefreshCurrentTask_执行中快照_标题含样品编号与任务类型()
+    {
+        var samples = new FakeSampleRepository();
+        samples.Store.Add(new SctSample
+        {
+            SampleId = "SUS-G675", SampleName = "控样 G675", SampleType = SampleType.SettingUp,
+            Status = SampleStatus.Normal, IsActive = true, UsageCount = 0, CreatedTime = DateTime.Now,
+        });
+        var production = new FakeProductionSampleRepository();
+        production.Store.Add(new ProductionSample
+        {
+            SampleId = "PRD-G2850", SampleName = "铝锭 A", SampleType = "Production",
+            AlloyType = "3003", Status = ProductionStatus.Pending, CreatedTime = DateTime.Now,
+        });
+        var orchestrator = new FakeWorkflowOrchestrator
+        {
+            Snapshot = new WorkflowSnapshot(12, SctTaskType.Production, "PRD-G2850", TaskState.Analyzing, null, IsRunning: true, new Dictionary<string, bool>()),
+        };
+        var vm = CreateVm(production: production, samples: samples, orchestrator: orchestrator);
+
+        Assert.Equal("当前任务 PRD-G2850 生产样分析", vm.CurrentTaskTitle);
+        Assert.Equal("● 激发分析中", vm.CurrentTaskBadgeText);
+        Assert.True(vm.CurrentTaskRunning);
+        Assert.Contains("铝锭 A", vm.CurrentTaskDesc);
+        Assert.Contains("3003", vm.CurrentTaskDesc);
+    }
+
+    [Fact]
+    public void RefreshCurrentTask_空闲快照_显示空闲文案()
+    {
+        var orchestrator = new FakeWorkflowOrchestrator();     // 默认 Idle 快照
+        var vm = CreateVm(orchestrator: orchestrator);
+
+        Assert.Equal("当前任务：空闲", vm.CurrentTaskTitle);
+        Assert.Equal("● 空闲", vm.CurrentTaskBadgeText);
+        Assert.False(vm.CurrentTaskRunning);
     }
 
     // ==================== SCT 当前策略摘要 ====================

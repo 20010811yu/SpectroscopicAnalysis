@@ -6,6 +6,7 @@ using SpectroscopicAnalysis.Host.Data.Repositories;
 using SpectroscopicAnalysis.Host.LoggingAlarm;
 using SpectroscopicAnalysis.Host.SctStrategy;
 using SpectroscopicAnalysis.Host.Ui;
+using SpectroscopicAnalysis.Host.Workflow;
 
 namespace SpectroscopicAnalysis.Host.ViewModels;
 
@@ -36,7 +37,8 @@ public sealed partial class ConsoleViewModel : ObservableObject, IPageLifecycle
 
     public ConsoleViewModel(IErrorCollector errors, ISystemLogCollector systemLog,
         ISctSampleRepository samples, IProductionSampleRepository production,
-        ISctPolicyStore policyStore, IUiDispatcher ui, LaserMarkingViewModel laserMarking)
+        ISctPolicyStore policyStore, IUiDispatcher ui, LaserMarkingViewModel laserMarking,
+        IWorkflowOrchestrator orchestrator)
     {
         _errors = errors;
         _systemLog = systemLog;
@@ -50,7 +52,86 @@ public sealed partial class ConsoleViewModel : ObservableObject, IPageLifecycle
         systemLog.EntryLogged += () => _ui.Invoke(RefreshSystemLogs);
         // 报警产生即时刷新报警面板（掉线等报警不再滞后 30 秒定时刷新；Collect 可能在任意线程）
         errors.AlarmRaised += () => _ui.Invoke(RefreshAlarms);
+        // 当前任务卡与任务队列执行中任务绑定：编排器状态变化（出队/阶段推进/完成）即时刷新
+        orchestrator.StateChanged += (_, e) => _ui.Invoke(() => RefreshCurrentTask(e.Snapshot));
+        RefreshCurrentTask(orchestrator.Snapshot);
     }
+
+    // ==================== 当前任务卡（与任务队列执行中任务绑定，标题用样品编号） ====================
+
+    /// <summary>当前任务卡标题（执行中：样品编号+任务类型；空闲：空闲文案）。</summary>
+    [ObservableProperty]
+    private string _currentTaskTitle = "当前任务：空闲";
+
+    /// <summary>当前任务状态徽章文本（执行中=阶段中文名；空闲=空闲）。</summary>
+    [ObservableProperty]
+    private string _currentTaskBadgeText = "● 空闲";
+
+    /// <summary>是否执行中（驱动徽章绿/灰配色切换）。</summary>
+    [ObservableProperty]
+    private bool _currentTaskRunning;
+
+    /// <summary>当前任务详情（样品名称/合金 + 阶段；空闲时提示文案）。</summary>
+    [ObservableProperty]
+    private string _currentTaskDesc = "暂无执行中的任务，等待任务队列出队";
+
+    /// <summary>按编排器快照刷新当前任务卡（快照即任务队列中唯一 Status=Running 的任务）。</summary>
+    private void RefreshCurrentTask(WorkflowSnapshot snapshot)
+    {
+        if (!snapshot.IsRunning || snapshot.CurrentSampleId is null)
+        {
+            CurrentTaskTitle = "当前任务：空闲";
+            CurrentTaskBadgeText = "● 空闲";
+            CurrentTaskRunning = false;
+            CurrentTaskDesc = "暂无执行中的任务，等待任务队列出队";
+            return;
+        }
+
+        var typeText = snapshot.CurrentTaskType switch
+        {
+            SctTaskType.Standardize => "标准化",
+            SctTaskType.ControlCheck => "控制检查",
+            SctTaskType.TypeStandardize => "类型标准化",
+            SctTaskType.HeightMeasure => "测高",
+            SctTaskType.Production => "生产样分析",
+            SctTaskType.Archive => "归档",
+            var t => t,
+        };
+        var stateText = TaskStateText(snapshot.TaskState);
+
+        // 标题用样品编号（不用队列任务序号）；样品档案补名称/合金（生产样优先，SCT 样兜底）
+        var sampleId = snapshot.CurrentSampleId;
+        var p = _production.GetAll().FirstOrDefault(x => x.SampleId == sampleId);
+        var s = p is null ? _samples.GetAll().FirstOrDefault(x => x.SampleId == sampleId) : null;
+        var name = p?.SampleName ?? s?.SampleName;
+        var alloy = p?.AlloyType ?? s?.AlloyType;
+
+        CurrentTaskTitle = $"当前任务 {sampleId} {typeText}";
+        CurrentTaskBadgeText = $"● {stateText}";
+        CurrentTaskRunning = true;
+        var desc = $"样品名称 {(!string.IsNullOrWhiteSpace(name) ? name : "—")}";
+        if (!string.IsNullOrWhiteSpace(alloy))
+        {
+            desc += $"（合金 {alloy}）";
+        }
+
+        CurrentTaskDesc = $"{desc}｜阶段：{stateText}";
+    }
+
+    /// <summary>任务阶段中文名（WorkflowStates.TaskState 常量映射；未知值原样返回）。</summary>
+    private static string TaskStateText(string state) => state switch
+    {
+        TaskState.Idle => "空闲",
+        TaskState.Registered => "已下发",
+        TaskState.Preparing => "准备中",
+        TaskState.Milling => "铣削中",
+        TaskState.Placing => "放置中",
+        TaskState.Analyzing => "激发分析中",
+        TaskState.Archiving => "归档中",
+        TaskState.Completed => "已完成",
+        TaskState.Failed => "失败",
+        var s => s,
+    };
 
     // ==================== 报警面板 ====================
 

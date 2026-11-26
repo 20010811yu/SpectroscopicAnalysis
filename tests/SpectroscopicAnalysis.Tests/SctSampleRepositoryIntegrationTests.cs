@@ -143,6 +143,122 @@ public sealed class SctSampleRepositoryIntegrationTests : IDisposable
         Assert.Equal(0, _repo.GetAll().Count(s => s.SampleType == SampleType.Production));
     }
 
+    [Fact]
+    public void UpdateAfterSpark_兼任孪生次数拉平且厚度状态不串()
+    {
+        var control = new SctSample
+        {
+            SampleId = "HC-01", SampleName = "检查样", SampleType = SampleType.Control,
+            RackPosition = "T10", InitialThickness = 10, CurrentThickness = 10, MinThickness = 5,
+            MaxUsageCount = 50, Status = SampleStatus.Normal, PairSampleId = "HC-01-T",
+        };
+        var twin = new SctSample
+        {
+            SampleId = "HC-01-T", SampleName = "类型标准化样", SampleType = SampleType.TypeStd,
+            AlloyType = "6063", RackPosition = "T10", InitialThickness = 10, CurrentThickness = 9.5,
+            MinThickness = 5, MaxUsageCount = 50, Status = SampleStatus.Warning, PairSampleId = "HC-01",
+        };
+        _repo.Insert(control);
+        _repo.Insert(twin);
+
+        _repo.UpdateAfterSpark("HC-01", currentThickness: 9.9, status: SampleStatus.Normal, usedAt: new DateTime(2026, 11, 26, 10, 0, 0));
+
+        var loadedControl = _repo.GetById("HC-01")!;
+        var loadedTwin = _repo.GetById("HC-01-T")!;
+        // 主档案：次数+1、厚度状态更新
+        Assert.Equal(1, loadedControl.UsageCount);
+        Assert.Equal(9.9, loadedControl.CurrentThickness);
+        Assert.Equal(SampleStatus.Normal, loadedControl.Status);
+        // 孪生：次数/上次使用时间拉平（反映同一物理样品真实磨损），厚度/状态按角色独立不串写
+        Assert.Equal(1, loadedTwin.UsageCount);
+        Assert.Equal(9.5, loadedTwin.CurrentThickness);
+        Assert.Equal(SampleStatus.Warning, loadedTwin.Status);
+        Assert.Equal(loadedControl.LastUseTime, loadedTwin.LastUseTime);
+        // 反向：孪生激发同样拉平主档案
+        _repo.UpdateAfterSpark("HC-01-T", 9.4, SampleStatus.Warning, new DateTime(2026, 11, 26, 11, 0, 0));
+        Assert.Equal(2, _repo.GetById("HC-01")!.UsageCount);
+        Assert.Equal(9.9, _repo.GetById("HC-01")!.CurrentThickness);
+    }
+
+    [Fact]
+    public void UpdateAfterSpark_无孪生行为不变()
+    {
+        _repo.Insert(new SctSample
+        {
+            SampleId = "IT-010", SampleName = "普通样", SampleType = SampleType.SettingUp,
+            RackPosition = "T11", InitialThickness = 10, CurrentThickness = 10, MinThickness = 5,
+            MaxUsageCount = 50, Status = SampleStatus.Normal,
+        });
+
+        _repo.UpdateAfterSpark("IT-010", 9.8, SampleStatus.Normal, new DateTime(2026, 11, 26, 9, 0, 0));
+
+        var loaded = _repo.GetById("IT-010")!;
+        Assert.Equal(1, loaded.UsageCount);
+        Assert.Null(loaded.PairSampleId);
+        Assert.Equal(9.8, loaded.CurrentThickness);
+    }
+
+    [Fact]
+    public void PairSampleId_持久化往返()
+    {
+        _repo.Insert(new SctSample
+        {
+            SampleId = "IT-011", SampleName = "往返测试", SampleType = SampleType.Control,
+            RackPosition = "T12", InitialThickness = 10, CurrentThickness = 10, MinThickness = 5,
+            MaxUsageCount = 50, Status = SampleStatus.Normal, PairSampleId = "IT-011-T",
+        });
+
+        Assert.Equal("IT-011-T", _repo.GetById("IT-011")!.PairSampleId);
+        Assert.Contains(_repo.GetAll(), s => s.PairSampleId == "IT-011-T");
+    }
+
+    [Fact]
+    public void 存量库迁移_PairSampleId列自动补齐()
+    {
+        var dbPath = Path.Combine(Path.GetTempPath(), "sct_repo_test", $"{Guid.NewGuid():N}.db");
+        try
+        {
+            var legacyDb = new Db(dbPath);
+            using (var conn = legacyDb.Open())
+            {
+                using var cmd = conn.CreateCommand();
+                cmd.CommandText = """
+                    CREATE TABLE SCT_Sample (
+                        SampleID TEXT PRIMARY KEY, SampleName TEXT NOT NULL,
+                        SampleType TEXT NOT NULL, AlloyType TEXT, RackPosition TEXT,
+                        InitialThickness REAL NOT NULL, CurrentThickness REAL NOT NULL, MinThickness REAL NOT NULL,
+                        UsageCount INTEGER NOT NULL DEFAULT 0, MaxUsageCount INTEGER NOT NULL,
+                        Status TEXT NOT NULL, LastUseTime TEXT, LastHeightCheckTime TEXT,
+                        IsActive INTEGER NOT NULL DEFAULT 1,
+                        CreatedTime TEXT NOT NULL DEFAULT (datetime('now','localtime')));
+                    """;
+                cmd.ExecuteNonQuery();
+            }
+
+            // EnsureCreated 对已存在的 SCT_Sample 不重建，迁移应补齐 PairSampleId 列
+            new DbInitializer(legacyDb).EnsureCreated();
+
+            var repo = new SctSampleRepository(legacyDb);
+            var sample = new SctSample
+            {
+                SampleId = "IT-012", SampleName = "旧库兼任样", SampleType = SampleType.Control,
+                RackPosition = "T13", InitialThickness = 10, CurrentThickness = 10, MinThickness = 5,
+                MaxUsageCount = 30, PairSampleId = "IT-012-T",
+            };
+            repo.Insert(sample);
+            Assert.Equal("IT-012-T", repo.GetById("IT-012")!.PairSampleId);
+        }
+        finally
+        {
+            Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools();
+            var dir = Path.GetDirectoryName(dbPath)!;
+            if (File.Exists(dbPath))
+            {
+                File.Delete(dbPath);
+            }
+        }
+    }
+
     public void Dispose()
     {
         try

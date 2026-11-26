@@ -187,4 +187,75 @@ public sealed class SampleRegistrationServiceTests
         Assert.Contains("货架位置已占用：A-01", error);
         Assert.Single(_samples.Store);
     }
+
+    // ==================== 检查样兼任类型标准化样（孪生档案） ====================
+
+    [Fact]
+    public async Task 检查样兼任_双档案互指同架位且合金只在孪生上()
+    {
+        var form = MakeSctForm(SampleType.Control, "HC-01", alloy: "6063");
+        form.RegisterAsTypeStdTwin = true;
+
+        var error = await Create().RegisterAsync(form);
+
+        Assert.Null(error);
+        Assert.Equal(2, _samples.Store.Count);
+        var control = _samples.Store.Single(s => s.SampleId == "HC-01");
+        var twin = _samples.Store.Single(s => s.SampleId == "HC-01-T");
+        Assert.Equal(SampleType.Control, control.SampleType);
+        Assert.Null(control.AlloyType);                 // 检查样本体不关联合金（触发器约束）
+        Assert.Equal("HC-01-T", control.PairSampleId);
+        Assert.Equal(SampleType.TypeStd, twin.SampleType);
+        Assert.Equal("6063", twin.AlloyType);
+        Assert.Equal("HC-01", twin.PairSampleId);
+        Assert.Equal(control.RackPosition, twin.RackPosition);  // 同一物理样品同架位
+        Assert.Equal(twin.MaxUsageCount, control.MaxUsageCount);
+        Assert.Equal(0, twin.UsageCount);
+        // 仅检查样入控制检查队列，孪生不主动入队（由合金切换/期限/生产前置触发）
+        var submitted = Assert.Single(_engine.Submitted);
+        Assert.Equal(SctTaskType.ControlCheck, submitted.TaskType);
+        Assert.Equal("HC-01", submitted.SampleId);
+    }
+
+    [Fact]
+    public async Task 检查样兼任_缺合金被拒()
+    {
+        var form = MakeSctForm(SampleType.Control, "HC-01");
+        form.RegisterAsTypeStdTwin = true;
+
+        var error = await Create().RegisterAsync(form);
+
+        Assert.Equal("兼任类型标准化样必须填写合金", error);
+        Assert.Empty(_samples.Store);
+    }
+
+    [Fact]
+    public async Task 检查样兼任_孪生编号已存在被拒()
+    {
+        var service = Create();
+        _samples.Store.Add(new SctSample
+        {
+            SampleId = "HC-01-T", SampleName = "既有孪生", SampleType = SampleType.TypeStd,
+            AlloyType = "6063", RackPosition = "B-09", InitialThickness = 10, CurrentThickness = 10,
+            MinThickness = 5, MaxUsageCount = 50, Status = SampleStatus.Normal,
+        });
+
+        var form = MakeSctForm(SampleType.Control, "HC-01", alloy: "6063");
+        form.RackPosition = "B-02";
+        form.RegisterAsTypeStdTwin = true;
+
+        var error = await service.RegisterAsync(form);
+
+        Assert.Equal("样品编号已存在：HC-01-T", error);
+        Assert.Single(_samples.Store);                  // 既有样品未被覆盖
+    }
+
+    [Fact]
+    public async Task 检查样不兼任_填合金仍被拒且不建孪生()
+    {
+        var error = await Create().RegisterAsync(MakeSctForm(SampleType.Control, "HC-01", alloy: "6063"));
+
+        Assert.Equal("仅类型标准化样/生产样可关联合金，控样/检查样请留空合金", error);
+        Assert.Empty(_samples.Store);
+    }
 }

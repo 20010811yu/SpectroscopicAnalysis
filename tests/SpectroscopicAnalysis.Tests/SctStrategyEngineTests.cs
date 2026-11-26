@@ -515,4 +515,65 @@ public sealed class SctStrategyEngineTests
         // 留痕已并入编排层完成日志行（一行一任务），引擎不再单独写日志
         Assert.DoesNotContain(_logs.Inserted, l => l.OperationType == "HeightMeasure");
     }
+
+    // ==================== 兼任孪生阈值联动 ====================
+
+    [Fact]
+    public void 兼任孪生_主样达阈值孪生同步置NeedMeasure并各插测高任务()
+    {
+        var main = MakeSample("HC-01", SampleType.Control, usage: 50, maxUsage: 50);
+        main.PairSampleId = "HC-01-T";
+        var twin = MakeSample("HC-01-T", SampleType.TypeStd, alloy: "6063", usage: 50, maxUsage: 50);
+        twin.PairSampleId = "HC-01";
+        _samples.Store.Add(main);
+        _samples.Store.Add(twin);
+        var engine = Create();
+
+        engine.NotifyAnalysisCompleted("HC-01");    // 检查完成（Workflow 已落库并拉平孪生次数）
+
+        Assert.Equal(SampleStatus.NeedMeasure, _samples.GetById("HC-01")!.Status);
+        Assert.Equal(SampleStatus.NeedMeasure, _samples.GetById("HC-01-T")!.Status);
+        Assert.True(engine.TryDequeue(out var t1));
+        Assert.Equal(SctTaskType.HeightMeasure, t1.TaskType);
+        engine.CompleteTask(t1.TaskId, true, null);
+        Assert.True(engine.TryDequeue(out var t2));
+        Assert.Equal(SctTaskType.HeightMeasure, t2.TaskType);
+        Assert.Equal("HC-01-T", t2.SampleId);       // 孪生独立测高任务，各自闭环
+    }
+
+    [Fact]
+    public void 兼任孪生_孪生已NeedMeasure不重复提交测高()
+    {
+        var main = MakeSample("HC-01", SampleType.Control, usage: 50, maxUsage: 50);
+        main.PairSampleId = "HC-01-T";
+        _samples.Store.Add(main);
+        _samples.Store.Add(MakeSample("HC-01-T", SampleType.TypeStd, alloy: "6063", status: SampleStatus.NeedMeasure));
+        var engine = Create();
+
+        engine.NotifyAnalysisCompleted("HC-01");
+
+        Assert.True(engine.TryDequeue(out var task));
+        Assert.Equal("HC-01", task.SampleId);       // 仅主样一条测高任务
+        engine.CompleteTask(task.TaskId, true, null);
+        Assert.False(engine.TryDequeue(out _));
+    }
+
+    [Fact]
+    public void 兼任孪生_孪生次数未达阈值不联动()
+    {
+        var main = MakeSample("HC-01", SampleType.Control, usage: 50, maxUsage: 50);
+        main.PairSampleId = "HC-01-T";
+        _samples.Store.Add(main);
+        _samples.Store.Add(MakeSample("HC-01-T", SampleType.TypeStd, alloy: "6063"));
+        var engine = Create();
+
+        engine.NotifyAnalysisCompleted("HC-01");
+
+        Assert.Equal(SampleStatus.NeedMeasure, _samples.GetById("HC-01")!.Status);
+        Assert.Equal(SampleStatus.Normal, _samples.GetById("HC-01-T")!.Status);     // 孪生保持正常
+        Assert.True(engine.TryDequeue(out var task));
+        Assert.Equal("HC-01", task.SampleId);
+        engine.CompleteTask(task.TaskId, true, null);
+        Assert.False(engine.TryDequeue(out _));
+    }
 }

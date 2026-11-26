@@ -48,7 +48,7 @@ internal sealed class FakeSampleRepository : ISctSampleRepository
         Store.RemoveAll(s => s.SampleId == sampleId);
     }
 
-    /// <summary>激发后持久化（与真实仓储语义一致：次数+1、厚度、状态、上次使用时间）。</summary>
+    /// <summary>激发后持久化（与真实仓储语义一致：次数+1、厚度、状态、上次使用时间；兼任孪生次数/上次使用时间拉平）。</summary>
     public void UpdateAfterSpark(string sampleId, double currentThickness, string status, DateTime usedAt)
     {
         var sample = Store.FirstOrDefault(s => s.SampleId == sampleId);
@@ -61,6 +61,15 @@ internal sealed class FakeSampleRepository : ISctSampleRepository
         sample.CurrentThickness = currentThickness;
         sample.Status = status;
         sample.LastUseTime = usedAt;
+        // 兼任孪生同步（与真实仓储一致：仅拉平次数/上次使用时间，厚度状态按角色独立）
+        var twin = string.IsNullOrEmpty(sample.PairSampleId)
+            ? null
+            : Store.FirstOrDefault(s => s.SampleId == sample.PairSampleId);
+        if (twin is not null)
+        {
+            twin.UsageCount = sample.UsageCount;
+            twin.LastUseTime = usedAt;
+        }
         SparkedIds.Add(sampleId);
     }
 

@@ -963,8 +963,17 @@ public sealed partial class SamplesViewModel : ObservableObject, IPageLifecycle
             return;
         }
 
+        // 已在队列中（排队中的生产样任务）不再重复入队，红色错误提示
+        var alreadyQueued = _strategyEngine.GetQueuedTasks().Any(t =>
+            t.TaskType == SctTaskType.Production && string.Equals(t.SampleId, sampleId, StringComparison.Ordinal));
+        if (alreadyQueued)
+        {
+            JoinQueueError = $"生产样「{row.SampleId}」已在任务队列中，请勿重复加入";
+            return;
+        }
+
         _strategyEngine.SubmitTask(SctTaskType.Production, sampleId, "手动加入任务队列");
-        JoinQueueMessage = $"样品「{row.SampleId}」已加入任务队列（重复加入时引擎自动去重）";
+        JoinQueueMessage = $"样品「{row.SampleId}」已加入任务队列";
     }
 
     /// <summary>表单校验（按注册类型条件化）；返回错误消息，null 表示通过。</summary>

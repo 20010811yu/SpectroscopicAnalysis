@@ -623,19 +623,6 @@
                                     </DataTemplate>
                                 </DataGridTemplateColumn.CellTemplate>
                             </DataGridTemplateColumn>
-                            <DataGridTemplateColumn Header="操作" Width="88" MinWidth="88">
-                                <DataGridTemplateColumn.CellTemplate>
-                                    <DataTemplate>
-                                        <!-- 手动加入任务队列：仅待分析样可用（已完成置灰；引擎同目标自动去重） -->
-                                        <Button Content="加入队列" HorizontalAlignment="Left" VerticalAlignment="Center"
-                                                Style="{StaticResource SecondaryBtn}"
-                                                IsEnabled="{Binding CanJoinQueue}"
-                                                ToolTip="将待分析样品加入生产任务队列（已在队列中时自动去重）"
-                                                Command="{Binding DataContext.JoinQueueCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                                CommandParameter="{Binding SampleId}" />
-                                    </DataTemplate>
-                                </DataGridTemplateColumn.CellTemplate>
-                            </DataGridTemplateColumn>
                             <DataGridTextColumn Header="入库时间" Binding="{Binding CreatedText}" FontFamily="Consolas" Width="1*" MinWidth="70" ElementStyle="{StaticResource GridCellText}" />
                         </DataGrid.Columns>
                     </DataGrid>

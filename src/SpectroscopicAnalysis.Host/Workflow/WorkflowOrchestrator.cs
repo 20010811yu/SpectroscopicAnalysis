@@ -168,6 +168,15 @@ public sealed class WorkflowOrchestrator : IWorkflowOrchestrator
                 return;     // 急停后主循环退出，恢复须人工复位后重新 StartAsync
             }
 
+            // 策略引擎时钟节拍（定时/按时间触发判定）：无论队列是否空闲都照常判定入队，
+            // 到期的定时标准化/检查样/类型标准化先进入任务队列（与其他任务同样排队可见）再依优先级执行
+            var now = DateTime.UtcNow;
+            if (now - _lastEngineTick >= TimeSpan.FromMilliseconds(_options.EngineTickIntervalMs))
+            {
+                _lastEngineTick = now;
+                _engine.OnTick();
+            }
+
             // 出队前合金切换检测：队首为生产任务且合金切换时，先入队前置类型标准化（P3 优先自动先执行）
             CheckAlloySwitchBeforeDequeue();
 
@@ -202,14 +211,6 @@ public sealed class WorkflowOrchestrator : IWorkflowOrchestrator
                 continue;
             }
 
-            // 策略引擎时钟节拍（定时/按时间触发判定）
-            var now = DateTime.UtcNow;
-            if (now - _lastEngineTick >= TimeSpan.FromMilliseconds(_options.EngineTickIntervalMs))
-            {
-                _lastEngineTick = now;
-                _engine.OnTick();
-            }
-
             await Task.Delay(_options.PollIntervalMs, ct);
         }
     }
@@ -220,8 +221,8 @@ public sealed class WorkflowOrchestrator : IWorkflowOrchestrator
     private async Task ExecuteTaskAsync(SctTask task, CancellationToken ct)
     {
         _taskStartedUtc = DateTime.UtcNow;   // 执行时长起点（生产流程补足 TaskDurationMs 用；与日志 StartTime 口径不同）
-        // 开始时间采集：生产样 = 注册提交时刻（注册即入队，取任务入队时间）；其余类型在指令下发点采集
-        _currentTaskStartTime = task.TaskType == SctTaskType.Production ? task.EnqueueTime : null;
+        // 开始时间采集：统一为任务实际开始执行时刻（生产样不再取入队时间，消除日志区间与 SCT 任务重叠的错觉）
+        _currentTaskStartTime = DateTime.Now;
         lock (_gate)
         {
             _current = task;

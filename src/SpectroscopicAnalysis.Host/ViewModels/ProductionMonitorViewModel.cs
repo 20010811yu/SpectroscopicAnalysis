@@ -580,8 +580,27 @@ public sealed partial class ProductionMonitorViewModel : ObservableObject, IPage
         IsLoading = true;
         try
         {
+            // SampleID → 合金映射（一次构建，避免 7 万行日志逐行查询档案表的 O(n×m) 性能回归）
+            var alloyMap = await Task.Run(() =>
+            {
+                var map = new Dictionary<string, string?>();
+                foreach (var p in _production.GetAll())
+                {
+                    map[p.SampleId] = p.AlloyType;
+                }
+
+                foreach (var s in _samples.GetAll())
+                {
+                    if (!map.ContainsKey(s.SampleId))
+                    {
+                        map[s.SampleId] = s.AlloyType;
+                    }
+                }
+
+                return (IReadOnlyDictionary<string, string?>)map;
+            });
             _allLogs = await Task.Run(() => _logs.GetAll()
-                .Select(MapLogRow)
+                .Select(l => MapLogRow(l, alloyMap))
                 .ToList());
             _sampleTypeMap = await Task.Run(() =>
             {
@@ -702,17 +721,10 @@ public sealed partial class ProductionMonitorViewModel : ObservableObject, IPage
     }
 
     /// <summary>日志行映射（操作类型/结果状态中文映射；时间保留原始串供日期过滤与末列展示）。</summary>
-    private OperationLogRowItem MapLogRow(SctOperationLog l)
+    private OperationLogRowItem MapLogRow(SctOperationLog l, IReadOnlyDictionary<string, string?> alloyMap)
     {
         var time = DateTime.TryParse(l.OperationTime, out var t) ? t : DateTime.MinValue;
-
-        // SampleID → 合金类型映射（生产样必填合金；SCT 样仅类型标准化样有值；日志合金列展示用）
-        string? alloy = null;
-        if (l.SampleId is not null)
-        {
-            alloy = _production.GetAll().FirstOrDefault(p => string.Equals(p.SampleId, l.SampleId, StringComparison.Ordinal))?.AlloyType
-                ?? _samples.GetAll().FirstOrDefault(s => string.Equals(s.SampleId, l.SampleId, StringComparison.Ordinal))?.AlloyType;
-        }
+        var alloy = l.SampleId is not null && alloyMap.TryGetValue(l.SampleId, out var a) ? a : null;
 
         return new OperationLogRowItem
         {

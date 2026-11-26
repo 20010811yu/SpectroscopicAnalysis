@@ -124,4 +124,11 @@ internal sealed class FakeSctStrategyEngine : ISctStrategyEngine
     };
 
     public SctControlCountdown GetControlCountdown() => Countdown;
+
+    /// <summary>可预置的标准化期限倒计时快照（默认两个开关均未启用）。</summary>
+    public SctStandardizeCountdown StandardizeCountdown { get; set; } = new(
+        PeriodicEnabled: false, StandardizeDueTime: null,
+        TypeStdEnabled: false, TypeStdDueTime: null);
+
+    public SctStandardizeCountdown GetStandardizeCountdown() => StandardizeCountdown;
 }

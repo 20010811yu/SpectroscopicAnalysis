@@ -60,4 +60,7 @@ public interface ISctStrategyEngine
 
     /// <summary>检查样插入进度快照（模式/已计数或已过分钟/阈值；主控台 KPI 展示）。</summary>
     SctControlCountdown GetControlCountdown();
+
+    /// <summary>定期标准化与类型标准化期限倒计时快照（到期时刻；生产监控 KPI 展示；开关关闭或无记录返回 null 到期时刻）。</summary>
+    SctStandardizeCountdown GetStandardizeCountdown();
 }

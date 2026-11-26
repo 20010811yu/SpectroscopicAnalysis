@@ -306,6 +306,27 @@ public sealed class SctStrategyEngine : ISctStrategyEngine
         }
     }
 
+    /// <inheritdoc />
+    public SctStandardizeCountdown GetStandardizeCountdown()
+    {
+        // 首次查询（OnTick 尚未运行）也先从日志恢复计时起点，避免重启后误显示"到期待执行"
+        EnsurePeriodStateRestored();
+        lock (_gate)
+        {
+            var policy = _policyStore.Load();
+            // 到期时刻 = 上次完成时间 + 期限（null = 未启用或无记录已到期）；UI 据此逐秒推算剩余时间
+            var stdDue = policy.PeriodicStandardizeEnabled && _lastStandardizeTime is not null
+                ? (DateTime?)_lastStandardizeTime.Value.AddHours(policy.PeriodicStandardizeHours)
+                : null;
+            var typeStdDue = policy.TypeStandardizePeriodEnabled && _lastTypeStdTime is not null
+                ? (DateTime?)_lastTypeStdTime.Value.AddDays(policy.TypeStandardizePeriodDays)
+                : null;
+            return new SctStandardizeCountdown(
+                policy.PeriodicStandardizeEnabled, stdDue,
+                policy.TypeStandardizePeriodEnabled, typeStdDue);
+        }
+    }
+
     // ==================== 事件入口 ====================
 
     /// <inheritdoc />
@@ -502,28 +523,8 @@ public sealed class SctStrategyEngine : ISctStrategyEngine
         var policy = _policyStore.Load();
         var now = _time.GetLocalNow().DateTime;
 
-        // 内存计时器为空（程序重启后首次判定）时，从 SCT 运行日志恢复计时起点——
-        // 取最近一条成功操作的完成时刻，周期跨重启延续计算，不再视为到期立即触发
-        _lastStandardizeTime ??= GetLastCompletedTimeFromLog("Standardization");
-        _lastControlCheckTime ??= GetLastCompletedTimeFromLog("ControlCheck");
-        _lastTypeStdTime ??= GetLastCompletedTimeFromLog("TypeStandardize");
-
-        // 按数量插入的计数同样跨重启延续：恢复为"最近一次成功检查样之后已完成的生产样个数"；
-        // 恢复值已达阈值时不再继续查找/等待，立即插入控制检查并清零；未达阈值则记录数量随生产继续累加
-        if (!_controlCountRestored)
-        {
-            _controlCountRestored = true;
-            var (restored, reached) = CountProductionSinceLastControlFromLog(policy.ControlInsertCount);
-            if (reached)
-            {
-                _productionSinceControl = 0;
-                EnqueueWithSelection(SctTaskType.ControlCheck, "按分析数量插入");
-            }
-            else
-            {
-                _productionSinceControl = restored;
-            }
-        }
+        // 内存计时器/计数为空（程序重启后首次判定）时，从 SCT 运行日志恢复（周期跨重启延续计算）
+        EnsurePeriodStateRestored();
 
         lock (_gate)
         {
@@ -554,6 +555,34 @@ public sealed class SctStrategyEngine : ISctStrategyEngine
 
     /// <summary>控制样计数恢复标记（重启后首个节拍从日志恢复一次，之后由完成回喂正常累加）。</summary>
     private bool _controlCountRestored;
+
+    /// <summary>
+    /// 程序重启后从 SCT 运行日志恢复定时判定状态（幂等，仅恢复一次）：
+    /// 三个期限计时起点 + 按数量插入的生产计数（恢复值已达阈值时立即插入控制检查并清零）。
+    /// </summary>
+    private void EnsurePeriodStateRestored()
+    {
+        _lastStandardizeTime ??= GetLastCompletedTimeFromLog("Standardization");
+        _lastControlCheckTime ??= GetLastCompletedTimeFromLog("ControlCheck");
+        _lastTypeStdTime ??= GetLastCompletedTimeFromLog("TypeStandardize");
+
+        if (_controlCountRestored)
+        {
+            return;
+        }
+
+        _controlCountRestored = true;
+        var (restored, reached) = CountProductionSinceLastControlFromLog(_policyStore.Load().ControlInsertCount);
+        if (reached)
+        {
+            _productionSinceControl = 0;
+            EnqueueWithSelection(SctTaskType.ControlCheck, "按分析数量插入");
+        }
+        else
+        {
+            _productionSinceControl = restored;
+        }
+    }
 
     /// <summary>
     /// 从 SCT 运行日志统计"最近一次成功检查样之后已完成的生产样个数"（按数量插入计数跨重启恢复用）。

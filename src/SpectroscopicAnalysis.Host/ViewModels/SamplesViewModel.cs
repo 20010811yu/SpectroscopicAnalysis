@@ -434,6 +434,14 @@ public sealed partial class SamplesViewModel : ObservableObject, IPageLifecycle
     [ObservableProperty]
     private string? _deleteError;
 
+    /// <summary>加入队列成功提示（详情面板「加入队列」操作反馈；空即隐藏）。</summary>
+    [ObservableProperty]
+    private string? _joinQueueMessage;
+
+    /// <summary>加入队列失败原因（详情面板「加入队列」操作反馈；空即隐藏）。</summary>
+    [ObservableProperty]
+    private string? _joinQueueError;
+
     // ==================== 样品详情面板（左表 + 右详情布局；样品台账/生产样档案两表启用） ====================
 
     /// <summary>左侧表格当前选中行（DataGrid SelectedItem 绑定；SCT 样与生产样两表共用）。</summary>
@@ -444,6 +452,13 @@ public sealed partial class SamplesViewModel : ObservableObject, IPageLifecycle
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(DetailVisible))]
     private SampleDetailItem? _detail;
+
+    /// <summary>切换选中行/切表/分页后清空加入队列的提示，避免上一条反馈残留误导。</summary>
+    partial void OnDetailChanged(SampleDetailItem? value)
+    {
+        JoinQueueMessage = null;
+        JoinQueueError = null;
+    }
 
     /// <summary>详情面板标准值子表（仅 SCT 样；经 ISctCertifiedValueRepository.GetBySampleId）。</summary>
     [ObservableProperty]
@@ -921,23 +936,35 @@ public sealed partial class SamplesViewModel : ObservableObject, IPageLifecycle
     }
 
     /// <summary>手动将待分析生产样加入任务队列（重启/分析失败等遗留的 PendingAnalysis 样补入队；
-    /// 引擎按同类型+同目标未完成任务自动去重，重复点击安全；入队留痕由策略引擎写入全流程日志）。</summary>
+    /// 引擎按同类型+同目标未完成任务自动去重，重复点击安全；入队留痕由策略引擎写入全流程日志）。
+    /// 成功/失败均在详情面板给出即时提示（JoinQueueMessage / JoinQueueError）。</summary>
     [RelayCommand]
     private void JoinQueue(string? sampleId)
     {
+        JoinQueueMessage = null;
+        JoinQueueError = null;
         if (string.IsNullOrWhiteSpace(sampleId))
         {
+            JoinQueueError = "未指定样品，无法加入队列";
             return;
         }
 
-        // 仅待分析状态允许入队；行模型不存在或已完成（Completed）直接忽略
+        // 仅待分析状态允许入队；行模型不存在或已完成（Completed）提示失败原因
         var row = _allProduction.FirstOrDefault(r => string.Equals(r.SampleId, sampleId, StringComparison.Ordinal));
-        if (row is null || !row.CanJoinQueue)
+        if (row is null)
         {
+            JoinQueueError = $"样品「{sampleId}」不存在于生产样档案，无法加入队列";
+            return;
+        }
+
+        if (!row.CanJoinQueue)
+        {
+            JoinQueueError = $"样品「{row.SampleId}」当前状态（{row.StatusText}）不可入队，仅待分析状态可加入队列";
             return;
         }
 
         _strategyEngine.SubmitTask(SctTaskType.Production, sampleId, "手动加入任务队列");
+        JoinQueueMessage = $"样品「{row.SampleId}」已加入任务队列（重复加入时引擎自动去重）";
     }
 
     /// <summary>表单校验（按注册类型条件化）；返回错误消息，null 表示通过。</summary>

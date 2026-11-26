@@ -769,6 +769,31 @@
                                             <Run Text="样品详情：" /><Run Text="{Binding Detail.SampleId, Mode=OneWay}" />
                                         </TextBlock>
                                     </DockPanel>
+                                    <!-- 加入队列操作反馈：成功绿/失败红（VM 互斥置值；非空才显示） -->
+                                    <TextBlock Text="{Binding JoinQueueMessage}" TextWrapping="Wrap" Margin="0,6,0,0"
+                                               Foreground="{DynamicResource Brush.Status.Running}">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock" BasedOn="{StaticResource Text.Caption}">
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding JoinQueueMessage}" Value="{x:Null}">
+                                                        <Setter Property="Visibility" Value="Collapsed" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
+                                    <TextBlock Text="{Binding JoinQueueError}" TextWrapping="Wrap" Margin="0,6,0,0"
+                                               Foreground="{DynamicResource Brush.Status.Failed}">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock" BasedOn="{StaticResource Text.Caption}">
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding JoinQueueError}" Value="{x:Null}">
+                                                        <Setter Property="Visibility" Value="Collapsed" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
                                     <Border CornerRadius="10" Padding="8,2" HorizontalAlignment="Left" Margin="0,6,0,0">
                                         <Border.Style>
                                             <Style TargetType="Border" BasedOn="{StaticResource Badge.Base}">

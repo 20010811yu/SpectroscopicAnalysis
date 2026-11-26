@@ -508,6 +508,13 @@ public sealed class SctStrategyEngine : ISctStrategyEngine
         _lastControlCheckTime ??= GetLastCompletedTimeFromLog("ControlCheck");
         _lastTypeStdTime ??= GetLastCompletedTimeFromLog("TypeStandardize");
 
+        // 按数量插入的计数同样跨重启延续：恢复为"最近一次成功检查样之后已完成的生产样个数"
+        if (!_controlCountRestored)
+        {
+            _controlCountRestored = true;
+            _productionSinceControl = CountProductionSinceLastControlFromLog();
+        }
+
         lock (_gate)
         {
             // 定时标准化（引擎设计 §5；上次时间未知视为已到期）
@@ -534,6 +541,41 @@ public sealed class SctStrategyEngine : ISctStrategyEngine
     }
 
     // ==================== 选样与闭环内部逻辑 ====================
+
+    /// <summary>控制样计数恢复标记（重启后首个节拍从日志恢复一次，之后由完成回喂正常累加）。</summary>
+    private bool _controlCountRestored;
+
+    /// <summary>
+    /// 从 SCT 运行日志统计"最近一次成功检查样之后已完成的生产样个数"（按数量插入计数跨重启恢复用）。
+    /// 无检查样历史时按 0 处理（历史过久不再追溯，重启后从零重新计数）。失败走错误链返回 0，不阻断节拍。
+    /// </summary>
+    private int CountProductionSinceLastControlFromLog()
+    {
+        try
+        {
+            var logs = _logs.GetAll();
+            var lastControlTime = logs
+                .Where(l => l.OperationType == "ControlCheck" &&
+                            l.ResultStatus == "Success" &&
+                            DateTime.TryParse(l.OperationTime, out _))
+                .Select(l => DateTime.Parse(l.OperationTime!))
+                .DefaultIfEmpty(DateTime.MinValue)
+                .Max();
+            if (lastControlTime == DateTime.MinValue)
+            {
+                return 0;
+            }
+
+            return logs.Count(l => l.OperationType == "Production" &&
+                                   l.ResultStatus == "Success" &&
+                                   DateTime.TryParse(l.OperationTime, out var t) && t > lastControlTime);
+        }
+        catch (Exception ex)
+        {
+            _errors.Collect(ErrorCodes.UnhandledException, "从运行日志恢复按数量插入检查样的生产计数失败", null, ex);
+            return 0;
+        }
+    }
 
     /// <summary>从 SCT 运行日志取指定操作类型最近一条成功记录的完成时刻（重启后周期计时起点恢复用；无记录返回 null 视为从未做过）。</summary>
     private DateTime? GetLastCompletedTimeFromLog(string operationType)

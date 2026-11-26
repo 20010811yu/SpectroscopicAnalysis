@@ -275,6 +275,10 @@ public sealed partial class SctViewModel : ObservableObject, IPageLifecycle
     [ObservableProperty]
     private bool _policyRotationEnabled = true;
 
+    /// <summary>检查样与类型标准化样混用（勾选后两类样品可互相承担对方任务；未勾选类型互斥）。</summary>
+    [ObservableProperty]
+    private bool _policyControlTypeStdMixed;
+
     [ObservableProperty]
     private bool _policyTypeOnAlloySwitch = true;
 
@@ -772,6 +776,7 @@ public sealed partial class SctViewModel : ObservableObject, IPageLifecycle
         var p = _policyStore.Load();
         PolicySettingSelectionMode = p.SettingSampleSelectionMode;
         PolicyRotationEnabled = p.ControlRotationEnabled;
+        PolicyControlTypeStdMixed = p.ControlTypeStdMixed;
         PolicyTypeOnAlloySwitch = p.TypeStandardizeOnAlloySwitch;
         PolicyTypePeriodEnabled = p.TypeStandardizePeriodEnabled;
         PolicyTypePeriodDays = p.TypeStandardizePeriodDays.ToString();
@@ -838,6 +843,7 @@ public sealed partial class SctViewModel : ObservableObject, IPageLifecycle
             {
                 SettingSampleSelectionMode = PolicySettingSelectionMode,
                 ControlRotationEnabled = PolicyRotationEnabled,
+                ControlTypeStdMixed = PolicyControlTypeStdMixed,
                 TypeStandardizeOnAlloySwitch = PolicyTypeOnAlloySwitch,
                 TypeStandardizePeriodEnabled = PolicyTypePeriodEnabled,
                 TypeStandardizePeriodDays = typePeriodDays,
@@ -939,6 +945,11 @@ public sealed partial class SctViewModel : ObservableObject, IPageLifecycle
         if (oldPolicy.ControlRotationEnabled != newPolicy.ControlRotationEnabled)
         {
             changes.Add($"多块轮换 {(oldPolicy.ControlRotationEnabled ? "开" : "关")}→{(newPolicy.ControlRotationEnabled ? "开" : "关")}");
+        }
+
+        if (oldPolicy.ControlTypeStdMixed != newPolicy.ControlTypeStdMixed)
+        {
+            changes.Add($"检查样与类型标准化样混用 {(oldPolicy.ControlTypeStdMixed ? "开" : "关")}→{(newPolicy.ControlTypeStdMixed ? "开" : "关")}");
         }
 
         if (oldPolicy.TypeStandardizeOnAlloySwitch != newPolicy.TypeStandardizeOnAlloySwitch)

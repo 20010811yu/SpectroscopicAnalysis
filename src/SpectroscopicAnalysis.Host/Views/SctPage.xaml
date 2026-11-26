@@ -448,6 +448,9 @@
                         <CheckBox Grid.Row="4" Grid.Column="0" Grid.ColumnSpan="2" Content="多块检查样轮换"
                                   IsChecked="{Binding PolicyRotationEnabled}" Margin="0,0,0,8" />
 
+                        <CheckBox Grid.Row="5" Grid.Column="0" Grid.ColumnSpan="2" Content="检查样与类型标准化样混用（两类样品可互相承担对方任务）"
+                                  IsChecked="{Binding PolicyControlTypeStdMixed}" Margin="0,0,0,8" />
+
                         <TextBlock Grid.Row="6" Grid.Column="0" Text="判定限类型" Style="{StaticResource Text.Caption}" VerticalAlignment="Center" Margin="0,0,12,8" />
                         <ComboBox Grid.Row="6" Grid.Column="1" ItemsSource="{Binding LimitTypeOptions}" SelectedItem="{Binding PolicyLimitType}" Margin="0,0,0,8" />
 

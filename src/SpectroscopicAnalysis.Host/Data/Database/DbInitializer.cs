@@ -233,6 +233,14 @@ public sealed class DbInitializer
             thinDisabled.CommandText = "UPDATE SCT_Sample SET Status = 'Disabled' WHERE CurrentThickness < MinThickness AND Status != 'Disabled'";
             thinDisabled.ExecuteNonQuery();
         }
+        // 启停用归一（幂等）：IsActive 随状态联动（需测高/过薄禁用 → 停用）；
+        // 仅单向收敛停用，Normal 样不强制启用（保留 SCT 管理页人工停用的结果）
+        using (var activeNormalize = conn.CreateCommand())
+        {
+            activeNormalize.Transaction = tx;
+            activeNormalize.CommandText = "UPDATE SCT_Sample SET IsActive = 0 WHERE Status IN ('NeedMeasure','Disabled') AND IsActive != 0";
+            activeNormalize.ExecuteNonQuery();
+        }
         // 生产样档案独立建表后，清理存量库 SCT_Sample 中的生产样行（先删子表引用再删本体，生产样数据由 Production_Sample 提供）
         PurgeProductionFromSctSample(conn, tx);
         // 校正系数版本化修复（幂等，须在建唯一索引前执行）：

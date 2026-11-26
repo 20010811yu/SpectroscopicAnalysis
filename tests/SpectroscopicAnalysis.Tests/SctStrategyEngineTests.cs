@@ -479,6 +479,7 @@ public sealed class SctStrategyEngineTests
 
         var sample = _samples.GetById("SUS-001")!;
         Assert.Equal(SampleStatus.NeedMeasure, sample.Status);  // 置 NeedMeasure
+        Assert.False(sample.IsActive);                          // 需测高 → IsActive 随状态联动停用
         Assert.True(engine.TryDequeue(out var task));
         Assert.Equal(SctTaskType.HeightMeasure, task.TaskType);
         Assert.Equal("SUS-001", task.SampleId);
@@ -489,12 +490,14 @@ public sealed class SctStrategyEngineTests
     public void 测高联动_厚度充足恢复正常()
     {
         _samples.Store.Add(MakeSample("SUS-001", status: SampleStatus.NeedMeasure, thickness: 9, minThickness: 8));
+        _samples.GetById("SUS-001")!.IsActive = false;          // 需测高期间停用
         var engine = Create();
 
         engine.NotifyHeightMeasured("SUS-001", thickness: 8.5);
 
         var sample = _samples.GetById("SUS-001")!;
         Assert.Equal(SampleStatus.Normal, sample.Status);       // 清 NeedMeasure
+        Assert.True(sample.IsActive);                           // 测高合格 → IsActive 随状态联动恢复启用
         Assert.Equal(8.5, sample.CurrentThickness);
         Assert.NotNull(sample.LastHeightCheckTime);
         // 留痕已并入编排层完成日志行（一行一任务），引擎不再单独写日志
@@ -511,6 +514,7 @@ public sealed class SctStrategyEngineTests
 
         var sample = _samples.GetById("SUS-001")!;
         Assert.Equal(SampleStatus.Disabled, sample.Status);
+        Assert.False(sample.IsActive);                          // 过薄禁用 → IsActive 随状态联动停用
         Assert.Contains(_errors.Collected, c => c.Code == ErrorCodes.SctThicknessBelowMinimum);
         // 留痕已并入编排层完成日志行（一行一任务），引擎不再单独写日志
         Assert.DoesNotContain(_logs.Inserted, l => l.OperationType == "HeightMeasure");

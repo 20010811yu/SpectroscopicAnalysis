@@ -477,11 +477,12 @@ public sealed class SctStrategyEngine : ISctStrategyEngine
 
         var now = _time.GetLocalNow().DateTime;
 
-        // 厚度流转（与测高登记同一状态机，引擎设计 §8）
+        // 厚度流转（与测高登记同一状态机，引擎设计 §8）；IsActive 随状态联动（需测高/过薄→停用，恢复→启用）
         if (thickness < sample.MinThickness)
         {
             sample.CurrentThickness = thickness;
             sample.Status = SampleStatus.Disabled;
+            sample.IsActive = false;            // 过薄禁用 → 同步停用（不可被标准化/类型标准化/控制检查选中）
             _samples.Update(sample);
             // 留痕由编排层完成行承载（厚度前后值/失败状态并入轨迹日志），引擎不再单独写日志
             _errors.Collect(ErrorCodes.SctThicknessBelowMinimum,
@@ -491,6 +492,7 @@ public sealed class SctStrategyEngine : ISctStrategyEngine
 
         sample.CurrentThickness = thickness;
         sample.Status = SampleStatus.Normal;    // 清 NeedMeasure
+        sample.IsActive = true;                 // 测高合格恢复 → 同步恢复启用
         sample.LastHeightCheckTime = now;
         _samples.Update(sample);
         // 留痕由编排层完成行承载（厚度前后值并入轨迹日志），引擎不再单独写日志
@@ -817,6 +819,7 @@ public sealed class SctStrategyEngine : ISctStrategyEngine
         if (sample.Status == SampleStatus.Normal && sample.UsageCount >= sample.MaxUsageCount)
         {
             sample.Status = SampleStatus.NeedMeasure;
+            sample.IsActive = false;            // 需测高 → 同步停用（IsActive 随状态联动）
             _samples.Update(sample);
             WriteLog(SctTaskType.HeightMeasure, sample.SampleId, "使用次数达到上限",
                 resultStatus: "Warning", isPass: null);
@@ -832,6 +835,7 @@ public sealed class SctStrategyEngine : ISctStrategyEngine
         if (twin is not null && twin.Status == SampleStatus.Normal && twin.UsageCount >= twin.MaxUsageCount)
         {
             twin.Status = SampleStatus.NeedMeasure;
+            twin.IsActive = false;              // 需测高 → 同步停用（IsActive 随状态联动）
             _samples.Update(twin);
             WriteLog(SctTaskType.HeightMeasure, twin.SampleId, "兼任孪生同步：使用次数达到上限",
                 resultStatus: "Warning", isPass: null);

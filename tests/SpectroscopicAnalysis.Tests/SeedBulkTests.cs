@@ -209,20 +209,22 @@ public sealed class SeedBulkTests
             new DbInitializer(db).EnsureCreated();
             using var conn = db.Open();
 
-            // 铺底：过薄样（Normal/NeedMeasure 但厚度低于最小）+ 已禁用过薄样 + 厚度充足样
+            // 铺底：过薄样（Normal/NeedMeasure 但厚度低于最小）+ 已禁用过薄样 + 厚度充足样 + 需测高停用遗留
             using (var cmd = conn.CreateCommand())
             {
                 cmd.CommandText = """
-                    INSERT INTO SCT_Sample (SampleID, SampleName, SampleType, InitialThickness, CurrentThickness, MinThickness, UsageCount, MaxUsageCount, Status)
-                    VALUES ('THIN-1', '过薄未禁用', 'Control', 10, 4.5, 5, 0, 60, 'Normal'),
-                           ('THIN-2', '过薄需测高', 'Control', 10, 4.0, 5, 0, 60, 'NeedMeasure'),
-                           ('THIN-3', '过薄已禁用', 'Control', 10, 3.5, 5, 0, 60, 'Disabled'),
-                           ('THIN-4', '厚度充足', 'Control', 10, 9.0, 5, 0, 60, 'Normal')
+                    INSERT INTO SCT_Sample (SampleID, SampleName, SampleType, InitialThickness, CurrentThickness, MinThickness, UsageCount, MaxUsageCount, Status, IsActive)
+                    VALUES ('THIN-1', '过薄未禁用', 'Control', 10, 4.5, 5, 0, 60, 'Normal', 1),
+                           ('THIN-2', '过薄需测高', 'Control', 10, 4.0, 5, 0, 60, 'NeedMeasure', 1),
+                           ('THIN-3', '过薄已禁用', 'Control', 10, 3.5, 5, 0, 60, 'Disabled', 0),
+                           ('THIN-4', '厚度充足', 'Control', 10, 9.0, 5, 0, 60, 'Normal', 1),
+                           ('THIN-5', '需测高未停用', 'Control', 10, 5.5, 5, 0, 60, 'NeedMeasure', 1)
                     """;
                 cmd.ExecuteNonQuery();
             }
 
-            // 兜底迁移（幂等）：过薄 → Disabled；已禁用/厚度充足不受影响
+            // 兜底迁移（幂等）：过薄 → Disabled；需测高/过薄禁用 → IsActive=0（启停用随状态联动归一）；
+            // 厚度充足的 Normal 样不受影响（不强制启用，保留人工停用结果）
             new DbInitializer(db).EnsureCreated();
 
             string StatusOf(string id)
@@ -232,10 +234,23 @@ public sealed class SeedBulkTests
                 q.Parameters.AddWithValue("$id", id);
                 return (string)q.ExecuteScalar()!;
             }
+            long IsActiveOf(string id)
+            {
+                using var q = conn.CreateCommand();
+                q.CommandText = "SELECT IsActive FROM SCT_Sample WHERE SampleID = $id";
+                q.Parameters.AddWithValue("$id", id);
+                return (long)q.ExecuteScalar()!;
+            }
             Assert.Equal("Disabled", StatusOf("THIN-1"));
             Assert.Equal("Disabled", StatusOf("THIN-2"));
             Assert.Equal("Disabled", StatusOf("THIN-3"));   // 幂等：已是 Disabled 不变
             Assert.Equal("Normal", StatusOf("THIN-4"));     // 厚度充足不受影响
+            Assert.Equal("NeedMeasure", StatusOf("THIN-5"));
+            Assert.Equal(0L, IsActiveOf("THIN-1"));
+            Assert.Equal(0L, IsActiveOf("THIN-2"));
+            Assert.Equal(0L, IsActiveOf("THIN-3"));
+            Assert.Equal(0L, IsActiveOf("THIN-5"));         // 需测高 → 停用归一
+            Assert.Equal(1L, IsActiveOf("THIN-4"));
         }
         finally
         {

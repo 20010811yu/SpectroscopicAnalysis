@@ -587,6 +587,7 @@ public sealed partial class SctViewModel : ObservableObject, IPageLifecycle
             var newStatus = thickness < sample.MinThickness ? SampleStatus.Disabled : SampleStatus.Normal;
             sample.CurrentThickness = thickness;
             sample.Status = newStatus;
+            sample.IsActive = newStatus == SampleStatus.Normal;   // IsActive 随状态联动：过薄停用、测高合格恢复启用
             sample.LastHeightCheckTime = DateTime.Now;
             _samples.Update(sample);
             // 过薄报废与引擎测高回喂同规则：必发 5104 报警（此前仅置 Disabled 不报警，提示口径不一致）
@@ -693,10 +694,12 @@ public sealed partial class SctViewModel : ObservableObject, IPageLifecycle
 
             sample.MinThickness = min;
             sample.MaxUsageCount = maxUsage;
-            // 阈值变化可能影响状态：低于新阈值立即标记 Disabled；恢复需测高登记或更换样品（人工）
+            // 阈值变化可能影响状态：低于新阈值立即标记 Disabled（IsActive 随状态联动同步停用）；
+            // 恢复需测高登记或更换样品（人工）
             if (sample.CurrentThickness < min)
             {
                 sample.Status = SampleStatus.Disabled;
+                sample.IsActive = false;
             }
 
             _samples.Update(sample);

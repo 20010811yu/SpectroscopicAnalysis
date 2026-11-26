@@ -1640,7 +1640,12 @@ public sealed partial class SamplesViewModel : ObservableObject, IPageLifecycle
             var snapshot = row;
             try
             {
-                await Task.Run(() => _samples.DeleteWithChildren(snapshot.SampleId));
+                await Task.Run(() =>
+                {
+                    _samples.DeleteWithChildren(snapshot.SampleId);
+                    // 队列联动：档案已删，排队中的关联任务一并移除（置已取消留痕；执行中/已终结不受影响）
+                    _strategyEngine.RemoveQueuedTasksBySample(snapshot.SampleId);
+                });
                 _ui.Invoke(() =>
                 {
                     _allSctRows = _allSctRows.Where(r => !ReferenceEquals(r, snapshot)).ToList();
@@ -1664,7 +1669,12 @@ public sealed partial class SamplesViewModel : ObservableObject, IPageLifecycle
 
         try
         {
-            await Task.Run(() => _production.DeleteWithResults(production.SampleId));
+            await Task.Run(() =>
+            {
+                _production.DeleteWithResults(production.SampleId);
+                // 队列联动：档案已删，排队中的关联任务一并移除（置已取消留痕；执行中/已终结不受影响）
+                _strategyEngine.RemoveQueuedTasksBySample(production.SampleId);
+            });
             _ui.Invoke(() =>
             {
                 _allProduction = _allProduction.Where(r => !ReferenceEquals(r, production)).ToList();

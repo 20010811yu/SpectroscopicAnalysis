@@ -313,7 +313,7 @@ public sealed class SamplesViewModelTests
 
         var disabled = vm.SctSamples.First(r => r.SampleId == "SUS-003");
         Assert.Equal("类型标准化样", vm.SctSamples.First(r => r.SampleId == "TS-6061-01").TypeDisplay);
-        Assert.Equal("✖ 禁用（过薄）", disabled.StatusText);
+        Assert.Equal("✖ 过薄", disabled.StatusText);   // 档案状态列只展示三种：正常/需测高/过薄
     }
 
     [Fact]

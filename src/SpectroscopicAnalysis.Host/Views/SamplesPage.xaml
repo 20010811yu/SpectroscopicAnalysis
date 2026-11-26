@@ -377,9 +377,6 @@
                                                         <DataTrigger Binding="{Binding Status}" Value="NeedMeasure">
                                                             <Setter Property="Background" Value="{DynamicResource Brush.Badge.Warning.Bg}" />
                                                         </DataTrigger>
-                                                        <DataTrigger Binding="{Binding Status}" Value="Warning">
-                                                            <Setter Property="Background" Value="{DynamicResource Brush.Badge.Warning.Bg}" />
-                                                        </DataTrigger>
                                                         <DataTrigger Binding="{Binding Status}" Value="Disabled">
                                                             <Setter Property="Background" Value="{DynamicResource Brush.Badge.Failed.Bg}" />
                                                         </DataTrigger>
@@ -394,9 +391,6 @@
                                                                 <Setter Property="Foreground" Value="{DynamicResource Brush.Status.Running}" />
                                                             </DataTrigger>
                                                             <DataTrigger Binding="{Binding Status}" Value="NeedMeasure">
-                                                                <Setter Property="Foreground" Value="{DynamicResource Brush.Badge.Warning.Fg}" />
-                                                            </DataTrigger>
-                                                            <DataTrigger Binding="{Binding Status}" Value="Warning">
                                                                 <Setter Property="Foreground" Value="{DynamicResource Brush.Badge.Warning.Fg}" />
                                                             </DataTrigger>
                                                             <DataTrigger Binding="{Binding Status}" Value="Disabled">

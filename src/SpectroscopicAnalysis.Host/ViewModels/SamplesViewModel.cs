@@ -294,14 +294,13 @@ public sealed partial class SamplesViewModel : ObservableObject, IPageLifecycle
         public static StatusOption All { get; } = new(null, "全部状态");
     }
 
-    /// <summary>状态下拉可选项（与任务清单状态机枚举一致，不自创状态名）。</summary>
+    /// <summary>状态下拉可选项（样品档案只展示三种业务状态：正常/需测高/过薄；Warning 引擎从不写入，不作为筛选项）。</summary>
     public IReadOnlyList<StatusOption> StatusOptions { get; } = new StatusOption[]
     {
         StatusOption.All,
         new(SampleStatus.Normal, "正常"),
         new(SampleStatus.NeedMeasure, "需测高"),
-        new(SampleStatus.Warning, "超差预警"),
-        new(SampleStatus.Disabled, "禁用（过薄）"),
+        new(SampleStatus.Disabled, "过薄"),
     };
 
     /// <summary>当前状态筛选（默认「全部状态」；变化后回到第 1 页刷新）。</summary>
@@ -1917,13 +1916,12 @@ public sealed partial class SamplesViewModel : ObservableObject, IPageLifecycle
         MinThicknessText = $"{s.MinThickness:0.0#}",
         UsageText = $"{s.UsageCount}/{s.MaxUsageCount}",
         Status = s.Status,
+        // 档案状态列只展示三种业务状态：正常 / 需测高 / 过薄（Warning 引擎从不写入，归一为正常展示）
         StatusText = s.Status switch
         {
-            SampleStatus.Normal => "● 正常",
             SampleStatus.NeedMeasure => "▲ 需测高",
-            SampleStatus.Warning => "▲ 超差预警",
-            SampleStatus.Disabled => "✖ 禁用（过薄）",
-            _ => s.Status,
+            SampleStatus.Disabled => "✖ 过薄",
+            _ => "● 正常",
         },
         LastHeightText = s.LastHeightCheckTime?.ToString("MM-dd HH:mm") ?? "—",
         LastUseText = s.LastUseTime?.ToString("MM-dd HH:mm") ?? "—",

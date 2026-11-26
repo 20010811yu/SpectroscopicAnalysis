@@ -30,6 +30,8 @@ public sealed class QueueTaskItem
     public bool IsRunning { get; init; }
     /// <summary>是否可手动置顶（排队中的生产任务；SCT 任务保持 P29 自动调度，执行中不可调整）。</summary>
     public bool CanMoveTop { get; init; }
+    /// <summary>是否可删除（排队中任务均可；执行中/已终结不可；删除仅移出队列，不删样品档案与数据）。</summary>
+    public bool CanRemove { get; init; }
     /// <summary>任务状态文本（排队中/执行中/已完成/失败）。</summary>
     public required string StatusText { get; init; }
 }
@@ -304,6 +306,7 @@ public sealed partial class ProductionMonitorViewModel : ObservableObject, IPage
             EnqueueTimeText = t.Status == SctTaskStatus.Running ? string.Empty : t.EnqueueTime.ToString("yyyy-MM-dd HH:mm:ss"),
             IsRunning = t.Status == SctTaskStatus.Running,
             CanMoveTop = t.Status == SctTaskStatus.Queued && t.TaskType == SctTaskType.Production,
+            CanRemove = t.Status == SctTaskStatus.Queued,
             StatusText = t.Status switch
             {
                 SctTaskStatus.Queued => "排队中",
@@ -370,6 +373,25 @@ public sealed partial class ProductionMonitorViewModel : ObservableObject, IPage
         if (!_engine.MoveToTop(taskId))
         {
             return; // 非排队中任务（已执行/已终结）：引擎拒绝，界面刷新后按钮随 CanMoveTop 隐藏
+        }
+
+        RefreshQueue();
+    }
+
+    /// <summary>删除排队任务：二次确认后仅从队列移除（置已取消留痕，不删除样品档案与数据），成功后即时刷新队列。</summary>
+    [RelayCommand]
+    private void RemoveQueuedTask(int taskId)
+    {
+        var row = _allQueueItems.FirstOrDefault(i => i.TaskId == taskId);
+        if (!_dialogs.Confirm("删除排队任务",
+                $"确认将任务 {row?.TaskIdText ?? $"#{taskId}"}（样品 {row?.SampleIdText ?? "—"}）从队列移除？\n仅移除排队任务，不删除样品档案与数据。"))
+        {
+            return;
+        }
+
+        if (!_engine.RemoveQueuedTask(taskId))
+        {
+            return; // 非排队中任务（已执行/已终结）：引擎拒绝，刷新后按钮随 CanRemove 隐藏
         }
 
         RefreshQueue();

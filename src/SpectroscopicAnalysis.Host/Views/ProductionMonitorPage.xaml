@@ -110,23 +110,39 @@
                                     </DataTemplate>
                                 </DataGridTemplateColumn.CellTemplate>
                             </DataGridTemplateColumn>
-                            <!-- 操作：排队中的生产任务可手动置顶（SCT 任务保持 P29 自动调度；执行中不可调整） -->
-                            <DataGridTemplateColumn Header="操作" Width="0.7*" MinWidth="60">
+                            <!-- 操作：排队中的生产任务可手动置顶（SCT 任务保持 P29 自动调度；执行中不可调整）；排队任务均可删除（仅移出队列） -->
+                            <DataGridTemplateColumn Header="操作" Width="1.2*" MinWidth="110">
                                 <DataGridTemplateColumn.CellTemplate>
                                     <DataTemplate>
-                                        <Button Content="置顶" Command="{Binding DataContext.MoveTaskTopCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
-                                                CommandParameter="{Binding TaskId}" Cursor="Hand">
-                                            <Button.Style>
-                                                <Style TargetType="Button" BasedOn="{StaticResource ModeBtn}">
-                                                    <Setter Property="Visibility" Value="Visible" />
-                                                    <Style.Triggers>
-                                                        <DataTrigger Binding="{Binding CanMoveTop}" Value="False">
-                                                            <Setter Property="Visibility" Value="Collapsed" />
-                                                        </DataTrigger>
-                                                    </Style.Triggers>
-                                                </Style>
-                                            </Button.Style>
-                                        </Button>
+                                        <StackPanel Orientation="Horizontal">
+                                            <Button Content="置顶" Command="{Binding DataContext.MoveTaskTopCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
+                                                    CommandParameter="{Binding TaskId}" Cursor="Hand">
+                                                <Button.Style>
+                                                    <Style TargetType="Button" BasedOn="{StaticResource ModeBtn}">
+                                                        <Setter Property="Visibility" Value="Visible" />
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding CanMoveTop}" Value="False">
+                                                                <Setter Property="Visibility" Value="Collapsed" />
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </Button.Style>
+                                            </Button>
+                                            <!-- 删除：排队中任务均可；仅从队列移除（置已取消留痕），不删样品档案与数据 -->
+                                            <Button Content="删除" Command="{Binding DataContext.RemoveQueuedTaskCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
+                                                    CommandParameter="{Binding TaskId}" Cursor="Hand" Margin="8,0,0,0">
+                                                <Button.Style>
+                                                    <Style TargetType="Button" BasedOn="{StaticResource ModeBtn}">
+                                                        <Setter Property="Visibility" Value="Visible" />
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding CanRemove}" Value="False">
+                                                                <Setter Property="Visibility" Value="Collapsed" />
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </Button.Style>
+                                            </Button>
+                                        </StackPanel>
                                     </DataTemplate>
                                 </DataGridTemplateColumn.CellTemplate>
                             </DataGridTemplateColumn>

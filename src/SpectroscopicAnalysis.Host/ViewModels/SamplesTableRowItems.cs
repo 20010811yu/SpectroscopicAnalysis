@@ -62,6 +62,8 @@ public sealed class OperationLogRowItem
     /// <summary>原始 SampleID（类型筛选关联用；不绑定 UI）。</summary>
     public string RawSampleId { get; init; } = string.Empty;
     public string OperationTypeText { get; init; } = string.Empty;
+    /// <summary>合金类型展示（样品档案查询；无档案或未填显示 —，生产日志列用）。</summary>
+    public string AlloyTypeText { get; init; } = "—";
     public string TriggerReasonText { get; init; } = "—";
     /// <summary>开始时间展示（生产样=注册提交时刻，SCT 样=指令下发时刻；未采集/历史行显示 —）。</summary>
     public string StartTimeText { get; init; } = "—";

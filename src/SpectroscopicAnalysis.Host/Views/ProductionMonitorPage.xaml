@@ -256,6 +256,7 @@
                               FontSize="{DynamicResource FontSize.Body}">
                         <DataGrid.Columns>
                             <DataGridTextColumn Header="样品" Binding="{Binding SampleIdText}" FontFamily="Consolas" Width="1*" MinWidth="70" ElementStyle="{StaticResource GridCellText}" />
+                            <DataGridTextColumn Header="合金类型" Binding="{Binding AlloyTypeText}" Width="0.8*" MinWidth="50" ElementStyle="{StaticResource GridCellText}" />
                             <DataGridTextColumn Header="操作类型" Binding="{Binding OperationTypeText}" Width="0.9*" MinWidth="60" ElementStyle="{StaticResource GridCellText}" />
                             <DataGridTextColumn Header="触发原因" Binding="{Binding TriggerReasonText}" Width="1.4*" MinWidth="70" ElementStyle="{StaticResource GridCellText}" />
                             <DataGridTextColumn Header="结果状态" Binding="{Binding ResultStatusText}" Width="0.9*" MinWidth="60" ElementStyle="{StaticResource GridCellText}" />

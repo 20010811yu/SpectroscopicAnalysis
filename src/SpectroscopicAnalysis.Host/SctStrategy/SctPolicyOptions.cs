@@ -46,6 +46,10 @@ public sealed class SctPolicyOptions
     /// <summary>检查样超差闭环：标准化后验证重测次数上限（仍失败 → 报警并暂停自动模式，任务清单第 5 节④）。</summary>
     public int ControlRecheckMaxCount { get; set; } = 1;
 
+    /// <summary>检查样与类型标准化样混用（默认 false 类型互斥）。勾选后两类样品可互相承担对方任务：
+    /// 自动选样在使用次数最少的同一候选池中选取、次数并列时优先本类型；任务完成计时按任务用途归属。</summary>
+    public bool ControlTypeStdMixed { get; set; } = false;
+
     /// <summary>检查样插入模式：ByCount / ByTime。</summary>
     public string ControlInsertMode { get; set; } = "ByCount";
 

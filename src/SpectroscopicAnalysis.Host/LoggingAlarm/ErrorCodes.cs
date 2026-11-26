@@ -33,6 +33,9 @@ public static class ErrorCodes
     /// <summary>5104 测高后厚度低于最小厚度（报废更换报警）。</summary>
     public const int SctThicknessBelowMinimum = 5104;
 
+    /// <summary>5105 任务类型与样品类型不匹配（混用未勾选时 ControlCheck 须 Control 样、TypeStandardize 须 TypeStd 样）。</summary>
+    public const int SctTaskSampleTypeMismatch = 5105;
+
     // 9xxx 系统/急停
     /// <summary>9001 急停（按钮/PLC 信号/通信中断升级）。</summary>
     public const int EmergencyStop = 9001;

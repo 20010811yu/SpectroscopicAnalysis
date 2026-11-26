@@ -85,6 +85,15 @@
                                     </DataTrigger>
                                 </Style.Triggers>
                             </Style>
+                            <!-- 仅检查样：兼任类型标准化样勾选行 -->
+                            <Style x:Key="ControlRow" TargetType="FrameworkElement">
+                                <Setter Property="Visibility" Value="Collapsed" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding RegSampleType}" Value="Control">
+                                        <Setter Property="Visibility" Value="Visible" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
                         </StackPanel.Resources>
 
                         <!-- 第一步：类型选择 -->
@@ -127,6 +136,15 @@
                         <StackPanel Orientation="Horizontal" Margin="0,0,0,8" Style="{StaticResource TypeStdRow}">
                             <TextBlock Text="关联合金*" Style="{StaticResource Text.Caption}" Width="110" VerticalAlignment="Center" />
                             <TextBox Text="{Binding RegAlloyType, UpdateSourceTrigger=PropertyChanged}" />
+                        </StackPanel>
+                        <!-- 仅检查样：兼任类型标准化样（勾选后合金必填，同批创建孪生档案） -->
+                        <StackPanel Orientation="Vertical" Margin="0,0,0,8" Style="{StaticResource ControlRow}">
+                            <CheckBox Content="兼任类型标准化样（同一物理样品，将同时创建孪生档案：编号 -T 后缀、同架位，合金必填）"
+                                      IsChecked="{Binding RegRegisterAsTypeStdTwin}" />
+                            <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
+                                <TextBlock Text="关联合金*" Style="{StaticResource Text.Caption}" Width="110" VerticalAlignment="Center" />
+                                <TextBox Text="{Binding RegAlloyType, UpdateSourceTrigger=PropertyChanged}" MinWidth="160" />
+                            </StackPanel>
                         </StackPanel>
                     </StackPanel>
 
@@ -341,6 +359,7 @@
                             <DataGridTextColumn Header="SampleID" Binding="{Binding SampleId}" FontFamily="Consolas" Width="1.1*" MinWidth="60" ElementStyle="{StaticResource GridCellText}" />
                             <DataGridTextColumn Header="类型" Binding="{Binding TypeDisplay}" Width="0.9*" MinWidth="50" ElementStyle="{StaticResource GridCellText}" />
                             <DataGridTextColumn Header="合金" Binding="{Binding AlloyType}" Width="0.7*" MinWidth="40" ElementStyle="{StaticResource GridCellText}" />
+                            <DataGridTextColumn Header="兼任孪生" Binding="{Binding PairText}" FontFamily="Consolas" Width="0.9*" MinWidth="55" ElementStyle="{StaticResource GridCellText}" />
                             <DataGridTextColumn Header="当前/初始厚度 (mm)" Binding="{Binding ThicknessText}" Width="1.5*" MinWidth="80" ElementStyle="{StaticResource GridCellText}" />
                             <DataGridTextColumn Header="最小厚度" Binding="{Binding MinThicknessText}" Width="0.8*" MinWidth="50" ElementStyle="{StaticResource GridCellText}" />
                             <DataGridTextColumn Header="使用次数" Binding="{Binding UsageText}" Width="0.9*" MinWidth="50" ElementStyle="{StaticResource GridCellText}" />

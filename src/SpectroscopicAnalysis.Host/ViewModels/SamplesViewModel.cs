@@ -20,6 +20,8 @@ public sealed partial class SampleRowItem : ObservableObject
     public required string SampleTypeKey { get; init; }
     public required string TypeDisplay { get; init; }
     public string? AlloyType { get; init; }
+    /// <summary>兼任孪生提示（PairSampleId 非空时显示孪生编号，空为 "—"）。</summary>
+    public required string PairText { get; init; }
     public string? RackPosition { get; init; }
     public required string AssociatedMethodText { get; init; }
     public required string ThicknessText { get; init; }
@@ -682,7 +684,8 @@ public sealed partial class SamplesViewModel : ObservableObject, IPageLifecycle
         Kind = "Sct",
         SampleId = s.SampleId,
         TypeDisplay = s.TypeDisplay,
-        AlloyTypeText = s.AlloyType ?? "—",
+        // 关联合金值内并孪生提示（如 "6063（兼任 HC-01-T）"；检查样本体合金为空时显示 "—"）
+        AlloyTypeText = (s.AlloyType ?? "—") + (s.PairText == "—" ? string.Empty : $"（兼任 {s.PairText}）"),
         RackPositionText = s.RackPosition ?? "—",
         MethodText = string.IsNullOrEmpty(s.AssociatedMethodText) ? "—" : s.AssociatedMethodText,
         ThicknessText = s.ThicknessText,
@@ -784,6 +787,10 @@ public sealed partial class SamplesViewModel : ObservableObject, IPageLifecycle
     [ObservableProperty]
     private string? _regAlloyType;
 
+    /// <summary>检查样兼任类型标准化样（勾选后同事务创建 TypeStd 孪生档案，编号 -T 后缀、同架位；合金必填）。</summary>
+    [ObservableProperty]
+    private bool _regRegisterAsTypeStdTwin;
+
     [ObservableProperty]
     private string? _regRackPosition;
 
@@ -846,6 +853,32 @@ public sealed partial class SamplesViewModel : ObservableObject, IPageLifecycle
         var type = TypeDisplayToKey(RegSampleType);
         var sample = type == SampleType.Production ? null : BuildSampleFromForm();
         var productionSample = type == SampleType.Production ? BuildProductionSampleFromForm() : null;
+        // 检查样兼任类型标准化样：同批构造 TypeStd 孪生档案（编号 -T 后缀、同架位、互指 PairSampleId；
+        // 合金只落在孪生上——触发器约束合金仅 TypeStd 可关联）
+        SctSample? twinSample = null;
+        if (sample is not null && type == SampleType.Control && RegRegisterAsTypeStdTwin)
+        {
+            var twinId = sample.SampleId + TwinIdSuffix;
+            twinSample = new SctSample
+            {
+                SampleId = twinId,
+                SampleName = sample.SampleName + "（类型标准化）",
+                SampleType = SampleType.TypeStd,
+                AlloyType = string.IsNullOrWhiteSpace(RegAlloyType) ? null : RegAlloyType.Trim(),
+                RackPosition = sample.RackPosition,
+                InitialThickness = sample.InitialThickness,
+                CurrentThickness = sample.CurrentThickness,
+                MinThickness = sample.MinThickness,
+                UsageCount = 0,
+                MaxUsageCount = sample.MaxUsageCount,
+                Status = SampleStatus.Normal,
+                IsActive = true,
+                CreatedTime = DateTime.Now,
+                PairSampleId = sample.SampleId,
+            };
+            sample.AlloyType = null;    // 检查样本体不关联合金（触发器 trg_SCT_Sample_AlloyType_TypeStdOnly）
+            sample.PairSampleId = twinId;
+        }
         IsRegistering = true;
         RegisterError = null;
         try
@@ -867,6 +900,11 @@ public sealed partial class SamplesViewModel : ObservableObject, IPageLifecycle
                     if (_samples.GetById(sample.SampleId) is not null)
                     {
                         errors.Add($"样品编号已存在：{sample.SampleId}");
+                    }
+                    // 兼任孪生编号查重（-T 后缀）
+                    if (twinSample is not null && _samples.GetById(twinSample.SampleId) is not null)
+                    {
+                        errors.Add($"样品编号已存在：{twinSample.SampleId}");
                     }
                     var occupant = _samples.GetAll().FirstOrDefault(s =>
                         string.Equals(s.RackPosition?.Trim(), sample.RackPosition, StringComparison.Ordinal));
@@ -899,7 +937,14 @@ public sealed partial class SamplesViewModel : ObservableObject, IPageLifecycle
                 }
                 else
                 {
-                    await Task.Run(() => _samples.Insert(sample!));
+                    await Task.Run(() =>
+                    {
+                        _samples.Insert(sample!);
+                        if (twinSample is not null)
+                        {
+                            _samples.Insert(twinSample);   // 兼任孪生同批入库（逐行事务，失败时上方统一进错误链）
+                        }
+                    });
                 }
             }
             catch (Microsoft.Data.Sqlite.SqliteException ex)
@@ -1029,7 +1074,14 @@ public sealed partial class SamplesViewModel : ObservableObject, IPageLifecycle
         {
             return "类型标准化样必须填写关联合金";
         }
-        if (type != SampleType.TypeStd && type != SampleType.Production && !string.IsNullOrWhiteSpace(RegAlloyType))
+        // 检查样兼任类型标准化样：孪生档案需合金（数据库触发器兜底，此处前置校验）
+        if (type == SampleType.Control && RegRegisterAsTypeStdTwin && string.IsNullOrWhiteSpace(RegAlloyType))
+        {
+            return "兼任类型标准化样必须填写合金";
+        }
+        var allowAlloy = type == SampleType.TypeStd
+            || (type == SampleType.Control && RegRegisterAsTypeStdTwin);
+        if (!allowAlloy && type != SampleType.Production && !string.IsNullOrWhiteSpace(RegAlloyType))
         {
             return "仅类型标准化样/生产样可关联合金，控样/检查样请留空合金";
         }
@@ -1072,12 +1124,16 @@ public sealed partial class SamplesViewModel : ObservableObject, IPageLifecycle
         RegSampleType = SampleTypeOptions[0];
         RegAnalysisMethod = null;
         RegAlloyType = null;
+        RegRegisterAsTypeStdTwin = false;
         RegRackPosition = null;
         RegInitialThickness = string.Empty;
         RegMinThickness = string.Empty;
         RegMaxUsageCount = string.Empty;
         RegisterError = null;
     }
+
+    /// <summary>兼任孪生档案编号后缀（检查样 HC-01 → 孪生 HC-01-T；服务层同规则）。</summary>
+    private const string TwinIdSuffix = "-T";
 
     /// <summary>下拉选项 → 类型键（选项本身即类型键；保留归一化入口便于后续扩展展示别名）。</summary>
     private static string TypeDisplayToKey(string display) => display switch
@@ -1741,6 +1797,7 @@ public sealed partial class SamplesViewModel : ObservableObject, IPageLifecycle
             _ => s.SampleType,
         },
         AlloyType = s.AlloyType,
+        PairText = s.PairSampleId ?? "—",
         RackPosition = s.RackPosition,
         AssociatedMethodText = s.AssociatedMethod ?? string.Empty,
         ThicknessText = $"{s.CurrentThickness:0.0#} / {s.InitialThickness:0.0#}",

@@ -46,6 +46,10 @@ public sealed partial class SampleRegisterFormViewModel : ObservableObject
     [ObservableProperty]
     private string? _alloyType;
 
+    /// <summary>检查样兼任类型标准化样（勾选后同事务创建 TypeStd 孪生档案，编号 -T 后缀、同架位；合金必填）。</summary>
+    [ObservableProperty]
+    private bool _registerAsTypeStdTwin;
+
     [ObservableProperty]
     private string? _rackPosition;
 
@@ -234,6 +238,13 @@ public sealed partial class SampleRegisterFormViewModel : ObservableObject
             valid = false;
         }
 
+        // 检查样兼任类型标准化样：孪生档案需合金（服务端同规则）
+        if (SampleType == Data.Models.SampleType.Control && RegisterAsTypeStdTwin && string.IsNullOrWhiteSpace(AlloyType))
+        {
+            AlloyTypeError = "兼任类型标准化样必须填写合金";
+            valid = false;
+        }
+
         return valid;
     }
 
@@ -245,6 +256,7 @@ public sealed partial class SampleRegisterFormViewModel : ObservableObject
         SampleName = SampleName,
         AnalysisMethod = AnalysisMethod,
         AlloyType = AlloyType,
+        RegisterAsTypeStdTwin = RegisterAsTypeStdTwin,
         RackPosition = RackPosition,
         InitialThickness = InitialThickness,
         MinThickness = MinThickness,

@@ -63,6 +63,15 @@
                 </DataTrigger>
             </Style.Triggers>
         </Style>
+        <!-- 仅检查样：兼任类型标准化样勾选行 -->
+        <Style x:Key="ControlRow" TargetType="FrameworkElement">
+            <Setter Property="Visibility" Value="Collapsed" />
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding SampleType}" Value="Control">
+                    <Setter Property="Visibility" Value="Visible" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
     </Window.Resources>
 
     <!-- 表单区：窗口随内容收缩（只保留中间表单卡）；内容以 MinWidth 保底防 Star 列塌缩（SizeToContent 宽度下 * 列按内容测量） -->
@@ -177,6 +186,22 @@
                 <!-- 仅类型标准样：关联合金 -->
                 <StackPanel Orientation="Vertical" Margin="0,0,0,8" Style="{StaticResource TypeStdRow}">
                     <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" SharedSizeGroup="Label" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="0" Text="关联合金*" Style="{StaticResource Text.Caption}" Width="110" VerticalAlignment="Center" />
+                        <StackPanel Grid.Column="1" Margin="8,0,0,0">
+                            <TextBox Text="{Binding AlloyType, UpdateSourceTrigger=PropertyChanged}" />
+                            <TextBlock Text="{Binding AlloyTypeError}" Style="{StaticResource FieldError}" />
+                        </StackPanel>
+                    </Grid>
+                </StackPanel>
+                <!-- 仅检查样：兼任类型标准化样（勾选后合金必填，同事务创建孪生档案） -->
+                <StackPanel Orientation="Vertical" Margin="0,0,0,8" Style="{StaticResource ControlRow}">
+                    <CheckBox Content="兼任类型标准化样（同一物理样品，将同时创建孪生档案：编号 -T 后缀、同架位，合金必填）"
+                              IsChecked="{Binding RegisterAsTypeStdTwin}" />
+                    <Grid Margin="0,4,0,0">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="Auto" SharedSizeGroup="Label" />
                             <ColumnDefinition Width="*" />

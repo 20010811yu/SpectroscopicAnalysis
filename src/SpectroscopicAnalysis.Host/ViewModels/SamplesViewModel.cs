@@ -470,9 +470,85 @@ public sealed partial class SamplesViewModel : ObservableObject, IPageLifecycle
     [ObservableProperty]
     private ObservableCollection<AnalysisResultRowItem> _detailResults = new();
 
-    /// <summary>详情面板轨迹日志子表（最近 10 条，时间倒序；经 ISctOperationLogRepository.GetRecentBySampleId）。</summary>
+    /// <summary>详情面板轨迹日志子表（当前页切片，时间倒序；全量缓存经 GetAllBySampleId 后按页展示）。</summary>
     [ObservableProperty]
     private ObservableCollection<DetailLogRowItem> _detailLogs = new();
+
+    /// <summary>轨迹日志每页行数（详情子表固定 10 条/页）。</summary>
+    public const int DetailLogPageSize = 10;
+
+    /// <summary>轨迹日志全量缓存（当前选中样，时间倒序；分页切片在 ApplyDetailLogPageSlice 统一做）。</summary>
+    private List<DetailLogRowItem> _detailLogAllCache = new();
+
+    /// <summary>轨迹日志当前页（1 起）。</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(DetailLogPageDisplay))]
+    [NotifyPropertyChangedFor(nameof(HasPrevDetailLogPage))]
+    [NotifyPropertyChangedFor(nameof(HasNextDetailLogPage))]
+    [NotifyCanExecuteChangedFor(nameof(FirstDetailLogPageCommand))]
+    [NotifyCanExecuteChangedFor(nameof(PrevDetailLogPageCommand))]
+    [NotifyCanExecuteChangedFor(nameof(NextDetailLogPageCommand))]
+    private int _detailLogCurrentPage = 1;
+
+    /// <summary>轨迹日志总页数。</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(DetailLogPageDisplay))]
+    [NotifyPropertyChangedFor(nameof(HasNextDetailLogPage))]
+    [NotifyCanExecuteChangedFor(nameof(NextDetailLogPageCommand))]
+    private int _detailLogTotalPages = 1;
+
+    /// <summary>轨迹日志总条数（分页脚"共 N 条"）。</summary>
+    public int DetailLogTotalCount => _detailLogAllCache.Count;
+
+    /// <summary>轨迹日志分页栏文本："第 X / Y 页"。</summary>
+    public string DetailLogPageDisplay => $"第 {DetailLogCurrentPage} / {DetailLogTotalPages} 页";
+
+    public bool HasPrevDetailLogPage => DetailLogCurrentPage > 1;
+
+    public bool HasNextDetailLogPage => DetailLogCurrentPage < DetailLogTotalPages;
+
+    /// <summary>轨迹日志跳首页。</summary>
+    [RelayCommand(CanExecute = nameof(HasPrevDetailLogPage))]
+    private void FirstDetailLogPage()
+    {
+        DetailLogCurrentPage = 1;
+        ApplyDetailLogPageSlice();
+    }
+
+    /// <summary>轨迹日志上一页。</summary>
+    [RelayCommand(CanExecute = nameof(HasPrevDetailLogPage))]
+    private void PrevDetailLogPage()
+    {
+        DetailLogCurrentPage--;
+        ApplyDetailLogPageSlice();
+    }
+
+    /// <summary>轨迹日志下一页。</summary>
+    [RelayCommand(CanExecute = nameof(HasNextDetailLogPage))]
+    private void NextDetailLogPage()
+    {
+        DetailLogCurrentPage++;
+        ApplyDetailLogPageSlice();
+    }
+
+    /// <summary>全量缓存按当前页切片刷新 DetailLogs（分页页码属性已带变更通知）。</summary>
+    private void ApplyDetailLogPageSlice()
+    {
+        var page = Math.Clamp(DetailLogCurrentPage, 1, Math.Max(DetailLogTotalPages, 1));
+        var rows = _detailLogAllCache
+            .Skip((page - 1) * DetailLogPageSize)
+            .Take(DetailLogPageSize)
+            .ToList();
+        DetailLogs = new ObservableCollection<DetailLogRowItem>(rows);
+    }
+
+    /// <summary>轨迹日志分页状态重算（选中行变化/切表后调用；targetIndex 非空时跳到该行所在页——生产日志跳转定位用）。</summary>
+    private void ResetDetailLogPaging(int? targetIndex = null)
+    {
+        DetailLogTotalPages = Math.Max(1, (_detailLogAllCache.Count + DetailLogPageSize - 1) / DetailLogPageSize);
+        DetailLogCurrentPage = targetIndex is { } i ? i / DetailLogPageSize + 1 : 1;
+        ApplyDetailLogPageSlice();
+    }
 
     /// <summary>是否显示右侧详情面板（仅两张目标表且选中行非空）。</summary>
     public bool DetailVisible =>
@@ -621,7 +697,7 @@ public sealed partial class SamplesViewModel : ObservableObject, IPageLifecycle
                 ? await Task.Run(() => _production.GetResults(sampleId).Select(r => MapAnalysisRow(r, detailSampleName)).ToList())
                 : new List<AnalysisResultRowItem>();
             var logs = kind == "Sct"
-                ? await Task.Run(() => _logRepo.GetRecentBySampleId(sampleId, 10).Select(l => new DetailLogRowItem
+                ? await Task.Run(() => _logRepo.GetAllBySampleId(sampleId).Select(l => new DetailLogRowItem
             {
                 OperationTimeText = l.OperationTime,   // 完整时间（yyyy-MM-dd HH:mm:ss）
                 OperationTypeText = l.OperationType switch
@@ -645,10 +721,17 @@ public sealed partial class SamplesViewModel : ObservableObject, IPageLifecycle
                 : new List<DetailLogRowItem>();
 
             // 生产日志跳转：详情子表内按时间唯一精确匹配高亮（完全相等且仅一条才标记）
+            var locateTargetIndex = (int?)null;
             if (locateTime is { } ht)
             {
                 MarkUniqueByTime(results, ht, r => r.RawTime);
                 MarkUniqueByTime(logs, ht, l => l.RawTime);
+                // 高亮行所在页自动跳转（保证跳转来源行可见；未命中保持第 1 页）
+                var hit = logs.FindIndex(l => l.IsLocateHighlighted);
+                if (hit >= 0)
+                {
+                    locateTargetIndex = hit;
+                }
             }
 
             _ui.Invoke(() =>
@@ -661,7 +744,8 @@ public sealed partial class SamplesViewModel : ObservableObject, IPageLifecycle
 
                 DetailCertifiedValues = new ObservableCollection<CertifiedValueRowItem>(certs);
                 DetailResults = new ObservableCollection<AnalysisResultRowItem>(results);
-                DetailLogs = new ObservableCollection<DetailLogRowItem>(logs);
+                _detailLogAllCache = logs;
+                ResetDetailLogPaging(locateTargetIndex);
             });
         }
         catch (Exception ex)
@@ -676,6 +760,8 @@ public sealed partial class SamplesViewModel : ObservableObject, IPageLifecycle
         Detail = null;
         DetailCertifiedValues = new ObservableCollection<CertifiedValueRowItem>();
         DetailResults = new ObservableCollection<AnalysisResultRowItem>();
+        _detailLogAllCache = new List<DetailLogRowItem>();
+        ResetDetailLogPaging();
         DetailLogs = new ObservableCollection<DetailLogRowItem>();
     }
 

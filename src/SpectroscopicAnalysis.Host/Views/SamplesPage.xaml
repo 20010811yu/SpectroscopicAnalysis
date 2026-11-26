@@ -1102,7 +1102,7 @@
                                         </ItemsControl>
                                     </StackPanel>
 
-                                    <!-- 轨迹日志（仅样品台账详情显示；最近 10 条；带表头子表：完整时间/操作类型/触发原因/结果状态） -->
+                                    <!-- 轨迹日志（仅样品台账详情显示；全量分页 10 条/页；带表头子表：完整时间/操作类型/触发原因/结果状态） -->
                                     <StackPanel>
                                         <StackPanel.Style>
                                             <Style TargetType="StackPanel">
@@ -1114,7 +1114,7 @@
                                                 </Style.Triggers>
                                             </Style>
                                         </StackPanel.Style>
-                                        <TextBlock Text="轨迹日志（最近）" Style="{StaticResource Text.Caption}" Margin="0,12,0,4" />
+                                        <TextBlock Text="轨迹日志" Style="{StaticResource Text.Caption}" Margin="0,12,0,4" />
                                     <ItemsControl ItemsSource="{Binding DetailLogs}">
                                         <ItemsControl.Template>
                                             <ControlTemplate TargetType="ItemsControl">
@@ -1178,6 +1178,17 @@
                                             </DataTemplate>
                                         </ItemsControl.ItemTemplate>
                                     </ItemsControl>
+                                    <!-- 轨迹日志分页脚（每页 10 行；超 10 条才可翻页） -->
+                                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,6,0,0">
+                                        <Button Content="首页" Command="{Binding FirstDetailLogPageCommand}" Style="{StaticResource PrimaryBtn}" />
+                                        <Button Content="上一页" Command="{Binding PrevDetailLogPageCommand}" Style="{StaticResource PrimaryBtn}" Margin="4,0,0,0" />
+                                        <TextBlock Text="{Binding DetailLogPageDisplay}" VerticalAlignment="Center" Margin="8,0"
+                                                   Style="{StaticResource Text.Caption}" />
+                                        <Button Content="下一页" Command="{Binding NextDetailLogPageCommand}" Style="{StaticResource PrimaryBtn}" Margin="4,0,0,0" />
+                                        <TextBlock VerticalAlignment="Center" Margin="8,0,0,0" Style="{StaticResource Text.Caption}">
+                                            <Run Text="共 " /><Run Text="{Binding DetailLogTotalCount, Mode=OneWay}" /><Run Text=" 条" />
+                                        </TextBlock>
+                                    </StackPanel>
                                     </StackPanel>
                                 </StackPanel>
                             </StackPanel>

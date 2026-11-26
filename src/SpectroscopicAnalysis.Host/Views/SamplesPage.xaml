@@ -1184,6 +1184,9 @@
                                         <Button Content="上一页" Command="{Binding PrevDetailLogPageCommand}" Style="{StaticResource PrimaryBtn}" Margin="4,0,0,0" />
                                         <TextBlock Text="{Binding DetailLogPageDisplay}" VerticalAlignment="Center" Margin="8,0"
                                                    Style="{StaticResource Text.Caption}" />
+                                        <TextBox Width="48" Height="26" Text="{Binding DetailLogPageJumpInput, UpdateSourceTrigger=PropertyChanged}"
+                                                 VerticalContentAlignment="Center" TextAlignment="Center" Margin="4,0,0,0" />
+                                        <Button Content="跳转" Command="{Binding JumpToDetailLogPageCommand}" Style="{StaticResource PrimaryBtn}" Margin="4,0,0,0" />
                                         <Button Content="下一页" Command="{Binding NextDetailLogPageCommand}" Style="{StaticResource PrimaryBtn}" Margin="4,0,0,0" />
                                         <TextBlock VerticalAlignment="Center" Margin="8,0,0,0" Style="{StaticResource Text.Caption}">
                                             <Run Text="共 " /><Run Text="{Binding DetailLogTotalCount, Mode=OneWay}" /><Run Text=" 条" />

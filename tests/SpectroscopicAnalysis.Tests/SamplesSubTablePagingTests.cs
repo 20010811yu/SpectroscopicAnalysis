@@ -198,9 +198,21 @@ public sealed class SamplesSubTablePagingTests
         Assert.Equal(10, vm.DetailLogs.Count);
         Assert.True(vm.HasPrevDetailLogPage);
 
-        vm.NextDetailLogPageCommand.Execute(null);
-        Assert.Equal(5, vm.DetailLogs.Count);                   // 末页 25 - 20 = 5 条
-        Assert.False(vm.HasNextDetailLogPage);
+        // 页码跳转：直达第 3 页；越界收敛到末页；非法输入忽略
+        vm.DetailLogPageJumpInput = "3";
+        vm.JumpToDetailLogPageCommand.Execute(null);
+        Assert.Equal(3, vm.DetailLogCurrentPage);
+        Assert.Equal(5, vm.DetailLogs.Count);
+        Assert.Equal(string.Empty, vm.DetailLogPageJumpInput);  // 跳转成功清空输入
+
+        vm.DetailLogPageJumpInput = "99";
+        vm.JumpToDetailLogPageCommand.Execute(null);
+        Assert.Equal(3, vm.DetailLogCurrentPage);               // 越界收敛末页
+
+        vm.DetailLogPageJumpInput = "abc";
+        vm.JumpToDetailLogPageCommand.Execute(null);
+        Assert.Equal(3, vm.DetailLogCurrentPage);               // 非法输入忽略（含输入保留便于修正）
+        Assert.Equal("abc", vm.DetailLogPageJumpInput);
 
         vm.FirstDetailLogPageCommand.Execute(null);
         Assert.Equal(1, vm.DetailLogCurrentPage);

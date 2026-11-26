@@ -542,6 +542,24 @@ public sealed partial class SamplesViewModel : ObservableObject, IPageLifecycle
         DetailLogs = new ObservableCollection<DetailLogRowItem>(rows);
     }
 
+    /// <summary>轨迹日志页码输入框内容（跳页用；解析失败忽略不清空，便于修正）。</summary>
+    [ObservableProperty]
+    private string _detailLogPageJumpInput = string.Empty;
+
+    /// <summary>轨迹日志页脚「跳转」：解析输入页码直达（收敛越界），非法输入忽略。</summary>
+    [RelayCommand]
+    private void JumpToDetailLogPage()
+    {
+        if (!int.TryParse(DetailLogPageJumpInput?.Trim(), out var page))
+        {
+            return;
+        }
+
+        DetailLogCurrentPage = Math.Clamp(page, 1, Math.Max(DetailLogTotalPages, 1));
+        ApplyDetailLogPageSlice();
+        DetailLogPageJumpInput = string.Empty;
+    }
+
     /// <summary>轨迹日志分页状态重算（选中行变化/切表后调用；targetIndex 非空时跳到该行所在页——生产日志跳转定位用）。</summary>
     private void ResetDetailLogPaging(int? targetIndex = null)
     {

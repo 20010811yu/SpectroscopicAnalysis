@@ -354,6 +354,7 @@ public sealed class SctPageTests
         vm.AutoOnControlFail = false;
         vm.PeriodicEnabled = true;
         vm.PeriodicHours = "4";
+        vm.PolicyControlTypeStdMixed = true;
 
         // 新增字段非法值被拦截（期限天 0 / 重测次数超上限）
         vm.SavePolicyCommand.Execute(null);
@@ -383,6 +384,7 @@ public sealed class SctPageTests
         Assert.False(policy.LastSaved.AutoStandardizeOnControlFail);
         Assert.True(policy.LastSaved.PeriodicStandardizeEnabled);
         Assert.Equal(4, policy.LastSaved.PeriodicStandardizeHours);
+        Assert.True(policy.LastSaved.ControlTypeStdMixed);
 
         // 往返：新 VM 从同一 store 加载
         var vm2 = new SctViewModel(new FakeSampleRepository(), new FakeOperationLogRepository(), policy,
@@ -395,6 +397,7 @@ public sealed class SctPageTests
         Assert.Equal("12", vm2.PolicyInsertCount);
         Assert.Equal("Percent", vm2.PolicyLimitType);
         Assert.False(vm2.AutoOnControlFail);
+        Assert.True(vm2.PolicyControlTypeStdMixed);
     }
 
     [Fact]

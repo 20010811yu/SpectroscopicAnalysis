@@ -576,4 +576,131 @@ public sealed class SctStrategyEngineTests
         engine.CompleteTask(task.TaskId, true, null);
         Assert.False(engine.TryDequeue(out _));
     }
+
+    // ==================== 检查样与类型标准化样混用 ====================
+
+    /// <summary>按数量插入路径辅助：配置 ByCount=1 并触发一次生产完成，出队控制检查任务。</summary>
+    private SctTask EnqueueControlCheckViaProduction(string productionId)
+    {
+        _policy.Current.ControlInsertMode = ControlInsertMode.ByCount;
+        _policy.Current.ControlInsertCount = 1;
+        _samples.Store.Add(MakeSample(productionId, SampleType.Production));
+        var engine = Create();
+        engine.NotifyAnalysisCompleted(productionId);
+        Assert.True(engine.TryDequeue(out var task));
+        Assert.Equal(SctTaskType.ControlCheck, task.TaskType);
+        return task;
+    }
+
+    [Fact]
+    public void 混用_控制检查按使用次数最少选取且并列优先本类型()
+    {
+        _policy.Current.ControlTypeStdMixed = true;
+        // 检查样 usage=5，类型标准化样 usage=5：并列 → 优先本类型 Control
+        _samples.Store.Add(MakeSample("HC-01", SampleType.Control, usage: 5));
+        _samples.Store.Add(MakeSample("TS-01", SampleType.TypeStd, alloy: "6063", usage: 5));
+        var task = EnqueueControlCheckViaProduction("P-MIX");
+        Assert.Equal("HC-01", task.SampleId);
+
+        // 检查样 usage 提到 10：类型标准化样次数更少 → 混用选中 TS-01
+        _samples.GetById("HC-01")!.UsageCount = 10;
+        var task2 = EnqueueControlCheckViaProduction("P-MIX2");
+        Assert.Equal("TS-01", task2.SampleId);
+    }
+
+    [Fact]
+    public void 混用_无可用检查样时回退选类型标准化样()
+    {
+        _policy.Current.ControlTypeStdMixed = true;
+        _samples.Store.Add(MakeSample("TS-01", SampleType.TypeStd, alloy: "6063"));
+        var task = EnqueueControlCheckViaProduction("P-MIX");
+        Assert.Equal("TS-01", task.SampleId);       // 唯一候选为 TypeStd，混用放行
+    }
+
+    [Fact]
+    public void 未混用_无可用检查样仍报警不跨类型选样()
+    {
+        _samples.Store.Add(MakeSample("TS-01", SampleType.TypeStd, alloy: "6063"));
+        _policy.Current.ControlInsertMode = ControlInsertMode.ByCount;
+        _policy.Current.ControlInsertCount = 1;
+        _samples.Store.Add(MakeSample("P-MIX", SampleType.Production));
+        var engine = Create();
+
+        engine.NotifyAnalysisCompleted("P-MIX");
+        Assert.False(engine.TryDequeue(out _));
+        Assert.Contains(_errors.Collected, c => c.Code == ErrorCodes.SctSettingSampleUnavailable);
+    }
+
+    [Fact]
+    public void 混用_无匹配合金类型标准化样时回退选检查样()
+    {
+        _policy.Current.ControlTypeStdMixed = true;
+        _samples.Store.Add(MakeSample("HC-01", SampleType.Control));
+        var engine = Create();
+
+        engine.NotifyAlloySwitched("3003");         // 无 TypeStd 匹配 3003 → 混用回退选 Control
+        Assert.True(engine.TryDequeue(out var task));
+        Assert.Equal(SctTaskType.TypeStandardize, task.TaskType);
+        Assert.Equal("HC-01", task.SampleId);
+    }
+
+    [Fact]
+    public void 未混用_无匹配合金类型标准化样仍报警()
+    {
+        _samples.Store.Add(MakeSample("HC-01", SampleType.Control));
+        var engine = Create();
+
+        engine.NotifyAlloySwitched("3003");
+        Assert.False(engine.TryDequeue(out _));
+        Assert.Contains(_errors.Collected, c => c.Code == ErrorCodes.SctTypeStdUnavailable);
+    }
+
+    [Fact]
+    public void 混用_计时按任务用途归属()
+    {
+        _policy.Current.ControlTypeStdMixed = true;
+        _policy.Current.TypeStandardizePeriodEnabled = true;
+        _policy.Current.TypeStandardizePeriodDays = 7;
+        _samples.Store.Add(MakeSample("TS-01", SampleType.TypeStd, alloy: "6063"));
+        _samples.Store.Add(MakeSample("HC-01", SampleType.Control));
+        var engine = Create();
+
+        // TypeStd 样承担控制检查：完成刷新检查计时而非类型标准化期限
+        engine.SubmitTask(SctTaskType.ControlCheck, "TS-01", "混用控制检查");
+        Assert.True(engine.TryDequeue(out var t1));
+        engine.CompleteTask(t1.TaskId, true, null);
+        engine.NotifyAnalysisCompleted("TS-01", SctTaskType.ControlCheck);
+
+        // Control 样承担类型标准化：完成刷新类型标准化期限
+        engine.SubmitTask(SctTaskType.TypeStandardize, "HC-01", "混用类型标准化");
+        Assert.True(engine.TryDequeue(out var t2));
+        engine.CompleteTask(t2.TaskId, true, null);
+        engine.NotifyAnalysisCompleted("HC-01", SctTaskType.TypeStandardize);
+
+        // 类型标准化期限已按任务用途刷新：到期时刻 ≈ now + 7 天（若误刷成检查计时则不会出现该期限）
+        var countdown = engine.GetStandardizeCountdown();
+        Assert.NotNull(countdown);
+        Assert.NotNull(countdown.TypeStdDueTime);
+        var days = (countdown.TypeStdDueTime!.Value - _time.GetLocalNow().DateTime).TotalDays;
+        Assert.True(days is > 6.9 and <= 7.01, $"类型标准化期限应为 now+7 天，实际 {days:0.##} 天");
+    }
+
+    [Fact]
+    public void 未混用_手动下发达任务类型与样品类型不匹配被拒()
+    {
+        _samples.Store.Add(MakeSample("TS-01", SampleType.TypeStd, alloy: "6063"));
+        var engine = Create();
+
+        var taskId = engine.SubmitTask(SctTaskType.ControlCheck, "TS-01", "手动触发检查");
+        Assert.Equal(0, taskId);                    // 拒绝入队
+        Assert.False(engine.TryDequeue(out _));
+        Assert.Contains(_errors.Collected, c => c.Code == ErrorCodes.SctTaskSampleTypeMismatch);
+
+        // 勾选混用后放行
+        _policy.Current.ControlTypeStdMixed = true;
+        var taskId2 = engine.SubmitTask(SctTaskType.ControlCheck, "TS-01", "手动触发检查");
+        Assert.NotEqual(0, taskId2);
+        Assert.True(engine.TryDequeue(out var task));
+        Assert.Equal("TS-01", task.SampleId);
+    }
 }

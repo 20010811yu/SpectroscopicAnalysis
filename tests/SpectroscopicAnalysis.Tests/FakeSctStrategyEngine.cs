@@ -77,9 +77,13 @@ internal sealed class FakeSctStrategyEngine : ISctStrategyEngine
     {
     }
 
-    public void NotifyAnalysisCompleted(string sampleId)
+    public void NotifyAnalysisCompleted(string sampleId, string? taskType = null)
     {
+        AnalysisCompletedIds.Add(sampleId);
     }
+
+    /// <summary>NotifyAnalysisCompleted 调用记录（供编排层回喂断言）。</summary>
+    public List<string> AnalysisCompletedIds { get; } = new();
 
     public void NotifyControlResult(string sampleId, bool passed)
     {

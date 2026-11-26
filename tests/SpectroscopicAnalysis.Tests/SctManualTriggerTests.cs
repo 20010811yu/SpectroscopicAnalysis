@@ -1,4 +1,5 @@
 using SpectroscopicAnalysis.Host.Data.Models;
+using SpectroscopicAnalysis.Host.LoggingAlarm;
 using SpectroscopicAnalysis.Host.SctStrategy;
 using SpectroscopicAnalysis.Host.ViewModels;
 
@@ -52,34 +53,46 @@ public sealed class SctManualTriggerTests
     }
 
     [Fact]
-    public async Task 类型标准化样_可触发校正检查()
+    public async Task 类型标准化样_未混用触发校正检查被拒_混用后放行()
     {
         _samples.Store.Add(MakeSample("TS-001", SampleType.TypeStd));
         var engine = new SctStrategyEngine(_policy, _samples, _logs, _errors);
         var vm = Create(engine);
         await vm.LoadCommand.ExecuteAsync(null);
 
+        // 未勾选混用：类型标准化样只能做类型标准化，手动控制检查被引擎拒绝（5105）
         vm.SelectedSample = vm.SctSamples.First(s => s.SampleId == "TS-001");
         Assert.True(vm.TriggerControlCheckCommand.CanExecute(null));
         vm.TriggerControlCheckCommand.Execute(null);
+        Assert.False(engine.TryDequeue(out _));
+        Assert.Contains(_errors.Collected, c => c.Code == ErrorCodes.SctTaskSampleTypeMismatch);
 
+        // 勾选混用后放行
+        _policy.Current.ControlTypeStdMixed = true;
+        vm.TriggerControlCheckCommand.Execute(null);
         Assert.True(engine.TryDequeue(out var t));
         Assert.Equal(SctTaskType.ControlCheck, t.TaskType);
         Assert.Equal("TS-001", t.SampleId);
     }
 
     [Fact]
-    public async Task 检查样_可触发类型标准化并带显式样品()
+    public async Task 检查样_未混用触发类型标准化被拒_混用后放行()
     {
         _samples.Store.Add(MakeSample("CTL-001", SampleType.Control));
         var engine = new SctStrategyEngine(_policy, _samples, _logs, _errors);
         var vm = Create(engine);
         await vm.LoadCommand.ExecuteAsync(null);
 
+        // 未勾选混用：检查样只能做控制检查，手动类型标准化被引擎拒绝（5105）
         vm.SelectedSample = vm.SctSamples.First(s => s.SampleId == "CTL-001");
         Assert.True(vm.TriggerTypeStandardizeCommand.CanExecute(null));
         vm.TriggerTypeStandardizeCommand.Execute(null);
+        Assert.False(engine.TryDequeue(out _));
+        Assert.Contains(_errors.Collected, c => c.Code == ErrorCodes.SctTaskSampleTypeMismatch);
 
+        // 勾选混用后放行（带显式样品）
+        _policy.Current.ControlTypeStdMixed = true;
+        vm.TriggerTypeStandardizeCommand.Execute(null);
         Assert.True(engine.TryDequeue(out var t));
         Assert.Equal(SctTaskType.TypeStandardize, t.TaskType);
         Assert.Equal("CTL-001", t.SampleId);

@@ -431,7 +431,14 @@ public sealed class SctStrategyEngine : ISctStrategyEngine
     {
         lock (_gate)
         {
-            _lastStandardizeTime = _time.GetLocalNow().DateTime;
+            // 仅控样（SettingUp）标准化完成才刷新定期标准化计时；
+            // 类型标准化（TypeStd）同样经本回喂（withCoeffUpdate=true），完成只应刷新类型标准化期限（见 NotifyAnalysisCompleted），
+            // 不应顺带重置定期标准化倒计时（此前无条件赋值导致类型标准化完成后定期倒计时被误重置）
+            var sample = _samples.GetById(sampleId);
+            if (sample is null || sample.SampleType == SampleType.SettingUp)
+            {
+                _lastStandardizeTime = _time.GetLocalNow().DateTime;
+            }
 
             // 闭环推进：标准化完成 → 重测同一检查样验证（引擎设计 §7）
             if (_recheckLoop is not null)

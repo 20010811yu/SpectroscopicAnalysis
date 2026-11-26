@@ -39,6 +39,8 @@ public sealed class SctSample
     public string? AlloyType { get; set; }
     public string? RackPosition { get; set; }
     public string? AssociatedMethod { get; set; }
+    /// <summary>兼任孪生档案编号（检查样 ↔ 类型标准化样互指；同一物理样品双角色，空=无兼任）。</summary>
+    public string? PairSampleId { get; set; }
     public double InitialThickness { get; set; }
     public double CurrentThickness { get; set; }
     public double MinThickness { get; set; }

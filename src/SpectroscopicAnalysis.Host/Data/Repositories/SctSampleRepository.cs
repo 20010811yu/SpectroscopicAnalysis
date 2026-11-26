@@ -8,7 +8,7 @@ namespace SpectroscopicAnalysis.Host.Data.Repositories;
 public sealed class SctSampleRepository : ISctSampleRepository
 {
     private const string SelectColumns =
-        "SampleID, SampleName, SampleType, AlloyType, RackPosition, AssociatedMethod, InitialThickness, CurrentThickness, " +
+        "SampleID, SampleName, SampleType, AlloyType, RackPosition, AssociatedMethod, PairSampleId, InitialThickness, CurrentThickness, " +
         "MinThickness, UsageCount, MaxUsageCount, Status, LastUseTime, LastHeightCheckTime, IsActive, CreatedTime";
 
     private readonly Db _db;
@@ -47,10 +47,10 @@ public sealed class SctSampleRepository : ISctSampleRepository
         using var cmd = conn.CreateCommand();
         cmd.Transaction = tx;
         cmd.CommandText = """
-            INSERT INTO SCT_Sample (SampleID, SampleName, SampleType, AlloyType, RackPosition, AssociatedMethod,
+            INSERT INTO SCT_Sample (SampleID, SampleName, SampleType, AlloyType, RackPosition, AssociatedMethod, PairSampleId,
                 InitialThickness, CurrentThickness, MinThickness, UsageCount, MaxUsageCount,
                 Status, LastUseTime, LastHeightCheckTime, IsActive, CreatedTime)
-            VALUES ($id, $name, $type, $alloy, $rack, $method, $initThk, $curThk, $minThk, $usage, $maxUsage,
+            VALUES ($id, $name, $type, $alloy, $rack, $method, $pair, $initThk, $curThk, $minThk, $usage, $maxUsage,
                 $status, $lastUse, $lastHeight, $active, COALESCE($created, datetime('now','localtime')))
             """;
         Fill(cmd, sample);
@@ -67,7 +67,7 @@ public sealed class SctSampleRepository : ISctSampleRepository
         cmd.CommandText = """
             UPDATE SCT_Sample SET
                 SampleName = $name, SampleType = $type, AlloyType = $alloy, RackPosition = $rack,
-                AssociatedMethod = $method,
+                AssociatedMethod = $method, PairSampleId = $pair,
                 InitialThickness = $initThk, CurrentThickness = $curThk, MinThickness = $minThk,
                 UsageCount = $usage, MaxUsageCount = $maxUsage, Status = $status,
                 LastUseTime = $lastUse, LastHeightCheckTime = $lastHeight, IsActive = $active
@@ -132,6 +132,19 @@ public sealed class SctSampleRepository : ISctSampleRepository
         {
             throw new InvalidOperationException($"样品不存在：{sampleId}");
         }
+        // 兼任孪生同步（同一物理样品双角色，次数反映真实磨损）：孪生次数/上次使用时间与主档案拉平；
+        // 厚度/状态按角色独立不串写；孪生不存在（PairSampleId 为空）时影响 0 行天然跳过
+        using var sync = conn.CreateCommand();
+        sync.Transaction = tx;
+        sync.CommandText = """
+            UPDATE SCT_Sample SET
+                UsageCount = (SELECT UsageCount FROM SCT_Sample WHERE SampleID = $id),
+                LastUseTime = $usedAt
+            WHERE SampleID = (SELECT PairSampleId FROM SCT_Sample WHERE SampleID = $id)
+            """;
+        sync.Parameters.AddWithValue("$id", sampleId);
+        sync.Parameters.AddWithValue("$usedAt", FormatTime(usedAt));
+        sync.ExecuteNonQuery();
         tx.Commit();
     }
 
@@ -143,6 +156,7 @@ public sealed class SctSampleRepository : ISctSampleRepository
         cmd.Parameters.AddWithValue("$alloy", (object?)sample.AlloyType ?? DBNull.Value);
         cmd.Parameters.AddWithValue("$rack", (object?)sample.RackPosition ?? DBNull.Value);
         cmd.Parameters.AddWithValue("$method", (object?)sample.AssociatedMethod ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("$pair", (object?)sample.PairSampleId ?? DBNull.Value);
         cmd.Parameters.AddWithValue("$initThk", sample.InitialThickness);
         cmd.Parameters.AddWithValue("$curThk", sample.CurrentThickness);
         cmd.Parameters.AddWithValue("$minThk", sample.MinThickness);
@@ -166,16 +180,17 @@ public sealed class SctSampleRepository : ISctSampleRepository
             AlloyType = r.IsDBNull(3) ? null : r.GetString(3),
             RackPosition = r.IsDBNull(4) ? null : r.GetString(4),
             AssociatedMethod = r.IsDBNull(5) ? null : r.GetString(5),
-            InitialThickness = r.GetDouble(6),
-            CurrentThickness = r.GetDouble(7),
-            MinThickness = r.GetDouble(8),
-            UsageCount = r.GetInt32(9),
-            MaxUsageCount = r.GetInt32(10),
-            Status = r.GetString(11),
-            LastUseTime = ParseTime(r, 12),
-            LastHeightCheckTime = ParseTime(r, 13),
-            IsActive = r.GetInt64(14) != 0,
-            CreatedTime = ParseTime(r, 15),
+            PairSampleId = r.IsDBNull(6) ? null : r.GetString(6),
+            InitialThickness = r.GetDouble(7),
+            CurrentThickness = r.GetDouble(8),
+            MinThickness = r.GetDouble(9),
+            UsageCount = r.GetInt32(10),
+            MaxUsageCount = r.GetInt32(11),
+            Status = r.GetString(12),
+            LastUseTime = ParseTime(r, 13),
+            LastHeightCheckTime = ParseTime(r, 14),
+            IsActive = r.GetInt64(15) != 0,
+            CreatedTime = ParseTime(r, 16),
         };
         return s;
     }

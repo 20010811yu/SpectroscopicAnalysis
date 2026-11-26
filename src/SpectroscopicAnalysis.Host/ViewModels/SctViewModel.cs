@@ -1052,10 +1052,12 @@ public sealed partial class SctViewModel : ObservableObject, IPageLifecycle
             return;
         }
 
-        _strategyEngine.SubmitTask(SctTaskType.Standardize, row.SampleId, "人工触发");
+        var taskId = _strategyEngine.SubmitTask(SctTaskType.Standardize, row.SampleId, "人工触发");
         _ui.Invoke(() =>
         {
-            PolicySavedMessage = $"✓ 标准化任务已提交队列（{row.SampleId}）";
+            PolicySavedMessage = taskId == 0
+                ? $"✗ 任务被拒：任务类型与样品类型不匹配（未启用混用）（{row.SampleId}）"
+                : $"✓ 标准化任务已提交队列（{row.SampleId}）";
             ScheduleSavedMessageHide(PolicySavedMessage);
         });
     }
@@ -1089,15 +1091,18 @@ public sealed partial class SctViewModel : ObservableObject, IPageLifecycle
             return;
         }
 
-        _strategyEngine.SubmitTask(SctTaskType.ControlCheck, row.SampleId, "人工触发");
+        var taskId = _strategyEngine.SubmitTask(SctTaskType.ControlCheck, row.SampleId, "人工触发");
         _ui.Invoke(() =>
         {
-            PolicySavedMessage = $"✓ 校正检查任务已提交队列（{row.SampleId}）";
+            PolicySavedMessage = taskId == 0
+                ? $"✗ 任务被拒：任务类型与样品类型不匹配（未启用混用）（{row.SampleId}）"
+                : $"✓ 校正检查任务已提交队列（{row.SampleId}）";
             ScheduleSavedMessageHide(PolicySavedMessage);
         });
     }
 
-    /// <summary>手动触发类型标准化（提交 TypeStandardize 任务，显式携带选中样品——区别于自动触发的合金选样；检查样/类型标准化样均可，须先选中行）。</summary>
+    /// <summary>手动触发类型标准化（提交 TypeStandardize 任务，显式携带选中样品——区别于自动触发的合金选样；
+    /// 检查样/类型标准化样均可，须先选中行。未勾选混用时控制样孪生视同检查样，引擎将拒绝并提示）。</summary>
     [RelayCommand(CanExecute = nameof(CanTriggerAnalysis))]
     private void TriggerTypeStandardize()
     {
@@ -1126,10 +1131,12 @@ public sealed partial class SctViewModel : ObservableObject, IPageLifecycle
             return;
         }
 
-        _strategyEngine.SubmitTask(SctTaskType.TypeStandardize, row.SampleId, "人工触发");
+        var taskId = _strategyEngine.SubmitTask(SctTaskType.TypeStandardize, row.SampleId, "人工触发");
         _ui.Invoke(() =>
         {
-            PolicySavedMessage = $"✓ 类型标准化任务已提交队列（{row.SampleId}）";
+            PolicySavedMessage = taskId == 0
+                ? $"✗ 任务被拒：任务类型与样品类型不匹配（未启用混用，控制样孪生视同检查样）（{row.SampleId}）"
+                : $"✓ 类型标准化任务已提交队列（{row.SampleId}）";
             ScheduleSavedMessageHide(PolicySavedMessage);
         });
     }

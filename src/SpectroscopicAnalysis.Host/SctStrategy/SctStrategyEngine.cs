@@ -783,19 +783,41 @@ public sealed class SctStrategyEngine : ISctStrategyEngine
     }
 
     /// <summary>类型标准化样选择（任务清单第 5 节⑤）：TypeStd/Normal/IsActive 且合金精确匹配；
-    /// 混用勾选时并入 Control 样回退（检查样不关联合金，按使用次数最少、次数并列本类型优先参与选取）。</summary>
+    /// 混用勾选时并入 Control 样回退（检查样不关联合金，按使用次数最少、次数并列本类型优先参与选取）。
+    /// 未混用时排除控制样孪生（兼任类型标准化的检查样孪生档案按控制样对待，类型互斥）。</summary>
     private SctSample? SelectTypeStdSample(string? alloyType, SctPolicyOptions policy)
     {
         return _samples.GetAll()
             .Where(s => s.Status == SampleStatus.Normal && s.IsActive)
             .Where(s => (s.SampleType == SampleType.TypeStd && (alloyType is null || s.AlloyType == alloyType))
                         || (policy.ControlTypeStdMixed && s.SampleType == SampleType.Control))
+            .Where(s => policy.ControlTypeStdMixed || s.SampleType != SampleType.TypeStd || !IsControlTwin(s.SampleId))
             .OrderBy(s => s.UsageCount)
             .ThenBy(s => s.SampleType == SampleType.TypeStd ? 0 : 1)    // 次数并列优先本类型
             .FirstOrDefault();
     }
 
-    /// <summary>任务类型 ↔ 样品类型互斥校验：混用未勾选时 ControlCheck 须 Control 样、TypeStandardize 须 TypeStd 样；
+    /// <summary>样品是否为控制样孪生（兼任类型标准化的检查样孪生档案：自身 TypeStd 且 PairSampleId 指向 Control 样）。
+    /// 未混用（类型互斥）时按控制样对待——不得承担类型标准化任务。</summary>
+    private bool IsControlTwin(string? sampleId)
+    {
+        if (string.IsNullOrEmpty(sampleId))
+        {
+            return false;
+        }
+
+        var sample = _samples.GetById(sampleId);
+        if (sample is null || sample.SampleType != SampleType.TypeStd || string.IsNullOrEmpty(sample.PairSampleId))
+        {
+            return false;
+        }
+
+        var pair = _samples.GetById(sample.PairSampleId);
+        return pair is not null && pair.SampleType == SampleType.Control;
+    }
+
+    /// <summary>任务类型 ↔ 样品类型互斥校验：混用未勾选时 ControlCheck 须 Control 样、TypeStandardize 须 TypeStd 样
+    /// （控制样孪生虽档案为 TypeStd，未混用时按控制样对待，不得承担类型标准化）；
     /// 勾选混用或样品档案查不到（生产样任务/自动选样的空目标）时放行。</summary>
     private bool IsTaskSampleTypeAllowed(string taskType, string? sampleId)
     {
@@ -819,7 +841,7 @@ public sealed class SctStrategyEngine : ISctStrategyEngine
         }
         return taskType == SctTaskType.ControlCheck
             ? sample.SampleType == SampleType.Control
-            : sample.SampleType == SampleType.TypeStd;
+            : sample.SampleType == SampleType.TypeStd && !IsControlTwin(sampleId);   // 未混用时控制样孪生按控制样对待
     }
 
     /// <summary>

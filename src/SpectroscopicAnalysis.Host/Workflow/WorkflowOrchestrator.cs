@@ -19,6 +19,7 @@ public sealed class WorkflowOrchestrator : IWorkflowOrchestrator
     private readonly ISpectrometer _spectrometer;
     private readonly ISctOperationLogRepository _logs;
     private readonly ISctSampleRepository _samples;
+    private readonly ISctPolicyStore? _policyStore;
     private readonly IProductionSampleRepository _production;
     private readonly IErrorCollector _errors;
     private readonly LoggingAlarm.ISystemLogCollector _systemLog;
@@ -65,7 +66,8 @@ public sealed class WorkflowOrchestrator : IWorkflowOrchestrator
         IErrorCollector errors,
         LoggingAlarm.ISystemLogCollector systemLog,
         SampleManager.ISampleDataChangeNotifier sampleDataChanged,
-        WorkflowOptions? options = null)
+        WorkflowOptions? options = null,
+        ISctPolicyStore? policyStore = null)
     {
         _engine = engine;
         _send = send;
@@ -79,6 +81,25 @@ public sealed class WorkflowOrchestrator : IWorkflowOrchestrator
         _systemLog = systemLog;
         _sampleDataChanged = sampleDataChanged;
         _options = options ?? new WorkflowOptions();
+        _policyStore = policyStore;
+    }
+
+    /// <summary>样品是否为控制样孪生（自身 TypeStd 且 PairSampleId 指向 Control 样）——与引擎 IsControlTwin 同规则。</summary>
+    private bool IsControlTwin(string? sampleId)
+    {
+        if (string.IsNullOrEmpty(sampleId))
+        {
+            return false;
+        }
+
+        var sample = _samples.GetById(sampleId);
+        if (sample is null || sample.SampleType != SampleType.TypeStd || string.IsNullOrEmpty(sample.PairSampleId))
+        {
+            return false;
+        }
+
+        var pair = _samples.GetById(sample.PairSampleId);
+        return pair is not null && pair.SampleType == SampleType.Control;
     }
 
     /// <summary>样品数据变更通知（任务回喂引擎更新样品档案后发布，样品台账类页面即时重载）。</summary>
@@ -410,9 +431,12 @@ public sealed class WorkflowOrchestrator : IWorkflowOrchestrator
             return;     // 同合金：直接生产
         }
 
-        // 合金切换（或基准未知）：选本次合金匹配的类型标准化样（TypeStd/Normal/启用，使用次数最少优先——与引擎选样规则一致）
+        // 合金切换（或基准未知）：选本次合金匹配的类型标准化样（TypeStd/Normal/启用，使用次数最少优先——与引擎选样规则一致）；
+        // 未混用时排除控制样孪生（兼任类型标准化的检查样孪生档案按控制样对待，类型互斥，与引擎选样/校验同规则）
+        var mixed = _policyStore?.Load().ControlTypeStdMixed == true;
         var typeStd = _samples.GetAll()
             .Where(s => s.SampleType == SampleType.TypeStd && s.Status == SampleStatus.Normal && s.IsActive)
+            .Where(s => mixed || !IsControlTwin(s.SampleId))
             .Where(s => string.Equals(s.AlloyType?.Trim(), currentAlloy.Trim(), StringComparison.Ordinal))
             .OrderBy(s => s.UsageCount)
             .FirstOrDefault();

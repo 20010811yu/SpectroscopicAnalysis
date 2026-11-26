@@ -693,6 +693,40 @@ public sealed class SctStrategyEngineTests
     }
 
     [Fact]
+    public void 未混用_控制样孪生不入类型标准化选样且手动提交被拒()
+    {
+        // 控制样孪生（档案 TypeStd、PairSampleId 指向 Control 样）未混用时按控制样对待：自动选样与显式提交均拦截
+        _samples.Store.Add(MakeSample("HC-110", SampleType.Control));
+        var twin = MakeSample("HC-110-T", SampleType.TypeStd, alloy: "4000");
+        twin.PairSampleId = "HC-110";
+        _samples.Store.Add(twin);
+        var engine = Create();
+
+        engine.NotifyAlloySwitched("4000");                          // 自动选样：唯一 TypeStd 候选为孪生 → 报警不选
+        Assert.False(engine.TryDequeue(out _));
+        Assert.Contains(_errors.Collected, c => c.Code == ErrorCodes.SctTypeStdUnavailable);
+
+        Assert.Equal(0, engine.SubmitTask(SctTaskType.TypeStandardize, "HC-110-T", "人工触发"));   // 显式提交被拒（5105）
+        Assert.False(engine.TryDequeue(out _));
+        Assert.Contains(_errors.Collected, c => c.Code == ErrorCodes.SctTaskSampleTypeMismatch);
+    }
+
+    [Fact]
+    public void 混用_控制样孪生恢复类型标准化候选()
+    {
+        _policy.Current.ControlTypeStdMixed = true;
+        _samples.Store.Add(MakeSample("HC-110", SampleType.Control));
+        var twin = MakeSample("HC-110-T", SampleType.TypeStd, alloy: "4000");
+        twin.PairSampleId = "HC-110";
+        _samples.Store.Add(twin);
+        var engine = Create();
+
+        engine.NotifyAlloySwitched("4000");
+        Assert.True(engine.TryDequeue(out var task));
+        Assert.Equal("HC-110-T", task.SampleId);
+    }
+
+    [Fact]
     public void 混用_计时按任务用途归属()
     {
         _policy.Current.ControlTypeStdMixed = true;

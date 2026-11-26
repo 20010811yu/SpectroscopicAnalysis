@@ -508,11 +508,21 @@ public sealed class SctStrategyEngine : ISctStrategyEngine
         _lastControlCheckTime ??= GetLastCompletedTimeFromLog("ControlCheck");
         _lastTypeStdTime ??= GetLastCompletedTimeFromLog("TypeStandardize");
 
-        // 按数量插入的计数同样跨重启延续：恢复为"最近一次成功检查样之后已完成的生产样个数"
+        // 按数量插入的计数同样跨重启延续：恢复为"最近一次成功检查样之后已完成的生产样个数"；
+        // 恢复值已达阈值时不再继续查找/等待，立即插入控制检查并清零；未达阈值则记录数量随生产继续累加
         if (!_controlCountRestored)
         {
             _controlCountRestored = true;
-            _productionSinceControl = CountProductionSinceLastControlFromLog();
+            var (restored, reached) = CountProductionSinceLastControlFromLog(policy.ControlInsertCount);
+            if (reached)
+            {
+                _productionSinceControl = 0;
+                EnqueueWithSelection(SctTaskType.ControlCheck, "按分析数量插入");
+            }
+            else
+            {
+                _productionSinceControl = restored;
+            }
         }
 
         lock (_gate)
@@ -547,9 +557,10 @@ public sealed class SctStrategyEngine : ISctStrategyEngine
 
     /// <summary>
     /// 从 SCT 运行日志统计"最近一次成功检查样之后已完成的生产样个数"（按数量插入计数跨重启恢复用）。
-    /// 无检查样历史时统计全部历史生产样（从未清算过，均应计入累加）。失败走错误链返回 0，不阻断节拍。
+    /// 无检查样历史时统计全部历史生产样。计数达到阈值即提前返回 Reached=true（不再继续查找），
+    /// 未达阈值返回实际数量供继续累加。失败走错误链返回 (0, false)，不阻断节拍。
     /// </summary>
-    private int CountProductionSinceLastControlFromLog()
+    private (int Count, bool Reached) CountProductionSinceLastControlFromLog(int threshold)
     {
         try
         {
@@ -562,14 +573,26 @@ public sealed class SctStrategyEngine : ISctStrategyEngine
                 .DefaultIfEmpty(DateTime.MinValue)
                 .Max();
 
-            return logs.Count(l => l.OperationType == "Production" &&
-                                   l.ResultStatus == "Success" &&
-                                   DateTime.TryParse(l.OperationTime, out var t) && t > lastControlTime);
+            var count = 0;
+            foreach (var l in logs)
+            {
+                if (l.OperationType == "Production" && l.ResultStatus == "Success" &&
+                    DateTime.TryParse(l.OperationTime, out var t) && t > lastControlTime)
+                {
+                    count++;
+                    if (count >= threshold)
+                    {
+                        return (count, true);   // 已达阈值：立即触发控制检查，不再继续统计
+                    }
+                }
+            }
+
+            return (count, false);
         }
         catch (Exception ex)
         {
             _errors.Collect(ErrorCodes.UnhandledException, "从运行日志恢复按数量插入检查样的生产计数失败", null, ex);
-            return 0;
+            return (0, false);
         }
     }
 

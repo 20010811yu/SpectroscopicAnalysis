@@ -182,6 +182,61 @@ public sealed class SctPageTests
     }
 
     [Fact]
+    public async Task Measure_厚度合格但次数超上限_置需测高并补插测高任务()
+    {
+        var repo = new FakeSampleRepository();
+        // 次数已超上限的需测高样：测高合格后不应恢复 Normal（次数仍达上限）
+        var s = MakeSample("SUS-001", status: SampleStatus.NeedMeasure, thickness: 9, minThickness: 5);
+        s.UsageCount = 60;
+        repo.Store.Add(s);
+        var logs = new FakeOperationLogRepository();
+        var errors = new FakeErrorCollector();
+        var samples2 = new FakeSampleRepository();
+        var engine = new SctStrategyEngine(new FakeSctPolicyStore(), samples2, logs, errors);
+        var vm = new SctViewModel(repo, logs, new FakeSctPolicyStore(),
+            new FakeUiDispatcher(), new FakeDialogService(), errors, strategyEngine: engine);
+        await vm.LoadCommand.ExecuteAsync(null);
+        vm.SelectedSample = vm.SctSamples[0];
+
+        vm.OpenMeasureCommand.Execute(null);
+        vm.MeasureThicknessText = "9.5";
+        await vm.ApplyMeasureCommand.ExecuteAsync(null);
+
+        var sample = repo.GetById("SUS-001")!;
+        Assert.Equal(SampleStatus.NeedMeasure, sample.Status);  // 次数仍超上限 → 需测高而非 Normal
+        Assert.False(sample.IsActive);                          // 需测高 → IsActive 停用
+        // 补插测高任务（队列含该样品的 HeightMeasure）
+        Assert.Contains(engine.GetQueuedTasks(), t => t.TaskType == SctTaskType.HeightMeasure && t.SampleId == "SUS-001");
+    }
+
+    [Fact]
+    public async Task SaveThresholds_新上限低于当前次数_置需测高并停用()
+    {
+        var repo = new FakeSampleRepository();
+        var s = MakeSample("SUS-001", thickness: 9, minThickness: 5);   // Normal，次数 0→设为 30
+        s.UsageCount = 30;
+        repo.Store.Add(s);
+        var logs = new FakeOperationLogRepository();
+        var errors = new FakeErrorCollector();
+        var engine = new SctStrategyEngine(new FakeSctPolicyStore(), new FakeSampleRepository(), logs, errors);
+        var vm = new SctViewModel(repo, logs, new FakeSctPolicyStore(),
+            new FakeUiDispatcher(), new FakeDialogService(), errors, strategyEngine: engine);
+        await vm.LoadCommand.ExecuteAsync(null);
+        vm.SelectedSample = vm.SctSamples[0];
+
+        vm.OpenThresholdCommand.Execute(null);
+        vm.EditMinThicknessText = "5";
+        vm.EditMaxUsageText = "20";             // 新上限 20 < 当前次数 30
+        await vm.SaveThresholdsCommand.ExecuteAsync(null);
+
+        var sample = repo.GetById("SUS-001")!;
+        Assert.Equal(20, sample.MaxUsageCount);
+        Assert.Equal(SampleStatus.NeedMeasure, sample.Status);
+        Assert.False(sample.IsActive);          // 需测高 → IsActive 停用
+        Assert.Contains(engine.GetQueuedTasks(), t => t.TaskType == SctTaskType.HeightMeasure && t.SampleId == "SUS-001");
+    }
+
+    [Fact]
     public async Task Measure_非法厚度_校验失败不写库()
     {
         var (vm, repo, logs, _, _) = Create(new[] { MakeSample("SUS-001") });

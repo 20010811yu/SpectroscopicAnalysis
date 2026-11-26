@@ -575,6 +575,7 @@ public sealed partial class SctViewModel : ObservableObject, IPageLifecycle
         }
 
         var sampleId = row.SampleId;
+        var needHeightMeasure = false;
         var result = await Task.Run<(SctSample? Sample, string? Error)>(() =>
         {
             var sample = _samples.GetById(sampleId);
@@ -585,9 +586,15 @@ public sealed partial class SctViewModel : ObservableObject, IPageLifecycle
 
             var thicknessBefore = sample.CurrentThickness;
             var newStatus = thickness < sample.MinThickness ? SampleStatus.Disabled : SampleStatus.Normal;
+            // 使用次数阈值复查：测高合格但次数仍达上限 → 不恢复 Normal，置需测高并补插测高任务（与引擎回喂联动一致）
+            if (newStatus == SampleStatus.Normal && sample.UsageCount >= sample.MaxUsageCount)
+            {
+                newStatus = SampleStatus.NeedMeasure;
+                needHeightMeasure = true;
+            }
             sample.CurrentThickness = thickness;
             sample.Status = newStatus;
-            sample.IsActive = newStatus == SampleStatus.Normal;   // IsActive 随状态联动：过薄停用、测高合格恢复启用
+            sample.IsActive = newStatus == SampleStatus.Normal;   // IsActive 随状态联动：过薄/需测高停用、测高合格恢复启用
             sample.LastHeightCheckTime = DateTime.Now;
             _samples.Update(sample);
             // 过薄报废与引擎测高回喂同规则：必发 5104 报警（此前仅置 Disabled 不报警，提示口径不一致）
@@ -626,6 +633,11 @@ public sealed partial class SctViewModel : ObservableObject, IPageLifecycle
             ScheduleSavedMessageHide(PolicySavedMessage);
         });
         await LoadCommand.ExecuteAsync(null);
+        // 次数仍达上限：补插测高任务（与引擎阈值联动一致；引擎未注入时跳过，测试兼容）
+        if (needHeightMeasure && _strategyEngine is not null)
+        {
+            _strategyEngine.SubmitTask(SctTaskType.HeightMeasure, sampleId, "测高后使用次数仍达上限");
+        }
         _sampleDataChanged.NotifySampleDataChanged();   // 通知样品档案等台账页面重载
     }
 
@@ -684,6 +696,7 @@ public sealed partial class SctViewModel : ObservableObject, IPageLifecycle
             return;
         }
 
+        var needHeightMeasure = false;
         var error = await Task.Run(() =>
         {
             var sample = _samples.GetById(sampleId);
@@ -693,13 +706,19 @@ public sealed partial class SctViewModel : ObservableObject, IPageLifecycle
             }
 
             sample.MinThickness = min;
-            sample.MaxUsageCount = maxUsage;
-            // 阈值变化可能影响状态：低于新阈值立即标记 Disabled（IsActive 随状态联动同步停用）；
-            // 恢复需测高登记或更换样品（人工）
+            sample.MaxUsageCount = maxUsage;            // 阈值变化可能影响状态联动：
+            // ① 过薄：低于新阈值立即标记 Disabled；恢复需测高登记或更换样品（人工）；
+            // ② 次数：Normal 样次数 ≥ 新最大使用次数 → 置需测高（IsActive 随状态联动停用）
             if (sample.CurrentThickness < min)
             {
                 sample.Status = SampleStatus.Disabled;
                 sample.IsActive = false;
+            }
+            else if (sample.Status == SampleStatus.Normal && sample.UsageCount >= maxUsage)
+            {
+                sample.Status = SampleStatus.NeedMeasure;
+                sample.IsActive = false;
+                needHeightMeasure = true;
             }
 
             _samples.Update(sample);
@@ -721,6 +740,11 @@ public sealed partial class SctViewModel : ObservableObject, IPageLifecycle
             ScheduleSavedMessageHide(PolicySavedMessage);
         });
         await LoadCommand.ExecuteAsync(null);
+        // 次数达新上限：补插测高任务（与引擎阈值联动一致；引擎未注入时跳过，测试兼容）
+        if (needHeightMeasure && _strategyEngine is not null)
+        {
+            _strategyEngine.SubmitTask(SctTaskType.HeightMeasure, sampleId, "阈值调整后使用次数达上限");
+        }
         _sampleDataChanged.NotifySampleDataChanged();   // 通知样品档案等台账页面重载
     }
 

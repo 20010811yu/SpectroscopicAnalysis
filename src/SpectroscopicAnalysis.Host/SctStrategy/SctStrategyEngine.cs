@@ -502,6 +502,12 @@ public sealed class SctStrategyEngine : ISctStrategyEngine
         var policy = _policyStore.Load();
         var now = _time.GetLocalNow().DateTime;
 
+        // 内存计时器为空（程序重启后首次判定）时，从 SCT 运行日志恢复计时起点——
+        // 取最近一条成功操作的完成时刻，周期跨重启延续计算，不再视为到期立即触发
+        _lastStandardizeTime ??= GetLastCompletedTimeFromLog("Standardization");
+        _lastControlCheckTime ??= GetLastCompletedTimeFromLog("ControlCheck");
+        _lastTypeStdTime ??= GetLastCompletedTimeFromLog("TypeStandardize");
+
         lock (_gate)
         {
             // 定时标准化（引擎设计 §5；上次时间未知视为已到期）
@@ -528,6 +534,27 @@ public sealed class SctStrategyEngine : ISctStrategyEngine
     }
 
     // ==================== 选样与闭环内部逻辑 ====================
+
+    /// <summary>从 SCT 运行日志取指定操作类型最近一条成功记录的完成时刻（重启后周期计时起点恢复用；无记录返回 null 视为从未做过）。</summary>
+    private DateTime? GetLastCompletedTimeFromLog(string operationType)
+    {
+        try
+        {
+            return _logs.GetAll()
+                .Where(l => l.OperationType == operationType &&
+                            l.ResultStatus == "Success" &&
+                            DateTime.TryParse(l.OperationTime, out _))
+                .Select(l => DateTime.Parse(l.OperationTime!))
+                .DefaultIfEmpty(DateTime.MinValue)
+                .Max() is { } t && t != DateTime.MinValue ? t : null;
+        }
+        catch (Exception ex)
+        {
+            // 恢复失败不阻断节拍判定，仅记错误链（此时回退为"从未做过"语义，由各期限开关决定是否触发）
+            _errors.Collect(ErrorCodes.UnhandledException, $"从运行日志恢复 {operationType} 计时起点失败", null, ex);
+            return null;
+        }
+    }
 
     /// <summary>入队标准化任务：选样失败（无可用控样）→ 5101 报警不入队（任务清单第 5 节②）。</summary>
     private void EnqueueStandardize(string reason)

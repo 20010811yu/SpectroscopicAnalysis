@@ -44,6 +44,22 @@ public sealed class SctOperationLogRepository : ISctOperationLogRepository
         return list;
     }
 
+    /// <summary>按样品查询全部日志（时间倒序，不分页；详情面板轨迹日志分页展示用）。</summary>
+    public IReadOnlyList<SctOperationLog> GetAllBySampleId(string sampleId)
+    {
+        var list = new List<SctOperationLog>();
+        using var conn = _db.Open();
+        using var cmd = conn.CreateCommand();
+        cmd.CommandText = $"SELECT {SelectColumns} FROM SCT_OperationLog WHERE SampleID = $sampleId ORDER BY OperationTime DESC";
+        cmd.Parameters.AddWithValue("$sampleId", sampleId);
+        using var reader = cmd.ExecuteReader();
+        while (reader.Read())
+        {
+            list.Add(Map(reader));
+        }
+        return list;
+    }
+
     private static SctOperationLog Map(System.Data.Common.DbDataReader reader) => new()
     {
         LogId = reader.GetInt64(0),

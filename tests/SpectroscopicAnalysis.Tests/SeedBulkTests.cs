@@ -200,6 +200,54 @@ public sealed class SeedBulkTests
     }
 
     [Fact]
+    public void EnsureCreated_过薄样自动归一为禁用()
+    {
+        var path = Path.Combine(Path.GetTempPath(), $"seedtest_{Guid.NewGuid():N}.db");
+        try
+        {
+            var db = new Db(path);
+            new DbInitializer(db).EnsureCreated();
+            using var conn = db.Open();
+
+            // 铺底：过薄样（Normal/NeedMeasure 但厚度低于最小）+ 已禁用过薄样 + 厚度充足样
+            using (var cmd = conn.CreateCommand())
+            {
+                cmd.CommandText = """
+                    INSERT INTO SCT_Sample (SampleID, SampleName, SampleType, InitialThickness, CurrentThickness, MinThickness, UsageCount, MaxUsageCount, Status)
+                    VALUES ('THIN-1', '过薄未禁用', 'Control', 10, 4.5, 5, 0, 60, 'Normal'),
+                           ('THIN-2', '过薄需测高', 'Control', 10, 4.0, 5, 0, 60, 'NeedMeasure'),
+                           ('THIN-3', '过薄已禁用', 'Control', 10, 3.5, 5, 0, 60, 'Disabled'),
+                           ('THIN-4', '厚度充足', 'Control', 10, 9.0, 5, 0, 60, 'Normal')
+                    """;
+                cmd.ExecuteNonQuery();
+            }
+
+            // 兜底迁移（幂等）：过薄 → Disabled；已禁用/厚度充足不受影响
+            new DbInitializer(db).EnsureCreated();
+
+            string StatusOf(string id)
+            {
+                using var q = conn.CreateCommand();
+                q.CommandText = "SELECT Status FROM SCT_Sample WHERE SampleID = $id";
+                q.Parameters.AddWithValue("$id", id);
+                return (string)q.ExecuteScalar()!;
+            }
+            Assert.Equal("Disabled", StatusOf("THIN-1"));
+            Assert.Equal("Disabled", StatusOf("THIN-2"));
+            Assert.Equal("Disabled", StatusOf("THIN-3"));   // 幂等：已是 Disabled 不变
+            Assert.Equal("Normal", StatusOf("THIN-4"));     // 厚度充足不受影响
+        }
+        finally
+        {
+            Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools();
+            if (File.Exists(path))
+            {
+                File.Delete(path);
+            }
+        }
+    }
+
+    [Fact]
     public void CorrectionCoefficient_来源仅控样与类型标准化样()
     {
         var path = Path.Combine(Path.GetTempPath(), $"seedtest_{Guid.NewGuid():N}.db");

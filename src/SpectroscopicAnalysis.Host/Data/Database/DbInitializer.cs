@@ -225,6 +225,14 @@ public sealed class DbInitializer
             cleanAlloy.CommandText = "UPDATE SCT_Sample SET AlloyType = NULL WHERE SampleType != 'TypeStd' AND AlloyType IS NOT NULL";
             cleanAlloy.ExecuteNonQuery();
         }
+        // 过薄自动禁用兜底（幂等）：运行时各写厚度路径（测高回喂/手动测高登记/阈值调整）均已判定，
+        // 此处兜住存量/导入数据——当前厚度低于最小厚度的样品状态统一归一为 Disabled（报废更换）
+        using (var thinDisabled = conn.CreateCommand())
+        {
+            thinDisabled.Transaction = tx;
+            thinDisabled.CommandText = "UPDATE SCT_Sample SET Status = 'Disabled' WHERE CurrentThickness < MinThickness AND Status != 'Disabled'";
+            thinDisabled.ExecuteNonQuery();
+        }
         // 生产样档案独立建表后，清理存量库 SCT_Sample 中的生产样行（先删子表引用再删本体，生产样数据由 Production_Sample 提供）
         PurgeProductionFromSctSample(conn, tx);
         // 校正系数版本化修复（幂等，须在建唯一索引前执行）：

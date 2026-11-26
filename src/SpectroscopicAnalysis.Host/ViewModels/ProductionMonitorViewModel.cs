@@ -693,6 +693,7 @@ public sealed partial class ProductionMonitorViewModel : ObservableObject, IPage
                 "Standardization" => "标准化",
                 "ControlCheck" => "控制检查",
                 "HeightMeasure" => "测高",
+                "TypeStandardize" => "类型标准化",
                 _ => l.OperationType,
             },
             TriggerReasonText = l.TriggerReason ?? "—",

@@ -497,7 +497,7 @@ public sealed partial class SamplesViewModel : ObservableObject, IPageLifecycle
     [NotifyCanExecuteChangedFor(nameof(NextDetailLogPageCommand))]
     private int _detailLogTotalPages = 1;
 
-    /// <summary>轨迹日志总条数（分页脚"共 N 条"）。</summary>
+    /// <summary>轨迹日志总条数（分页脚"共 N 条"；缓存变化时经 ResetDetailLogPaging 主动发通知刷新绑定）。</summary>
     public int DetailLogTotalCount => _detailLogAllCache.Count;
 
     /// <summary>轨迹日志分页栏文本："第 X / Y 页"。</summary>
@@ -548,6 +548,8 @@ public sealed partial class SamplesViewModel : ObservableObject, IPageLifecycle
         DetailLogTotalPages = Math.Max(1, (_detailLogAllCache.Count + DetailLogPageSize - 1) / DetailLogPageSize);
         DetailLogCurrentPage = targetIndex is { } i ? i / DetailLogPageSize + 1 : 1;
         ApplyDetailLogPageSlice();
+        // 总条数为普通计算属性（直读缓存），缓存替换后无自带通知——此处主动发一次，否则分页脚"共 N 条"停留旧值
+        OnPropertyChanged(nameof(DetailLogTotalCount));
     }
 
     /// <summary>是否显示右侧详情面板（仅两张目标表且选中行非空）。</summary>

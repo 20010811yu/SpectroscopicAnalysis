@@ -172,8 +172,20 @@ public sealed class SamplesSubTablePagingTests
         }
 
         var vm = Create(samples: samples, logs: logs);
+        // 回归：总条数为直读缓存的计算属性，缓存替换后必须主动发通知，否则分页脚"共 N 条"停留旧值（如"共 0 条"）
+        var totalChanged = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        vm.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(SamplesViewModel.DetailLogTotalCount))
+            {
+                totalChanged.TrySetResult(true);
+            }
+        };
+
         await vm.SetTableCommand.ExecuteAsync(SamplesViewModel.TableSample);
         await SelectSampleAndWaitAsync(vm, "HC-PG", 25);
+
+        Assert.True(await totalChanged.Task.WaitAsync(TimeSpan.FromSeconds(5)), "详情加载后应发出 DetailLogTotalCount 变更通知");
 
         Assert.Equal(25, vm.DetailLogTotalCount);               // 全量 25 条不再截断最近 10 条
         Assert.Equal(3, vm.DetailLogTotalPages);

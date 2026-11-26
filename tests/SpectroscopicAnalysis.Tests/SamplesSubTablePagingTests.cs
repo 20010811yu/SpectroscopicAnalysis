@@ -11,10 +11,11 @@ public sealed class SamplesSubTablePagingTests
         FakeControlLimitRepository? limits = null,
         FakeCoefficientRepository? coeffs = null,
         FakeOperationLogRepository? logs = null,
-        FakeDialogService? dialogs = null)
+        FakeDialogService? dialogs = null,
+        FakeSampleRepository? samples = null)
     {
         return new SamplesViewModel(
-            new FakeSampleRepository(),
+            samples ?? new FakeSampleRepository(),
             new FakeProductionSampleRepository(),
             certs ?? new FakeCertifiedValueRepository(),
             limits ?? new FakeControlLimitRepository(),
@@ -137,5 +138,105 @@ public sealed class SamplesSubTablePagingTests
         await vm.DeleteOperationLogCommand.ExecuteAsync(vm.OperationLogRows[0]);
         Assert.Empty(logs.Deleted.Where(d => d == 10));         // 未删除
         Assert.Single(vm.OperationLogRows);                     // 行保持原样
+    }
+
+    // ==================== 详情面板轨迹日志分页（10 条/页） ====================
+
+    private static SctOperationLog MakePagedLog(long id, string sid, DateTime time) => new()
+    { LogId = id, SampleId = sid, OperationType = "ControlCheck", TriggerReason = "定时插入", ResultStatus = "Success", OperationTime = time.ToString("yyyy-MM-dd HH:mm:ss") };
+
+    /// <summary>选中样品行并等待详情子表加载完成（构造期 _activeTableLoad 与详情查询均为后台任务，轮询等待）。</summary>
+    private static async Task SelectSampleAndWaitAsync(SamplesViewModel vm, string sampleId, int expectedLogCount)
+    {
+        await vm.LoadCommand.ExecuteAsync(null);    // 显式加载台账（默认 ActiveTable 已是样品表时 SetTable 不触发加载）
+        for (var i = 0; i < 50 && !vm.SctSamples.Any(r => r.SampleId == sampleId); i++)
+        {
+            await Task.Delay(10);       // 等台账首次加载完成
+        }
+        vm.SelectedRow = vm.SctSamples.First(r => r.SampleId == sampleId);
+        for (var i = 0; i < 50 && vm.DetailLogTotalCount != expectedLogCount; i++)
+        {
+            await Task.Delay(10);
+        }
+    }
+
+    [Fact]
+    public async Task 轨迹日志超10条_每页10条分页切换正确()
+    {
+        var samples = new FakeSampleRepository();
+        samples.Store.Add(new SctSample { SampleId = "HC-PG", SampleName = "分页样", SampleType = SampleType.Control, RackPosition = "B01", InitialThickness = 10, CurrentThickness = 10, MinThickness = 5, MaxUsageCount = 60, Status = SampleStatus.Normal });
+        var logs = new FakeOperationLogRepository();
+        for (var i = 1; i <= 25; i++)
+        {
+            logs.Store.Add(MakePagedLog(i, "HC-PG", new DateTime(2026, 11, 10).AddHours(-i)));   // 时间倒序注入
+        }
+
+        var vm = Create(samples: samples, logs: logs);
+        await vm.SetTableCommand.ExecuteAsync(SamplesViewModel.TableSample);
+        await SelectSampleAndWaitAsync(vm, "HC-PG", 25);
+
+        Assert.Equal(25, vm.DetailLogTotalCount);               // 全量 25 条不再截断最近 10 条
+        Assert.Equal(3, vm.DetailLogTotalPages);
+        Assert.Equal(10, vm.DetailLogs.Count);                  // 第 1 页满 10 条
+        Assert.True(vm.HasNextDetailLogPage);
+        Assert.False(vm.HasPrevDetailLogPage);
+        Assert.Equal("第 1 / 3 页", vm.DetailLogPageDisplay);
+
+        vm.NextDetailLogPageCommand.Execute(null);
+        Assert.Equal(10, vm.DetailLogs.Count);
+        Assert.True(vm.HasPrevDetailLogPage);
+
+        vm.NextDetailLogPageCommand.Execute(null);
+        Assert.Equal(5, vm.DetailLogs.Count);                   // 末页 25 - 20 = 5 条
+        Assert.False(vm.HasNextDetailLogPage);
+
+        vm.FirstDetailLogPageCommand.Execute(null);
+        Assert.Equal(1, vm.DetailLogCurrentPage);
+        Assert.Equal(10, vm.DetailLogs.Count);
+    }
+
+    [Fact]
+    public async Task 轨迹日志不超10条_单页无翻页()
+    {
+        var samples = new FakeSampleRepository();
+        samples.Store.Add(new SctSample { SampleId = "HC-ONE", SampleName = "单页样", SampleType = SampleType.Control, RackPosition = "B02", InitialThickness = 10, CurrentThickness = 10, MinThickness = 5, MaxUsageCount = 60, Status = SampleStatus.Normal });
+        var logs = new FakeOperationLogRepository();
+        for (var i = 1; i <= 8; i++)
+        {
+            logs.Store.Add(MakePagedLog(i, "HC-ONE", new DateTime(2026, 11, 10).AddHours(-i)));
+        }
+
+        var vm = Create(samples: samples, logs: logs);
+        await vm.SetTableCommand.ExecuteAsync(SamplesViewModel.TableSample);
+        await SelectSampleAndWaitAsync(vm, "HC-ONE", 8);
+
+        Assert.Equal(1, vm.DetailLogTotalPages);
+        Assert.Equal(8, vm.DetailLogs.Count);
+        Assert.False(vm.HasNextDetailLogPage);
+        Assert.False(vm.HasPrevDetailLogPage);
+    }
+
+    [Fact]
+    public async Task 切换选中样_轨迹日志页码重置第1页()
+    {
+        var samples = new FakeSampleRepository();
+        samples.Store.Add(new SctSample { SampleId = "HC-A", SampleName = "多样A", SampleType = SampleType.Control, RackPosition = "B03", InitialThickness = 10, CurrentThickness = 10, MinThickness = 5, MaxUsageCount = 60, Status = SampleStatus.Normal });
+        samples.Store.Add(new SctSample { SampleId = "HC-B", SampleName = "多样B", SampleType = SampleType.Control, RackPosition = "B04", InitialThickness = 10, CurrentThickness = 10, MinThickness = 5, MaxUsageCount = 60, Status = SampleStatus.Normal });
+        var logs = new FakeOperationLogRepository();
+        for (var i = 1; i <= 25; i++)
+        {
+            logs.Store.Add(MakePagedLog(i, "HC-A", new DateTime(2026, 11, 10).AddHours(-i)));
+        }
+        logs.Store.Add(MakePagedLog(900, "HC-B", new DateTime(2026, 11, 10).AddHours(-1)));
+
+        var vm = Create(samples: samples, logs: logs);
+        await vm.SetTableCommand.ExecuteAsync(SamplesViewModel.TableSample);
+        await SelectSampleAndWaitAsync(vm, "HC-A", 25);
+        vm.NextDetailLogPageCommand.Execute(null);
+        Assert.Equal(2, vm.DetailLogCurrentPage);
+
+        await SelectSampleAndWaitAsync(vm, "HC-B", 1);
+        Assert.Equal(1, vm.DetailLogCurrentPage);               // 换样重置第 1 页
+        Assert.Single(vm.DetailLogs);
     }
 }

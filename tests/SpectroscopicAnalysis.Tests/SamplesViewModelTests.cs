@@ -214,6 +214,11 @@ internal sealed class FakeOperationLogRepository : ISctOperationLogRepository
              .OrderByDescending(l => l.OperationTime, StringComparer.Ordinal)
              .Take(limit)
              .ToList();
+
+    public IReadOnlyList<SctOperationLog> GetAllBySampleId(string sampleId) =>
+        Store.Where(l => l.SampleId == sampleId)
+             .OrderByDescending(l => l.OperationTime, StringComparer.Ordinal)
+             .ToList();
     public void Insert(SctOperationLog log) { Inserted.Add(log); log.LogId = Store.Count + 1; Store.Add(log); }
     public void Delete(long logId) { Deleted.Add(logId); Store.RemoveAll(l => l.LogId == logId); }
 }

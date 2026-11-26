@@ -361,7 +361,7 @@ public sealed class WorkflowOrchestrator : IWorkflowOrchestrator
         }, ct);
 
         await TransitionToAsync(TaskState.Completed, ct);
-        _engine.NotifyAnalysisCompleted(sampleId);
+        _engine.NotifyAnalysisCompleted(sampleId, task.TaskType);
     }
 
     /// <summary>
@@ -507,7 +507,7 @@ public sealed class WorkflowOrchestrator : IWorkflowOrchestrator
         }
 
         await EnterSubStateAsync(SctSubState.Returning, ct);
-        _engine.NotifyAnalysisCompleted(sampleId);
+        _engine.NotifyAnalysisCompleted(sampleId, task.TaskType);
         if (withCoeffUpdate)
         {
             _engine.NotifyStandardizeCompleted(sampleId);

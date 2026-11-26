@@ -100,6 +100,17 @@ public sealed class SctStrategyEngine : ISctStrategyEngine
                 return existing.TaskId;
             }
 
+            // 任务类型 ↔ 样品类型互斥校验（混用未勾选时）：ControlCheck 须 Control 样、TypeStandardize 须 TypeStd 样；
+            // 勾选混用或档案查不到（生产样/Stub 目标）时放行现状逻辑。拒绝属配置性错误，走统一错误链（5105）
+            if (!IsTaskSampleTypeAllowed(taskType, sampleId))
+            {
+                _errors.Collect(ErrorCodes.SctTaskSampleTypeMismatch,
+                    $"任务类型与样品类型不匹配，拒绝入队：{TaskTypeText(taskType)}（样品 {sampleId}）", sampleId);
+                _systemLog.Log("策略引擎",
+                    $"任务入队被拒：{TaskTypeText(taskType)}（样品 {sampleId}），原因：未启用检查样与类型标准化样混用");
+                return 0;
+            }
+
             var task = new SctTask
             {
                 TaskId = ++_nextTaskId,
@@ -330,7 +341,7 @@ public sealed class SctStrategyEngine : ISctStrategyEngine
     // ==================== 事件入口 ====================
 
     /// <inheritdoc />
-    public void NotifyAnalysisCompleted(string sampleId)
+    public void NotifyAnalysisCompleted(string sampleId, string? taskType = null)
     {
         // 注意：生产样档案在 Production_Sample 表（SCT 仓储查不到返回 null），null 不代表事件无效——
         // 必须先做按数量插入计数再判空返回（此前 null 提前 return 导致 ByCount 计数恒 0、KPI 不更新）
@@ -359,7 +370,16 @@ public sealed class SctStrategyEngine : ISctStrategyEngine
                 }
             }
 
-            if (sample.SampleType == SampleType.Control)
+            // 计时归属按任务用途（混用场景下样品档案类型 ≠ 实际任务用途）；taskType 未知时回退按样品类型
+            if (taskType == SctTaskType.ControlCheck)
+            {
+                _lastControlCheckTime = now;    // 判定结果另行经 NotifyControlResult 回喂
+            }
+            else if (taskType == SctTaskType.TypeStandardize)
+            {
+                _lastTypeStdTime = now;
+            }
+            else if (sample.SampleType == SampleType.Control)
             {
                 _lastControlCheckTime = now;    // 判定结果另行经 NotifyControlResult 回喂
                 // 不提前返回：检查样激发同样磨损物理样品，使用次数阈值联动（含孪生同步）须照常执行
@@ -671,8 +691,8 @@ public sealed class SctStrategyEngine : ISctStrategyEngine
     {
         if (taskType == SctTaskType.ControlCheck)
         {
-            var policy = _policyStore.Load();
-            var control = SelectControlSample(policy);
+            var controlPolicy = _policyStore.Load();
+            var control = SelectControlSample(controlPolicy);
             if (control is null)
             {
                 _errors.Collect(ErrorCodes.SctSettingSampleUnavailable, "无可用检查样（须 Control/Normal/启用），暂停分析", null);
@@ -685,7 +705,8 @@ public sealed class SctStrategyEngine : ISctStrategyEngine
         }
 
         // 类型标准化：AlloyType 精确匹配目标合金（任务清单第 5 节⑤）
-        var typeStd = SelectTypeStdSample(alloyType);
+        var policy = _policyStore.Load();
+        var typeStd = SelectTypeStdSample(alloyType, policy);
         if (typeStd is null)
         {
             _errors.Collect(ErrorCodes.SctTypeStdUnavailable,
@@ -717,24 +738,73 @@ public sealed class SctStrategyEngine : ISctStrategyEngine
     }
 
     /// <summary>
-    /// 检查样选择（任务清单第 5 节③）：Control/Normal/IsActive；
+    /// 控样选择（任务清单第 5 节③）：Control/Normal/IsActive；
     /// 轮换 = 上次使用时间最早（多块轮换）。检查样不关联合金，不做合金过滤。
+    /// 混用勾选（ControlTypeStdMixed）时并入 TypeStd 候选：使用次数最少优先，次数并列时本类型（Control）优先。
     /// </summary>
     private SctSample? SelectControlSample(SctPolicyOptions policy)
     {
+        var candidates = _samples.GetAll()
+            .Where(s => s.Status == SampleStatus.Normal && s.IsActive)
+            .Where(s => s.SampleType == SampleType.Control
+                        || (policy.ControlTypeStdMixed && s.SampleType == SampleType.TypeStd))
+            .ToList();
+        if (candidates.Count == 0)
+        {
+            return null;
+        }
+
+        // 混用：使用次数最少优先，次数并列本类型（Control）优先，再按轮换；非混用保持现状轮换语义
+        return policy.ControlTypeStdMixed
+            ? candidates
+                .OrderBy(s => s.UsageCount)
+                .ThenBy(s => s.SampleType == SampleType.Control ? 0 : 1)
+                .ThenBy(s => s.LastUseTime ?? DateTime.MinValue)
+                .First()
+            : candidates
+                .OrderBy(s => s.LastUseTime ?? DateTime.MinValue)
+                .First();
+    }
+
+    /// <summary>类型标准化样选择（任务清单第 5 节⑤）：TypeStd/Normal/IsActive 且合金精确匹配；
+    /// 混用勾选时并入 Control 样回退（检查样不关联合金，按使用次数最少、次数并列本类型优先参与选取）。</summary>
+    private SctSample? SelectTypeStdSample(string? alloyType, SctPolicyOptions policy)
+    {
         return _samples.GetAll()
-            .Where(s => s.SampleType == SampleType.Control && s.Status == SampleStatus.Normal && s.IsActive)
-            .OrderBy(s => s.LastUseTime ?? DateTime.MinValue)
+            .Where(s => s.Status == SampleStatus.Normal && s.IsActive)
+            .Where(s => (s.SampleType == SampleType.TypeStd && (alloyType is null || s.AlloyType == alloyType))
+                        || (policy.ControlTypeStdMixed && s.SampleType == SampleType.Control))
+            .OrderBy(s => s.UsageCount)
+            .ThenBy(s => s.SampleType == SampleType.TypeStd ? 0 : 1)    // 次数并列优先本类型
             .FirstOrDefault();
     }
 
-    /// <summary>类型标准化样选择（任务清单第 5 节⑤）：TypeStd/Normal/IsActive 且合金精确匹配。</summary>
-    private SctSample? SelectTypeStdSample(string? alloyType) =>
-        _samples.GetAll()
-            .Where(s => s.SampleType == SampleType.TypeStd && s.Status == SampleStatus.Normal && s.IsActive)
-            .Where(s => alloyType is null || s.AlloyType == alloyType)
-            .OrderBy(s => s.UsageCount)
-            .FirstOrDefault();
+    /// <summary>任务类型 ↔ 样品类型互斥校验：混用未勾选时 ControlCheck 须 Control 样、TypeStandardize 须 TypeStd 样；
+    /// 勾选混用或样品档案查不到（生产样任务/自动选样的空目标）时放行。</summary>
+    private bool IsTaskSampleTypeAllowed(string taskType, string? sampleId)
+    {
+        if (taskType != SctTaskType.ControlCheck && taskType != SctTaskType.TypeStandardize)
+        {
+            return true;
+        }
+        if (string.IsNullOrEmpty(sampleId))
+        {
+            return true;    // 空目标=入队后自动选样，选样阶段自会按类型过滤
+        }
+        var sample = _samples.GetById(sampleId);
+        if (sample is null || sample.SampleType == SampleType.Production)
+        {
+            return true;    // 生产样无 SCT 档案（档案恒查不到），不属两类 SCT 任务类型校验范畴
+        }
+        var policy = _policyStore.Load();
+        if (policy.ControlTypeStdMixed)
+        {
+            return true;
+        }
+        return taskType == SctTaskType.ControlCheck
+            ? sample.SampleType == SampleType.Control
+            : sample.SampleType == SampleType.TypeStd;
+    }
 
     /// <summary>
     /// 使用次数阈值联动（引擎设计 §8）：激发后 UsageCount ≥ MaxUsageCount → 置 NeedMeasure 并插测高任务；

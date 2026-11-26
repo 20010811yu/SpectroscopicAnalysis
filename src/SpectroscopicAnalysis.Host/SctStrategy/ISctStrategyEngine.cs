@@ -31,8 +31,10 @@ public interface ISctStrategyEngine
     /// <summary>任务完成/失败回执（Workflow 执行后回调；失败不自动重试）。</summary>
     void CompleteTask(int taskId, bool success, string? error);
 
-    /// <summary>样品分析完成（生产样完成计数→检查样插入；标样次数联动→测高任务，引擎设计 §5/§8）。</summary>
-    void NotifyAnalysisCompleted(string sampleId);
+    /// <summary>样品分析完成（生产样完成计数→检查样插入；标样次数联动→测高任务，引擎设计 §5/§8）。
+    /// taskType：触发本次分析的任务类型（混用时计时按任务用途归属——ControlCheck 刷检查计时、TypeStandardize 刷类型标准化期限），
+    /// 为 null 时按样品档案类型归属（向后兼容）。</summary>
+    void NotifyAnalysisCompleted(string sampleId, string? taskType = null);
 
     /// <summary>检查样判定结果（超差闭环推进，引擎设计 §7；passed 按 LimitType/LimitValue 判定后的布尔结果）。</summary>
     void NotifyControlResult(string sampleId, bool passed);

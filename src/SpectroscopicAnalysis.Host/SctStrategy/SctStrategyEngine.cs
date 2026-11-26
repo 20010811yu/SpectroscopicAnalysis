@@ -362,15 +362,13 @@ public sealed class SctStrategyEngine : ISctStrategyEngine
             if (sample.SampleType == SampleType.Control)
             {
                 _lastControlCheckTime = now;    // 判定结果另行经 NotifyControlResult 回喂
-                return;
+                // 不提前返回：检查样激发同样磨损物理样品，使用次数阈值联动（含孪生同步）须照常执行
             }
-
-            if (sample.SampleType == SampleType.SettingUp)
+            else if (sample.SampleType == SampleType.SettingUp)
             {
                 _lastStandardizeTime = now;
             }
-
-            if (sample.SampleType == SampleType.TypeStd)
+            else if (sample.SampleType == SampleType.TypeStd)
             {
                 _lastTypeStdTime = now;
             }
@@ -739,8 +737,10 @@ public sealed class SctStrategyEngine : ISctStrategyEngine
             .FirstOrDefault();
 
     /// <summary>
-    /// 使用次数阈值联动（引擎设计 §8）：激发后 UsageCount ≥ MaxUsageCount → 置 NeedMeasure 并插测高任务。
-    /// 由 Workflow 在激发落库（UpdateAfterSpark）后调用本方法前保证档案已更新。
+    /// 使用次数阈值联动（引擎设计 §8）：激发后 UsageCount ≥ MaxUsageCount → 置 NeedMeasure 并插测高任务；
+    /// 兼任孪生档案（PairSampleId）同步联动——同一物理样品磨损共享，孪生同样置 NeedMeasure 并各插独立测高任务，
+    /// 两条档案经 NotifyHeightMeasured 各自闭环（避免孪生以 Normal 状态被选样策略继续选中）。
+    /// 由 Workflow 在激发落库（UpdateAfterSpark，孪生次数已拉平）后调用本方法前保证档案已更新。
     /// </summary>
     private void CheckUsageThreshold(SctSample sample)
     {
@@ -751,6 +751,21 @@ public sealed class SctStrategyEngine : ISctStrategyEngine
             WriteLog(SctTaskType.HeightMeasure, sample.SampleId, "使用次数达到上限",
                 resultStatus: "Warning", isPass: null);
             SubmitTask(SctTaskType.HeightMeasure, sample.SampleId, "使用次数达到上限，先测高");
+        }
+
+        // 兼任孪生联动：孪生仅做状态置位与测高闭环，不重复计数（次数已由仓储 UpdateAfterSpark 拉平）
+        if (string.IsNullOrWhiteSpace(sample.PairSampleId))
+        {
+            return;
+        }
+        var twin = _samples.GetById(sample.PairSampleId);
+        if (twin is not null && twin.Status == SampleStatus.Normal && twin.UsageCount >= twin.MaxUsageCount)
+        {
+            twin.Status = SampleStatus.NeedMeasure;
+            _samples.Update(twin);
+            WriteLog(SctTaskType.HeightMeasure, twin.SampleId, "兼任孪生同步：使用次数达到上限",
+                resultStatus: "Warning", isPass: null);
+            SubmitTask(SctTaskType.HeightMeasure, twin.SampleId, "兼任孪生同步，使用次数达到上限，先测高");
         }
     }
 

@@ -35,14 +35,31 @@ public sealed class SeedBulkTests
                 return (long)cmd.ExecuteScalar()!;
             }
 
-            Assert.Equal(3000, Count("SCT_Sample"));
-            Assert.True(Count("SCT_CertifiedValue") >= 5000, $"CertifiedValue={Count("SCT_CertifiedValue")}");
-            Assert.True(Count("ControlLimit") >= 5000, $"ControlLimit={Count("ControlLimit")}");
+            Assert.Equal(17, Count("SCT_Sample"));   // 行业标配：设置样 3 + 控制样 6 + 类型标准化样 8
+            Assert.True(Count("SCT_CertifiedValue") >= 34, $"CertifiedValue={Count("SCT_CertifiedValue")}");
+            Assert.True(Count("ControlLimit") >= 30, $"ControlLimit={Count("ControlLimit")}");
             Assert.True(Count("CorrectionCoefficient") >= 5000, $"Coeff={Count("CorrectionCoefficient")}");
-            Assert.True(Count("SCT_OperationLog") >= 70000, $"Log={Count("SCT_OperationLog")}");
+            Assert.True(Count("SCT_OperationLog") >= 80000, $"Log={Count("SCT_OperationLog")}");
             Assert.True(Count("Production_Sample") >= 10000, $"Production={Count("Production_Sample")}");
             // 状态两值化后：仅已完成样(约50%)×1~2 条生成结果；待分析样（含失败回退）不落结果
             Assert.True(Count("Analysis_Result") >= 5000, $"AnalysisResult={Count("Analysis_Result")}");
+
+            // 标样类型配比与行业标配一致（设置样 2–4 / 控制样 3–6 低中高覆盖 / 类型标准化样 5–10）
+            Assert.Equal(3, CountWhere("SCT_Sample", "SampleType = 'SettingUp'"));
+            Assert.Equal(6, CountWhere("SCT_Sample", "SampleType = 'Control'"));
+            Assert.Equal(8, CountWhere("SCT_Sample", "SampleType = 'TypeStd'"));
+            // 架位全部落在货架示意 A01–E05（RackDirectory 5×5）
+            var allPositions = SpectroscopicAnalysis.Host.SampleManager.RackDirectory.AllPositions;
+            long outOfRack;
+            using (var cmd = conn.CreateCommand())
+            {
+                cmd.CommandText = "SELECT COUNT(*) FROM SCT_Sample WHERE RackPosition IS NOT NULL";
+                var totalRacked = (long)cmd.ExecuteScalar()!;
+                cmd.CommandText = $"SELECT COUNT(*) FROM SCT_Sample WHERE RackPosition IN ({string.Join(',', allPositions.Select(p => $"'{p}'"))})";
+                var inRack = (long)cmd.ExecuteScalar()!;
+                outOfRack = totalRacked - inRack;
+            }
+            Assert.Equal(0L, outOfRack);
 
             // 全表总数据量超过 10 万行
             var total = Count("SCT_Sample") + Count("SCT_CertifiedValue") + Count("ControlLimit")
@@ -54,7 +71,7 @@ public sealed class SeedBulkTests
 
             // 幂等：再次注入不增量
             seed.SeedDemo();
-            Assert.Equal(3000, Count("SCT_Sample"));
+            Assert.Equal(17, Count("SCT_Sample"));
         }
         finally
         {
@@ -85,24 +102,25 @@ public sealed class SeedBulkTests
                 cmd.CommandText = $"SELECT COUNT(*) FROM {table}";
                 return (long)cmd.ExecuteScalar()!;
             }
-            Assert.Equal(3000, Count("SCT_Sample"));
+            Assert.Equal(17, Count("SCT_Sample"));
 
             // 删除部分数据后再次 SeedIfEmpty → 不重播、不恢复（先删子表引用再删本体，与仓储级联删除同序）
             foreach (var child in new[] { "SCT_CertifiedValue", "ControlLimit" })
             {
                 using var delChild = conn.CreateCommand();
-                delChild.CommandText = $"DELETE FROM {child} WHERE SampleID IN (SELECT SampleID FROM SCT_Sample WHERE SampleID LIKE '%-G%')";
+                delChild.CommandText = "DELETE FROM {0} WHERE SampleID IN (SELECT SampleID FROM SCT_Sample WHERE SampleType = 'TypeStd')";
+                delChild.CommandText = string.Format(delChild.CommandText, child);
                 delChild.ExecuteNonQuery();
             }
 
             using (var del = conn.CreateCommand())
             {
-                del.CommandText = "DELETE FROM SCT_Sample WHERE SampleID LIKE '%-G%'";
+                del.CommandText = "DELETE FROM SCT_Sample WHERE SampleType = 'TypeStd'";
                 del.ExecuteNonQuery();
             }
 
             seed.SeedIfEmpty();
-            Assert.True(Count("SCT_Sample") < 3000, $"删除后不应恢复：Count={Count("SCT_Sample")}");
+            Assert.True(Count("SCT_Sample") < 17, $"删除后不应恢复：Count={Count("SCT_Sample")}");
             Assert.Equal(Count("SCT_Sample"), Count("SCT_Sample"));   // 二次调用无变化
         }
         finally

@@ -11,6 +11,9 @@ namespace SpectroscopicAnalysis.Host.SampleManager;
 /// </summary>
 public sealed class SampleRegistrationService : ISampleRegistrationService
 {
+    /// <summary>兼任孪生档案编号后缀（检查样 HC-01 → 孪生 HC-01-T；SamplesViewModel 内联注册同规则）。</summary>
+    private const string TwinIdSuffix = "-T";
+
     private readonly ISctSampleRepository _samples;
     private readonly IProductionSampleRepository _production;
     private readonly ISctStrategyEngine _engine;
@@ -45,6 +48,32 @@ public sealed class SampleRegistrationService : ISampleRegistrationService
         var type = form.SampleType;
         var sample = type == SampleType.Production ? null : BuildSample(form);
         var productionSample = type == SampleType.Production ? BuildProductionSample(form) : null;
+        // 检查样兼任类型标准化样：同批构造 TypeStd 孪生档案（编号 -T 后缀、同架位、互指 PairSampleId；
+        // 合金只落在孪生上——触发器约束合金仅 TypeStd 可关联）
+        SctSample? twinSample = null;
+        if (sample is not null && type == SampleType.Control && form.RegisterAsTypeStdTwin)
+        {
+            var twinId = sample.SampleId + TwinIdSuffix;
+            twinSample = new SctSample
+            {
+                SampleId = twinId,
+                SampleName = sample.SampleName + "（类型标准化）",
+                SampleType = SampleType.TypeStd,
+                AlloyType = string.IsNullOrWhiteSpace(form.AlloyType) ? null : form.AlloyType.Trim(),
+                RackPosition = sample.RackPosition,
+                InitialThickness = sample.InitialThickness,
+                CurrentThickness = sample.CurrentThickness,
+                MinThickness = sample.MinThickness,
+                UsageCount = 0,
+                MaxUsageCount = sample.MaxUsageCount,
+                Status = SampleStatus.Normal,
+                IsActive = true,
+                CreatedTime = DateTime.Now,
+                PairSampleId = sample.SampleId,
+            };
+            sample.AlloyType = null;    // 检查样本体不关联合金（触发器 trg_SCT_Sample_AlloyType_TypeStdOnly）
+            sample.PairSampleId = twinId;
+        }
 
         // 重复校验（按类型查各自表：生产样查 Production_Sample，其余查 SCT_Sample 编号/架位）
         var dupError = await Task.Run(() =>
@@ -63,6 +92,11 @@ public sealed class SampleRegistrationService : ISampleRegistrationService
                 if (_samples.GetById(sample.SampleId) is not null)
                 {
                     errors.Add($"样品编号已存在：{sample.SampleId}");
+                }
+                // 兼任孪生编号查重（-T 后缀）
+                if (twinSample is not null && _samples.GetById(twinSample.SampleId) is not null)
+                {
+                    errors.Add($"样品编号已存在：{twinSample.SampleId}");
                 }
                 var occupant = _samples.GetAll().FirstOrDefault(s =>
                     string.Equals(s.RackPosition?.Trim(), sample.RackPosition, StringComparison.Ordinal));
@@ -87,7 +121,14 @@ public sealed class SampleRegistrationService : ISampleRegistrationService
             }
             else
             {
-                await Task.Run(() => _samples.Insert(sample!));
+                await Task.Run(() =>
+                {
+                    _samples.Insert(sample!);
+                    if (twinSample is not null)
+                    {
+                        _samples.Insert(twinSample);   // 兼任孪生同批入库（逐行事务，失败时上方统一进错误链）
+                    }
+                });
             }
         }
         catch (Microsoft.Data.Sqlite.SqliteException ex)
@@ -107,7 +148,9 @@ public sealed class SampleRegistrationService : ISampleRegistrationService
                 _ => SctTaskType.Production,
             };
         _engine.SubmitTask(taskType, form.SampleId.Trim(), "样品注册自动入队");
-        _systemLog.Log("UI操作", $"样品注册：{form.SampleId.Trim()}（{form.SampleName}，{form.SampleType}）");
+        _systemLog.Log("UI操作", twinSample is null
+            ? $"样品注册：{form.SampleId.Trim()}（{form.SampleName}，{form.SampleType}）"
+            : $"样品注册：{form.SampleId.Trim()}（{form.SampleName}，{form.SampleType}，兼任类型标准化样，孪生档案 {twinSample.SampleId}）");
         return null;
     }
 
@@ -163,7 +206,14 @@ public sealed class SampleRegistrationService : ISampleRegistrationService
         {
             return "类型标准化样必须填写关联合金";
         }
-        if (form.SampleType != SampleType.TypeStd && form.SampleType != SampleType.Production && !string.IsNullOrWhiteSpace(form.AlloyType))
+        // 检查样兼任类型标准化样：孪生档案需合金（数据库触发器兜底，此处前置校验）
+        if (form.SampleType == SampleType.Control && form.RegisterAsTypeStdTwin && string.IsNullOrWhiteSpace(form.AlloyType))
+        {
+            return "兼任类型标准化样必须填写合金";
+        }
+        var allowAlloy = form.SampleType == SampleType.TypeStd
+            || (form.SampleType == SampleType.Control && form.RegisterAsTypeStdTwin);
+        if (!allowAlloy && form.SampleType != SampleType.Production && !string.IsNullOrWhiteSpace(form.AlloyType))
         {
             return "仅类型标准化样/生产样可关联合金，控样/检查样请留空合金";
         }

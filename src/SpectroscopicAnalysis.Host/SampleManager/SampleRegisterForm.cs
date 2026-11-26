@@ -18,8 +18,11 @@ public sealed class SampleRegisterForm
     /// <summary>分析方法（生产样必选）。</summary>
     public string? AnalysisMethod { get; set; }
 
-    /// <summary>关联合金（生产样与类型标准化样必填；控样/检查样禁填）。</summary>
+    /// <summary>关联合金（生产样/类型标准化样/勾选兼任的检查样必填；其余禁填）。</summary>
     public string? AlloyType { get; set; }
+
+    /// <summary>检查样兼任类型标准化样（true 时同事务创建 TypeStd 孪生档案：编号 -T 后缀、同架位、互指 PairSampleId）。</summary>
+    public bool RegisterAsTypeStdTwin { get; set; }
 
     /// <summary>货架位置（SCT 样必填，全库唯一）。</summary>
     public string? RackPosition { get; set; }

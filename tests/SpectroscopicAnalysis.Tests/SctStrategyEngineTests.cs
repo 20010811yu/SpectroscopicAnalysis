@@ -159,6 +159,59 @@ public sealed class SctStrategyEngineTests
     }
 
     [Fact]
+    public void 队列_删除排队任务_置已取消留痕且出队()
+    {
+        var engine = Create();
+        var id1 = engine.SubmitTask(SctTaskType.Production, "PL-001", "注册入队");
+        var id2 = engine.SubmitTask(SctTaskType.Production, "PL-002", "注册入队");
+
+        // 删除排队任务：成功返回 true，任务出队并置 Cancelled
+        Assert.True(engine.RemoveQueuedTask(id2));
+        Assert.Equal(new[] { id1 }, engine.GetQueuedTasks().Select(t => t.TaskId).ToList());
+
+        // 任务不凭空消失：历史留痕（Cancelled），状态机无自创状态名
+        var history = engine.GetRecentTasks().First(t => t.TaskId == id2);
+        Assert.Equal(SctTaskStatus.Cancelled, history.Status);
+    }
+
+    [Fact]
+    public void 队列_删除仅限排队中_不存在与执行中拒绝()
+    {
+        var engine = Create();
+        var id1 = engine.SubmitTask(SctTaskType.Production, "PL-001", "注册入队");
+        var id2 = engine.SubmitTask(SctTaskType.Production, "PL-002", "注册入队");
+
+        // 执行中不可删除（FIFO 出队 PL-001 变执行中）
+        Assert.True(engine.TryDequeue(out var running));
+        Assert.False(engine.RemoveQueuedTask(running.TaskId));
+
+        // 不存在的任务号拒绝
+        Assert.False(engine.RemoveQueuedTask(9999));
+
+        // 其余排队任务不受影响；完成后执行中任务入历史
+        engine.CompleteTask(running.TaskId, true, null);
+        Assert.Equal(new[] { id2 }, engine.GetQueuedTasks().Select(t => t.TaskId).ToList());
+    }
+
+    [Fact]
+    public void 队列_按样品移除排队任务_仅删该样品且不影响他人()
+    {
+        var engine = Create();
+        var idA1 = engine.SubmitTask(SctTaskType.Production, "PL-A", "注册入队");
+        var idA2 = engine.SubmitTask(SctTaskType.HeightMeasure, "PL-A", "测高联动");
+        var idB1 = engine.SubmitTask(SctTaskType.Production, "PL-B", "注册入队");
+
+        // 移除 PL-A 的全部排队任务；PL-B 不受影响
+        Assert.Equal(2, engine.RemoveQueuedTasksBySample("PL-A"));
+        Assert.Equal(new[] { idB1 }, engine.GetQueuedTasks().Select(t => t.TaskId).ToList());
+
+        // 被移除任务留痕 Cancelled；不存在样品返回 0
+        Assert.All(engine.GetRecentTasks().Where(t => t.SampleId == "PL-A"),
+            t => Assert.Equal(SctTaskStatus.Cancelled, t.Status));
+        Assert.Equal(0, engine.RemoveQueuedTasksBySample("PL-NONE"));
+    }
+
+    [Fact]
     public void 队列_重复目标同类型去重合并()
     {
         var engine = Create();

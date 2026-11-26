@@ -162,10 +162,12 @@ public sealed class SctPageTests
     [Fact]
     public async Task Measure_低于最小厚度_标记Disabled()
     {
-        var (vm, repo, logs, _, _) = Create(new[]
-        {
-            MakeSample("SUS-001", thickness: 9, minThickness: 5),
-        });
+        var repo = new FakeSampleRepository();
+        repo.Store.Add(MakeSample("SUS-001", thickness: 9, minThickness: 5));
+        var logs = new FakeOperationLogRepository();
+        var errors = new FakeErrorCollector();
+        var vm = new SctViewModel(repo, logs, new FakeSctPolicyStore(),
+            new FakeUiDispatcher(), new FakeDialogService(), errors);
         await vm.LoadCommand.ExecuteAsync(null);
         vm.SelectedSample = vm.SctSamples[0];
 
@@ -175,6 +177,8 @@ public sealed class SctPageTests
 
         Assert.Equal(SampleStatus.Disabled, repo.GetById("SUS-001")!.Status);
         Assert.Single(logs.Inserted);
+        // 过薄报废与引擎测高回喂同规则：必发 5104 报警（回归：此前手动登记只置 Disabled 不报警）
+        Assert.Contains(errors.Collected, c => c.Code == ErrorCodes.SctThicknessBelowMinimum);
     }
 
     [Fact]

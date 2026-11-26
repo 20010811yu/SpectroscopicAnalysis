@@ -589,6 +589,12 @@ public sealed partial class SctViewModel : ObservableObject, IPageLifecycle
             sample.Status = newStatus;
             sample.LastHeightCheckTime = DateTime.Now;
             _samples.Update(sample);
+            // 过薄报废与引擎测高回喂同规则：必发 5104 报警（此前仅置 Disabled 不报警，提示口径不一致）
+            if (newStatus == SampleStatus.Disabled)
+            {
+                _errors.Collect(ErrorCodes.SctThicknessBelowMinimum,
+                    $"标样 {sampleId} 测高后厚度 {thickness:0.##} 低于最小厚度 {sample.MinThickness:0.##}，请更换", sampleId);
+            }
             _logs.Insert(new SctOperationLog
             {
                 SampleId = sample.SampleId,

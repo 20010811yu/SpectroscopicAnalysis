@@ -285,6 +285,46 @@ public sealed class WorkflowOrchestratorTests
     // ==================== 生产前合金切换前置类型标准化 ====================
 
     [Fact]
+    public async Task 无匹配合金类型标准化样_生产样跳过置待分析并继续下一任务()
+    {
+        // 生产样 1（合金 9999 无匹配类型标准化样）→ 生产样 2（合金 3003 有匹配）：样 1 跳过生产置待分析，样 2 正常生产
+        _production.Store.Add(new ProductionSample
+        {
+            SampleId = "P-9999", SampleName = "生产样 9999", SampleType = "Production",
+            AlloyType = "9999", AssociatedMethod = "M-1", Status = ProductionStatus.Pending, CreatedTime = DateTime.Now,
+        });
+        _production.Store.Add(new ProductionSample
+        {
+            SampleId = "P-3003", SampleName = "生产样 3003", SampleType = "Production",
+            AlloyType = "3003", AssociatedMethod = "M-1", Status = ProductionStatus.Pending, CreatedTime = DateTime.Now,
+        });
+        var typeStd3003 = MakeSample("TYP-3003", type: SampleType.TypeStd);
+        typeStd3003.AlloyType = "3003";
+        _samples.Store.Add(typeStd3003);
+
+        var (engine, orchestrator) = Create();
+        engine.SubmitTask(SctTaskType.Production, "P-9999", "样品注册自动入队");
+        engine.SubmitTask(SctTaskType.Production, "P-3003", "样品注册自动入队");
+
+        await orchestrator.StartAsync(CancellationToken.None);
+        await WaitUntilAsync(() => _production.GetResults("P-3003").Any());
+        await orchestrator.StopAsync(CancellationToken.None);
+
+        // P-9999 不进生产流程：无 ID_CYCLE=1、报警 5103、状态置待分析、任务移出队列
+        Assert.DoesNotContain(_gateway.SentCycles, c => c.SampleId == "P-9999");
+        Assert.Contains(_errors.Collected, c => c.Code == ErrorCodes.SctTypeStdUnavailable
+            && c.SampleId == "P-9999");
+        Assert.Equal(ProductionStatus.Pending, _production.Store.Single(p => p.SampleId == "P-9999").Status);
+        Assert.DoesNotContain(engine.GetRecentTasks(), t => t.SampleId == "P-9999" && t.Status == SctTaskStatus.Completed);
+
+        // P-3003 不受影响：前置类型标准化 + 正常生产完成
+        var cycles = _gateway.SentCycles.Select(c => (c.SampleId, c.IdCycle)).ToList();
+        Assert.Contains(("TYP-3003", 2), cycles);
+        Assert.Contains(("P-3003", 1), cycles);
+        Assert.Equal(ProductionStatus.Completed, _production.Store.Single(p => p.SampleId == "P-3003").Status);
+    }
+
+    [Fact]
     public async Task 合金切换_生产前先执行匹配合金的类型标准化()
     {
         // 生产样 1（合金 3003）→ 生产样 2（合金 6061）：第二个生产任务前应先对 6061 的类型标准化样执行 ID_CYCLE=2
@@ -310,12 +350,16 @@ public sealed class WorkflowOrchestratorTests
         await WaitUntilAsync(() => _production.GetResults("P-6061").Any());
         await orchestrator.StopAsync(CancellationToken.None);
 
-        // 执行次序：P-3003 生产 → TYP-6061 类型标准化（ID_CYCLE=2）→ P-6061 生产
+        // 执行次序：P-3003（合金 3003 无匹配类型标准化样）跳过生产 → TYP-6061 前置类型标准化（ID_CYCLE=2）→ P-6061 生产
         var cycles = _gateway.SentCycles.Select(c => (c.SampleId, c.IdCycle)).ToList();
-        Assert.Equal(3, cycles.Count);
-        Assert.Equal(("P-3003", 1), cycles[0]);
-        Assert.Equal(("TYP-6061", 2), cycles[1]);       // 前置类型标准化（合金匹配 6061）
-        Assert.Equal(("P-6061", 1), cycles[2]);
+        Assert.Equal(2, cycles.Count);
+        Assert.Equal(("TYP-6061", 2), cycles[0]);       // 前置类型标准化（合金匹配 6061）
+        Assert.Equal(("P-6061", 1), cycles[1]);
+        // P-3003 跳过生产：无 ID_CYCLE=1、5103 报警、状态保持待分析、任务移出队列（不入完成历史）
+        Assert.DoesNotContain(_gateway.SentCycles, c => c.SampleId == "P-3003");
+        Assert.Contains(_errors.Collected, c => c.Code == ErrorCodes.SctTypeStdUnavailable && c.SampleId == "P-3003");
+        Assert.Equal(ProductionStatus.Pending, _production.Store.Single(p => p.SampleId == "P-3003").Status);
+        Assert.DoesNotContain(engine.GetRecentTasks(), t => t.SampleId == "P-3003" && t.Status == SctTaskStatus.Completed);
         // 前置类型标准化完成行落库（一行一任务）
         Assert.Contains(_logs.Store, l => l.OperationType == "TypeStandardize" && l.SampleId == "TYP-6061"
             && (l.TriggerReason ?? string.Empty).Contains("前置类型标准化") && l.ResultStatus == "Success");
@@ -323,7 +367,7 @@ public sealed class WorkflowOrchestratorTests
         Assert.Contains(engine.GetRecentTasks(), t => t.TaskType == SctTaskType.TypeStandardize
             && t.SampleId == "TYP-6061" && t.Status == SctTaskStatus.Completed
             && (t.Reason ?? string.Empty).Contains("前置类型标准化"));
-        // 两生产样均正常完成
+        // P-6061 正常完成
         Assert.Equal(ProductionStatus.Completed, _production.Store.Single(p => p.SampleId == "P-6061").Status);
     }
 

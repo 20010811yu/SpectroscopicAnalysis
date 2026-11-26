@@ -20,6 +20,9 @@ public static class ErrorCodes
     /// <summary>5006 SCT 标样维护写库失败（测高登记/阈值调整/启用禁用）。</summary>
     public const int SctSampleMaintainFailed = 5006;
 
+    /// <summary>5007 生产样状态回写失败（跳过生产置待分析等状态更新写库失败）。</summary>
+    public const int ProductionStatusUpdateFailed = 5007;
+
     // 51xx SCT 策略引擎
     /// <summary>5101 控样选择无可用样品（报警暂停分析）。</summary>
     public const int SctSettingSampleUnavailable = 5101;

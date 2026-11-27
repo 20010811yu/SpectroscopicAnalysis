@@ -246,7 +246,7 @@ public sealed class ConsoleViewModelTests
         {
             SampleId = "TS-102", SampleName = "标样2", SampleType = SampleType.Control,
             AlloyType = "AL", RackPosition = "A02", Status = SampleStatus.Disabled,
-            IsActive = false,   // 过薄报废：Status=Disabled + IsActive=false → 货架红色「禁用（过薄）」
+            IsActive = false,   // 过薄报废：Status=Disabled + IsActive=false → 货架红色「过薄」
         });
         samples.Store.Add(new SctSample
         {
@@ -262,7 +262,7 @@ public sealed class ConsoleViewModelTests
         Assert.Equal(RackSlotItem.StateManualDisabled, vm.RackRows[0].Slots[0].SlotState);   // A01 人工禁用（正常样人工停用）
         Assert.Equal("人工禁用", vm.RackRows[0].Slots[0].StateText);
         Assert.Equal(RackSlotItem.StateDisabled, vm.RackRows[0].Slots[1].SlotState);         // A02 过薄禁用
-        Assert.Equal("禁用（过薄）", vm.RackRows[0].Slots[1].StateText);
+        Assert.Equal("过薄", vm.RackRows[0].Slots[1].StateText);
         Assert.Equal(RackSlotItem.StateNeedMeasure, vm.RackRows[0].Slots[2].SlotState);      // A03 需测高（Status 优先）
         Assert.Equal("需测高", vm.RackRows[0].Slots[2].StateText);
         Assert.Equal("TS-103（需测高）", vm.RackRows[0].Slots[2].ToolTipText);

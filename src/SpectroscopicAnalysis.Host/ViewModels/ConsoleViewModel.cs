@@ -280,7 +280,7 @@ public sealed partial class ConsoleViewModel : ObservableObject, IPageLifecycle
             {
                 // Status 优先：过薄报废（Disabled）红、需测高黄，均不受人工停用影响；
                 // 仅 Status 正常（其余状态跟随 Status 归一）且被人工停用（IsActive=false）才展示橙色「人工禁用」
-                SampleStatus.Disabled => (RackSlotItem.StateDisabled, "禁用（过薄）"),
+                SampleStatus.Disabled => (RackSlotItem.StateDisabled, "过薄"),
                 SampleStatus.NeedMeasure => (RackSlotItem.StateNeedMeasure, "需测高"),
                 _ when !s.IsActive => (RackSlotItem.StateManualDisabled, "人工禁用"),
                 _ => (RackSlotItem.StateNormal, "可用"),

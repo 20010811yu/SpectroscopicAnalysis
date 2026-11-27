@@ -99,6 +99,7 @@
                         <Border Grid.Column="0" Margin="0,0,12,0">
                             <Border.Style>
                                 <Style TargetType="Border" BasedOn="{StaticResource Kpi.IconBadge}">
+                                    <Setter Property="Background" Value="{DynamicResource Brush.Status.Warning}" />
                                     <Style.Triggers>
                                         <DataTrigger Binding="{Binding NeedMaintenanceCount}" Value="0">
                                             <Setter Property="Background" Value="{DynamicResource Brush.Status.Idle}" />

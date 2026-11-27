@@ -240,24 +240,35 @@ public sealed partial class ConsoleViewModel : ObservableObject, IPageLifecycle
 
     // ==================== 货架示意（5×5） ====================
 
-    /// <summary>示意范围内占用数。</summary>
-    public int RackOccupiedCount => RackRows.Sum(r => r.Slots.Count(s => s.IsOccupied));
-
-    /// <summary>架位总数（示意范围内）。</summary>
+    /// <summary>架位总数（示意范围内，SCT 与分析样货架同规格）。</summary>
     public int RackTotalCount => RackRowsCount * RackColumnsCount;
 
     /// <summary>超出示意范围的架位占用数（如 A12 等）。</summary>
     public int RackOutOfRangeCount { get; private set; }
 
+    /// <summary>SCT 货架占用数（示意范围内）。</summary>
+    public int RackOccupiedCount => RackRows.Sum(r => r.Slots.Count(s => s.IsOccupied));
+
     [ObservableProperty]
     private ObservableCollection<RackRowItem> _rackRows = new();
 
-    /// <summary>刷新货架占用（档案查询在后台线程，避免 UI 卡顿；公开供测试确定性刷新）。</summary>
+    /// <summary>分析样货架行（生产样；A01–E05 编号与 SCT 货架共用，仅展示分卡）。</summary>
+    [ObservableProperty]
+    private ObservableCollection<RackRowItem> _productionRows = new();
+
+    /// <summary>分析样货架占用数（示意范围内）。</summary>
+    public int ProdOccupiedCount => ProductionRows.Sum(r => r.Slots.Count(s => s.IsOccupied));
+
+    /// <summary>分析样货架超出示意范围的架位占用数。</summary>
+    public int ProdOutOfRangeCount { get; private set; }
+
+    /// <summary>刷新货架占用（档案查询在后台线程，避免 UI 卡顿；公开供测试确定性刷新）。
+    /// SCT 货架与分析样货架共用 A01–E05 编号空间，分卡展示互不混画。</summary>
     public void RefreshRack()
     {
-        // SampleID → (样品号, 库位状态) 映射（SCT 标样优先，生产样兜底；注册时已保证架位唯一）。
-        // 库位状态按样品状态区分：过薄禁用=红、人工停用=橙、需测高=黄、可用=蓝；生产样无状态机，占用即视为可用。
-        var occupancy = new Dictionary<string, (string SampleId, string State, string StateText)>();
+        // SCT 货架：SampleID → (样品号, 库位状态)。
+        // Status 优先：过薄禁用=红、需测高=黄，均不受人工停用影响；仅 Status 正常样人工停用才展示橙色。
+        var sctOccupancy = new Dictionary<string, (string SampleId, string State, string StateText)>();
         foreach (var s in _samples.GetAll())
         {
             if (string.IsNullOrEmpty(s.RackPosition))
@@ -274,16 +285,46 @@ public sealed partial class ConsoleViewModel : ObservableObject, IPageLifecycle
                 _ when !s.IsActive => (RackSlotItem.StateManualDisabled, "人工禁用"),
                 _ => (RackSlotItem.StateNormal, "可用"),
             };
-            occupancy.TryAdd(s.RackPosition, (s.SampleId, state, text));
-        }
-        foreach (var p in _production.GetAll())
-        {
-            if (!string.IsNullOrEmpty(p.RackPosition))
-            {
-                occupancy.TryAdd(p.RackPosition, (p.SampleId, RackSlotItem.StateNormal, "可用"));
-            }
+            sctOccupancy.TryAdd(s.RackPosition, (s.SampleId, state, text));
         }
 
+        // 分析样货架：生产样按状态机展示——待分析=黄、已完成=绿（生产样无 Status 细分状态）
+        var prodOccupancy = new Dictionary<string, (string SampleId, string State, string StateText)>();
+        foreach (var p in _production.GetAll())
+        {
+            if (string.IsNullOrEmpty(p.RackPosition))
+            {
+                continue;
+            }
+
+            var (state, text) = p.Status == ProductionStatus.Completed
+                ? (RackSlotItem.StateCompleted, "已完成")
+                : (RackSlotItem.StatePending, "待分析");
+            prodOccupancy.TryAdd(p.RackPosition, (p.SampleId, state, text));
+        }
+
+        var sctRows = BuildRackRows(sctOccupancy, out var sctOutOfRange);
+        var prodRows = BuildRackRows(prodOccupancy, out var prodOutOfRange);
+
+        _ui.Invoke(() =>
+        {
+            RackRows = new ObservableCollection<RackRowItem>(sctRows);
+            RackOutOfRangeCount = sctOutOfRange;
+            ProductionRows = new ObservableCollection<RackRowItem>(prodRows);
+            ProdOutOfRangeCount = prodOutOfRange;
+            OnPropertyChanged(nameof(RackOccupiedCount));
+            OnPropertyChanged(nameof(RackTotalCount));
+            OnPropertyChanged(nameof(RackOutOfRangeCount));
+            OnPropertyChanged(nameof(ProdOccupiedCount));
+            OnPropertyChanged(nameof(ProdOutOfRangeCount));
+        });
+    }
+
+    /// <summary>按 5×5 生成货架行（占用表剩余条目即示意范围外架位数）。</summary>
+    private List<RackRowItem> BuildRackRows(
+        Dictionary<string, (string SampleId, string State, string StateText)> occupancy,
+        out int outOfRangeCount)
+    {
         var rows = new List<RackRowItem>();
         foreach (var rowLabel in RackRowLabels)
         {
@@ -305,16 +346,8 @@ public sealed partial class ConsoleViewModel : ObservableObject, IPageLifecycle
             }
             rows.Add(new RackRowItem { RowLabel = rowLabel, Slots = slots });
         }
-        var outOfRange = occupancy.Count;   // 剩余即示意范围外的架位
-
-        _ui.Invoke(() =>
-        {
-            RackRows = new ObservableCollection<RackRowItem>(rows);
-            RackOutOfRangeCount = outOfRange;
-            OnPropertyChanged(nameof(RackOccupiedCount));
-            OnPropertyChanged(nameof(RackTotalCount));
-            OnPropertyChanged(nameof(RackOutOfRangeCount));
-        });
+        outOfRangeCount = occupancy.Count;   // 剩余即示意范围外的架位
+        return rows;
     }
 
     // ==================== 激光打标面板（完整功能：方式切换/内容编辑/重新加载，原独立页面能力并入） ====================

@@ -110,6 +110,9 @@ public sealed class RackSlotItem
     public const string StateNeedMeasure = "NeedMeasure";
     public const string StateDisabled = "Disabled";
     public const string StateManualDisabled = "ManualDisabled";
+    /// <summary>分析样货架专用：待分析（黄）/ 已完成（绿）。</summary>
+    public const string StatePending = "Pending";
+    public const string StateCompleted = "Completed";
 
     /// <summary>架位编号（A01…E08）。</summary>
     public string PositionCode { get; init; } = string.Empty;

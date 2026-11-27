@@ -8,7 +8,7 @@ using SpectroscopicAnalysis.Host.Workflow;
 
 namespace SpectroscopicAnalysis.Tests;
 
-/// <summary>主控台 ViewModel 测试：报警面板确认、全流程日志映射、货架示意映射（5×8）、SCT 当前策略摘要。</summary>
+/// <summary>主控台 ViewModel 测试：报警面板确认、全流程日志映射、货架示意映射（SCT 5×5 + 分析样 5×5）、SCT 当前策略摘要。</summary>
 public sealed class ConsoleViewModelTests
 {
     private static ConsoleViewModel CreateVm(
@@ -160,7 +160,7 @@ public sealed class ConsoleViewModelTests
         Assert.All(vm.AlarmRows, r => Assert.True(r.IsAcknowledged));
     }
 
-    // ==================== 货架示意（5×8） ====================
+    // ==================== 货架（SCT 5×5 + 分析样 5×5） ====================
 
     [Fact]
     public void Rack_占用映射与范围外计数()
@@ -174,7 +174,7 @@ public sealed class ConsoleViewModelTests
         samples.Store.Add(new SctSample
         {
             SampleId = "TS-002", SampleName = "标样2", SampleType = SampleType.Control,
-            AlloyType = "AL", RackPosition = "B12", Status = SampleStatus.Normal,   // 超出 5×8 示意范围
+            AlloyType = "AL", RackPosition = "B12", Status = SampleStatus.Normal,   // 超出 5×5 示意范围
         });
         samples.Store.Add(new SctSample
         {
@@ -192,6 +192,11 @@ public sealed class ConsoleViewModelTests
             SampleId = "P-100", SampleName = "生产样", RackPosition = "C03",
             Status = ProductionStatus.Pending,
         });
+        production.Store.Add(new ProductionSample
+        {
+            SampleId = "P-101", SampleName = "生产样2", RackPosition = "D04",
+            Status = ProductionStatus.Completed,
+        });
 
         var vm = CreateVm(samples: samples, production: production);
         vm.OnNavigatedTo();
@@ -200,19 +205,31 @@ public sealed class ConsoleViewModelTests
         Assert.Equal(5, vm.RackRows.Count);
         Assert.All(vm.RackRows, r => Assert.Equal(5, r.Slots.Count));
 
-        // 库位状态着色：可用=Normal（蓝）/ 需测高（黄）/ 禁用（红）/ 空位（灰）
+        // SCT 货架库位状态着色：可用=Normal（蓝）/ 需测高（黄）/ 禁用（红）/ 空位（灰）；生产样不再混画
         Assert.Equal(RackSlotItem.StateNormal, vm.RackRows[0].Slots[0].SlotState);        // A01 可用
         Assert.Equal(RackSlotItem.StateDisabled, vm.RackRows[0].Slots[1].SlotState);      // A02 禁用
         Assert.True(vm.RackRows[0].Slots[1].IsOccupied);
         Assert.Equal(RackSlotItem.StateNeedMeasure, vm.RackRows[0].Slots[2].SlotState);   // A03 需测高
         Assert.Equal(RackSlotItem.StateEmpty, vm.RackRows[0].Slots[3].SlotState);         // A04 空位
         Assert.False(vm.RackRows[0].Slots[3].IsOccupied);
-        Assert.Equal(RackSlotItem.StateNormal, vm.RackRows[2].Slots[2].SlotState);        // C03 生产样占位=可用
-        Assert.Equal("P-100", vm.RackRows[2].Slots[2].SampleIdText);
+        Assert.Equal(RackSlotItem.StateEmpty, vm.RackRows[2].Slots[2].SlotState);         // C03 SCT 货架空位（生产样已分卡）
 
-        Assert.Equal(4, vm.RackOccupiedCount);
+        Assert.Equal(3, vm.RackOccupiedCount);
         Assert.Equal(1, vm.RackOutOfRangeCount);                                 // B12 示意外
         Assert.Equal(25, vm.RackTotalCount);
+
+        // 分析样货架：待分析=黄、已完成=绿
+        Assert.Equal(5, vm.ProductionRows.Count);
+        Assert.Equal(RackSlotItem.StatePending, vm.ProductionRows[2].Slots[2].SlotState);          // C03 待分析
+        Assert.Equal("P-100", vm.ProductionRows[2].Slots[2].SampleIdText);
+        Assert.Equal("待分析", vm.ProductionRows[2].Slots[2].StateText);
+        Assert.Equal("P-100（待分析）", vm.ProductionRows[2].Slots[2].ToolTipText);
+        Assert.Equal(RackSlotItem.StateCompleted, vm.ProductionRows[3].Slots[3].SlotState);        // D04 已完成
+        Assert.Equal("已完成", vm.ProductionRows[3].Slots[3].StateText);
+        Assert.Equal(RackSlotItem.StateEmpty, vm.ProductionRows[0].Slots[0].SlotState);            // A01 空位
+
+        Assert.Equal(2, vm.ProdOccupiedCount);
+        Assert.Equal(0, vm.ProdOutOfRangeCount);
     }
 
     [Fact]

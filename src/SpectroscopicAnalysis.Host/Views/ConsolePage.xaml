@@ -101,13 +101,14 @@
                 </StackPanel>
             </Border>
 
-            <!-- 顶行三列：GNR 光谱仪(占位) | 激光打标面板 | 货架示意(5×5) -->
+            <!-- 顶行四列：GNR 光谱仪(占位) | 激光打标面板 | SCT货架(5×5) | 分析样货架(5×5) -->
             <Grid Margin="{DynamicResource Spacing.CardGap}">
                 <Grid.ColumnDefinitions>
                     <!-- 光谱仪列加宽、货架列收窄（货架 5×5 后右侧留白偏大） -->
                     <ColumnDefinition Width="1.2*" MinWidth="240" />
                     <ColumnDefinition Width="1*" MinWidth="240" />
-                    <ColumnDefinition Width="0.9*" MinWidth="300" />
+                    <ColumnDefinition Width="0.9*" MinWidth="280" />
+                    <ColumnDefinition Width="0.9*" MinWidth="280" />
                 </Grid.ColumnDefinitions>
 
                 <!-- 列0：GNR 光谱仪（静态占位，真实协议 100 接入后联动） -->
@@ -202,7 +203,7 @@
                         </StackPanel>
                     </Border>
 
-                <!-- 列2：货架示意（5 行×5 列，占用=蓝底显示架位号，空闲=描边；示意外架位单独计数） -->
+                <!-- 列2：SCT货架（5 行×5 列，占用=蓝底显示架位号，空闲=描边；示意外架位单独计数） -->
                 <Border Grid.Column="2" Style="{StaticResource Card}" Margin="6,0,0,0">
                     <Grid>
                     <Grid.ColumnDefinitions>
@@ -213,7 +214,7 @@
                         <DockPanel Margin="0,0,0,8" LastChildFill="False">
                             <TextBlock DockPanel.Dock="Right" Style="{StaticResource Text.Caption}" VerticalAlignment="Center"
                                        Text="{Binding RackOutOfRangeCount, StringFormat='示意范围外占用 {0} 位'}" />
-                            <TextBlock Text="货架示意（A–E × 1–5）" Style="{StaticResource Text.CardTitle}" VerticalAlignment="Center" />
+                            <TextBlock Text="SCT货架（A–E × 1–5）" Style="{StaticResource Text.CardTitle}" VerticalAlignment="Center" />
                         </DockPanel>
 
                         <ItemsControl ItemsSource="{Binding RackRows}">
@@ -324,6 +325,112 @@
                         </StackPanel>
                         <StackPanel Style="{StaticResource LegendItem}">
                             <Border Style="{StaticResource LegendSwatch}" Background="{DynamicResource Brush.Badge.Idle.Bg}" />
+                            <TextBlock Text="空位" Style="{StaticResource Text.Caption}" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </StackPanel>
+                    </Grid>
+                </Border>
+
+                <!-- 列3：分析样货架（生产样；共用 A01–E05 编号，待分析=黄 / 已完成=绿 / 灰=空位） -->
+                <Border Grid.Column="3" Style="{StaticResource Card}" Margin="6,0,0,0">
+                    <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Grid.Column="0" Margin="0,0,12,0">
+                        <DockPanel Margin="0,0,0,8" LastChildFill="False">
+                            <TextBlock DockPanel.Dock="Right" Style="{StaticResource Text.Caption}" VerticalAlignment="Center"
+                                       Text="{Binding ProdOutOfRangeCount, StringFormat='示意范围外占用 {0} 位'}" />
+                            <TextBlock Text="分析样货架（A–E × 1–5）" Style="{StaticResource Text.CardTitle}" VerticalAlignment="Center" />
+                        </DockPanel>
+
+                        <ItemsControl ItemsSource="{Binding ProductionRows}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
+                                        <TextBlock Text="{Binding RowLabel}" Style="{StaticResource Text.Caption}" Width="20"
+                                                   VerticalAlignment="Center" HorizontalAlignment="Center" />
+                                        <ItemsControl ItemsSource="{Binding Slots}">
+                                            <ItemsControl.ItemsPanel>
+                                                <ItemsPanelTemplate>
+                                                    <UniformGrid Columns="5" />
+                                                </ItemsPanelTemplate>
+                                            </ItemsControl.ItemsPanel>
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate>
+                                                    <Border Margin="0,0,4,0" Padding="6,4" CornerRadius="4" BorderThickness="1" MinWidth="44"
+                                                            ToolTip="{Binding ToolTipText}">
+                                                        <Border.Style>
+                                                            <Style TargetType="Border">
+                                                                <Setter Property="Background" Value="{DynamicResource Brush.Badge.Idle.Bg}" />
+                                                                <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border.Default}" />
+                                                                <Style.Triggers>
+                                                                    <!-- 库位状态着色：黄=待分析 / 绿=已完成 / 灰=空位 -->
+                                                                    <DataTrigger Binding="{Binding SlotState}" Value="Pending">
+                                                                        <Setter Property="Background" Value="{DynamicResource Brush.Badge.Warning.Bg}" />
+                                                                        <Setter Property="BorderBrush" Value="{DynamicResource Brush.Badge.Warning.Bg}" />
+                                                                    </DataTrigger>
+                                                                    <DataTrigger Binding="{Binding SlotState}" Value="Completed">
+                                                                        <Setter Property="Background" Value="{DynamicResource Brush.Badge.Running.Bg}" />
+                                                                        <Setter Property="BorderBrush" Value="{DynamicResource Brush.Badge.Running.Bg}" />
+                                                                    </DataTrigger>
+                                                                </Style.Triggers>
+                                                            </Style>
+                                                        </Border.Style>
+                                                        <TextBlock HorizontalAlignment="Center">
+                                                            <TextBlock.Style>
+                                                                <Style TargetType="TextBlock" BasedOn="{StaticResource Text.Caption}">
+                                                                    <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Secondary}" />
+                                                                    <Style.Triggers>
+                                                                        <DataTrigger Binding="{Binding SlotState}" Value="Pending">
+                                                                            <Setter Property="Foreground" Value="{DynamicResource Brush.Badge.Warning.Fg}" />
+                                                                        </DataTrigger>
+                                                                        <DataTrigger Binding="{Binding SlotState}" Value="Completed">
+                                                                            <Setter Property="Foreground" Value="{DynamicResource Brush.Status.Running}" />
+                                                                        </DataTrigger>
+                                                                    </Style.Triggers>
+                                                                </Style>
+                                                            </TextBlock.Style>
+                                                            <Run Text="{Binding PositionCode, Mode=OneWay}" />
+                                                        </TextBlock>
+                                                    </Border>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </StackPanel>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                        <TextBlock Style="{StaticResource Text.Caption}" Margin="0,4,0,0"
+                                   Text="{Binding ProdOccupiedCount, StringFormat='占用 {0} / {1} 位'}" />
+                    </StackPanel>
+
+                    <!-- 图例：模块右侧纵向排列（色块 + 语义） -->
+                    <StackPanel Grid.Column="1" Orientation="Vertical" VerticalAlignment="Center">
+                        <StackPanel.Resources>
+                            <Style x:Key="ProdLegendItem" TargetType="StackPanel">
+                                <Setter Property="Orientation" Value="Horizontal" />
+                                <Setter Property="Margin" Value="0,3,0,3" />
+                            </Style>
+                            <Style x:Key="ProdLegendSwatch" TargetType="Border">
+                                <Setter Property="Width" Value="14" />
+                                <Setter Property="Height" Value="14" />
+                                <Setter Property="CornerRadius" Value="3" />
+                                <Setter Property="VerticalAlignment" Value="Center" />
+                                <Setter Property="Margin" Value="0,0,6,0" />
+                            </Style>
+                        </StackPanel.Resources>
+                        <StackPanel Style="{StaticResource ProdLegendItem}">
+                            <Border Style="{StaticResource ProdLegendSwatch}" Background="{DynamicResource Brush.Badge.Warning.Bg}" />
+                            <TextBlock Text="待分析" Style="{StaticResource Text.Caption}" VerticalAlignment="Center" />
+                        </StackPanel>
+                        <StackPanel Style="{StaticResource ProdLegendItem}">
+                            <Border Style="{StaticResource ProdLegendSwatch}" Background="{DynamicResource Brush.Badge.Running.Bg}" />
+                            <TextBlock Text="已完成" Style="{StaticResource Text.Caption}" VerticalAlignment="Center" />
+                        </StackPanel>
+                        <StackPanel Style="{StaticResource ProdLegendItem}">
+                            <Border Style="{StaticResource ProdLegendSwatch}" Background="{DynamicResource Brush.Badge.Idle.Bg}" />
                             <TextBlock Text="空位" Style="{StaticResource Text.Caption}" VerticalAlignment="Center" />
                         </StackPanel>
                     </StackPanel>

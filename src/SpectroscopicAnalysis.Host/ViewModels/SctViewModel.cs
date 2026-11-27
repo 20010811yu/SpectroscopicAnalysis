@@ -218,12 +218,14 @@ public sealed partial class SctViewModel : ObservableObject, IPageLifecycle
     [NotifyPropertyChangedFor(nameof(LogPageDisplay))]
     [NotifyPropertyChangedFor(nameof(HasLogPrevPage))]
     [NotifyPropertyChangedFor(nameof(HasLogNextPage))]
+    [NotifyCanExecuteChangedFor(nameof(LogFirstPageCommand))]
     [NotifyCanExecuteChangedFor(nameof(LogPrevPageCommand))]
     [NotifyCanExecuteChangedFor(nameof(LogNextPageCommand))]
     private int _logCurrentPage = 1;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(LogPageDisplay))]
+    [NotifyCanExecuteChangedFor(nameof(LogFirstPageCommand))]
     [NotifyCanExecuteChangedFor(nameof(LogPrevPageCommand))]
     [NotifyCanExecuteChangedFor(nameof(LogNextPageCommand))]
     private int _logTotalPages = 1;
@@ -504,6 +506,14 @@ public sealed partial class SctViewModel : ObservableObject, IPageLifecycle
         CurrentPage = Math.Clamp(page, 1, TotalPages);
         RefreshSampleView();
         PageJumpInput = string.Empty;
+    }
+
+    /// <summary>执行记录回首页（已在第 1 页时禁用）。</summary>
+    [RelayCommand(CanExecute = nameof(HasLogPrevPage))]
+    private void LogFirstPage()
+    {
+        LogCurrentPage = 1;
+        RefreshLogView();
     }
 
     [RelayCommand(CanExecute = nameof(HasLogPrevPage))]

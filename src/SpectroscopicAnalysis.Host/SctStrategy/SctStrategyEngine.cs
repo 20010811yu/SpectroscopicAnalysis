@@ -905,8 +905,9 @@ public sealed class SctStrategyEngine : ISctStrategyEngine
     }
 
     /// <summary>
-    /// 使用次数阈值联动（引擎设计 §8）：激发后 UsageCount ≥ MaxUsageCount → 置 NeedMeasure 并插测高任务；
-    /// 兼任孪生档案（PairSampleId）同步联动——同一物理样品磨损共享，孪生同样置 NeedMeasure 并各插独立测高任务，
+    /// 使用次数阈值联动（引擎设计 §8）：激发后 UsageCount ≥ MaxUsageCount → 置 NeedMeasure（不再自动插测高任务——
+    /// 测高仅两条路径：SCT 操作选中需测高样时由编排器强制前置测高、人工测高登记）；
+    /// 兼任孪生档案（PairSampleId）同步联动——同一物理样品磨损共享，孪生同样置 NeedMeasure，
     /// 两条档案经 NotifyHeightMeasured 各自闭环（避免孪生以 Normal 状态被选样策略继续选中）。
     /// 由 Workflow 在激发落库（UpdateAfterSpark，孪生次数已拉平）后调用本方法前保证档案已更新。
     /// </summary>
@@ -919,7 +920,6 @@ public sealed class SctStrategyEngine : ISctStrategyEngine
             _samples.Update(sample);
             WriteLog(SctTaskType.HeightMeasure, sample.SampleId, "使用次数达到上限",
                 resultStatus: "Warning", isPass: null);
-            SubmitTask(SctTaskType.HeightMeasure, sample.SampleId, "使用次数达到上限，先测高");
         }
 
         // 兼任孪生联动：孪生仅做状态置位与测高闭环，不重复计数（次数已由仓储 UpdateAfterSpark 拉平）
@@ -935,7 +935,6 @@ public sealed class SctStrategyEngine : ISctStrategyEngine
             _samples.Update(twin);
             WriteLog(SctTaskType.HeightMeasure, twin.SampleId, "兼任孪生同步：使用次数达到上限",
                 resultStatus: "Warning", isPass: null);
-            SubmitTask(SctTaskType.HeightMeasure, twin.SampleId, "兼任孪生同步，使用次数达到上限，先测高");
         }
     }
 

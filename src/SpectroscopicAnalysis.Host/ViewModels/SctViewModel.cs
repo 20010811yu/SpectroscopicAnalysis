@@ -575,7 +575,6 @@ public sealed partial class SctViewModel : ObservableObject, IPageLifecycle
         }
 
         var sampleId = row.SampleId;
-        var needHeightMeasure = false;
         var result = await Task.Run<(SctSample? Sample, string? Error)>(() =>
         {
             var sample = _samples.GetById(sampleId);
@@ -586,11 +585,10 @@ public sealed partial class SctViewModel : ObservableObject, IPageLifecycle
 
             var thicknessBefore = sample.CurrentThickness;
             var newStatus = thickness < sample.MinThickness ? SampleStatus.Disabled : SampleStatus.Normal;
-            // 使用次数阈值复查：测高合格但次数仍达上限 → 不恢复 Normal，置需测高并补插测高任务（与引擎回喂联动一致）
+            // 使用次数阈值复查：测高合格但次数仍达上限 → 不恢复 Normal，置需测高（不再插测高任务）
             if (newStatus == SampleStatus.Normal && sample.UsageCount >= sample.MaxUsageCount)
             {
                 newStatus = SampleStatus.NeedMeasure;
-                needHeightMeasure = true;
             }
             sample.CurrentThickness = thickness;
             sample.Status = newStatus;
@@ -633,11 +631,7 @@ public sealed partial class SctViewModel : ObservableObject, IPageLifecycle
             ScheduleSavedMessageHide(PolicySavedMessage);
         });
         await LoadCommand.ExecuteAsync(null);
-        // 次数仍达上限：补插测高任务（与引擎阈值联动一致；引擎未注入时跳过，测试兼容）
-        if (needHeightMeasure && _strategyEngine is not null)
-        {
-            _strategyEngine.SubmitTask(SctTaskType.HeightMeasure, sampleId, "测高后使用次数仍达上限");
-        }
+        // 测高仅两条路径：SCT 操作前置测高（编排器强制）与人工测高登记（本按钮）——不再自动插测高任务
         _sampleDataChanged.NotifySampleDataChanged();   // 通知样品档案等台账页面重载
     }
 
@@ -696,7 +690,6 @@ public sealed partial class SctViewModel : ObservableObject, IPageLifecycle
             return;
         }
 
-        var needHeightMeasure = false;
         var statusChangedText = string.Empty;
         var error = await Task.Run(() =>
         {
@@ -711,7 +704,7 @@ public sealed partial class SctViewModel : ObservableObject, IPageLifecycle
             sample.MaxUsageCount = maxUsage;
             // 阈值变化后全量重判状态（不限于 Normal，双向）：
             // ① 过薄：当前厚度 < 新最小厚度 → Disabled + 报警提示更换（新触发时）；
-            // ② 次数：厚度合格但次数 ≥ 新上限 → NeedMeasure + 补插测高任务（联动同引擎阈值触发）；
+            // ② 次数：厚度合格但次数 ≥ 新上限 → NeedMeasure（不触发测高任务——测高仅 SCT 前置/人工两条路径）；
             // ③ 恢复：厚度与次数均达标 → Normal + 重新启用（含阈值调低后过薄样恢复、上限调大后需测高样恢复；
             //    人工停用样 Status 本为 Normal，不在此自动启用——启停用仍由人工控制）
             if (sample.CurrentThickness < min)
@@ -727,10 +720,6 @@ public sealed partial class SctViewModel : ObservableObject, IPageLifecycle
             }
             else if (sample.UsageCount >= maxUsage)
             {
-                if (sample.Status != SampleStatus.NeedMeasure)
-                {
-                    needHeightMeasure = true;
-                }
                 sample.Status = SampleStatus.NeedMeasure;
                 sample.IsActive = false;
             }
@@ -769,11 +758,7 @@ public sealed partial class SctViewModel : ObservableObject, IPageLifecycle
             ScheduleSavedMessageHide(PolicySavedMessage);
         });
         await LoadCommand.ExecuteAsync(null);
-        // 次数达新上限：补插测高任务（与引擎阈值联动一致；引擎未注入时跳过，测试兼容）
-        if (needHeightMeasure && _strategyEngine is not null)
-        {
-            _strategyEngine.SubmitTask(SctTaskType.HeightMeasure, sampleId, "阈值调整后使用次数达上限");
-        }
+        // 测高仅两条路径：SCT 操作前置测高（编排器强制）与人工测高登记（本按钮）——阈值调整不触发测高任务
         _sampleDataChanged.NotifySampleDataChanged();   // 通知样品档案等台账页面重载
     }
 

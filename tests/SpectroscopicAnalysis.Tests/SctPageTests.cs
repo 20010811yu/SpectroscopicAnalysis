@@ -205,8 +205,8 @@ public sealed class SctPageTests
         var sample = repo.GetById("SUS-001")!;
         Assert.Equal(SampleStatus.NeedMeasure, sample.Status);  // 次数仍超上限 → 需测高而非 Normal
         Assert.False(sample.IsActive);                          // 需测高 → IsActive 停用
-        // 补插测高任务（队列含该样品的 HeightMeasure）
-        Assert.Contains(engine.GetQueuedTasks(), t => t.TaskType == SctTaskType.HeightMeasure && t.SampleId == "SUS-001");
+        // 不再自动插测高任务（测高仅 SCT 前置/人工两条路径）
+        Assert.DoesNotContain(engine.GetQueuedTasks(), t => t.TaskType == SctTaskType.HeightMeasure);
     }
 
     [Fact]
@@ -233,7 +233,8 @@ public sealed class SctPageTests
         Assert.Equal(20, sample.MaxUsageCount);
         Assert.Equal(SampleStatus.NeedMeasure, sample.Status);
         Assert.False(sample.IsActive);          // 需测高 → IsActive 停用
-        Assert.Contains(engine.GetQueuedTasks(), t => t.TaskType == SctTaskType.HeightMeasure && t.SampleId == "SUS-001");
+        // 阈值调整不触发测高任务
+        Assert.DoesNotContain(engine.GetQueuedTasks(), t => t.TaskType == SctTaskType.HeightMeasure);
     }
 
     [Fact]

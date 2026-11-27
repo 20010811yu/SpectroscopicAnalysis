@@ -792,9 +792,9 @@ public sealed partial class SamplesViewModel : ObservableObject, IPageLifecycle
     {
         Kind = "Sct",
         SampleId = s.SampleId,
-        TypeDisplay = s.TypeDisplay,
-        // 关联合金值内并孪生提示（如 "6063（兼任 HC-01-T）"；检查样本体合金为空时显示 "—"）
-        AlloyTypeText = (s.AlloyType ?? "—") + (s.PairText == "—" ? string.Empty : $"（兼任 {s.PairText}）"),
+        // 兼任孪生提示并入职旁（如 "类型标准化样（兼任 HC-01）"），关联合金仅显示合金本身
+        TypeDisplay = s.PairText == "—" ? s.TypeDisplay : $"{s.TypeDisplay}（兼任 {s.PairText}）",
+        AlloyTypeText = s.AlloyType ?? "—",
         ActiveText = s.IsActive ? "启用" : "已停用",
         RackPositionText = s.RackPosition ?? "—",
         MethodText = string.IsNullOrEmpty(s.AssociatedMethodText) ? "—" : s.AssociatedMethodText,

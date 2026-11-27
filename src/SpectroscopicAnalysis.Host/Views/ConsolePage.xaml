@@ -316,7 +316,11 @@
                         </StackPanel>
                         <StackPanel Style="{StaticResource LegendItem}">
                             <Border Style="{StaticResource LegendSwatch}" Background="{DynamicResource Brush.Badge.Failed.Bg}" />
-                            <TextBlock Text="禁用" Style="{StaticResource Text.Caption}" VerticalAlignment="Center" />
+                            <TextBlock Text="禁用（过薄）" Style="{StaticResource Text.Caption}" VerticalAlignment="Center" />
+                        </StackPanel>
+                        <StackPanel Style="{StaticResource LegendItem}">
+                            <Border Style="{StaticResource LegendSwatch}" Background="{DynamicResource Brush.Badge.ManualDisabled.Bg}" />
+                            <TextBlock Text="人工禁用" Style="{StaticResource Text.Caption}" VerticalAlignment="Center" />
                         </StackPanel>
                         <StackPanel Style="{StaticResource LegendItem}">
                             <Border Style="{StaticResource LegendSwatch}" Background="{DynamicResource Brush.Badge.Idle.Bg}" />

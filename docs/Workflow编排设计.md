@@ -71,8 +71,8 @@ UI → Workflow（本文） → SctStrategy 引擎 / SampleManager / Correction 
 Workflow 主循环（Auto 模式）:
   engine.TryDequeue(out task)
     → 按 SctTaskType 映射 CYCLE_START_REQUEST:
-        Standardize  → ID_CYCLE=2（设置样）
-        ControlCheck → ID_CYCLE=3（控制样）
+        Standardize  → ID_CYCLE=2（控样）
+        ControlCheck → ID_CYCLE=3（检查样）
         Production   → ID_CYCLE=1（生产分析）
     → SCT 子状态机推进:
         Selecting（引擎已选样，记录 SampleId/Reason）
@@ -144,7 +144,7 @@ Emergency 事件（急停按钮/PLC 信号/通信中断升级）
 /// <summary>PLC 任务下发（命令握手：命令寄存器写值 + 应答读值）。</summary>
 public interface ISendTask
 {
-    /// <summary>下发循环任务；idCycle: 1 生产 / 2 标准化 / 3 控制样（CYCLE_START_REQUEST）。</summary>
+    /// <summary>下发循环任务；idCycle: 1 生产 / 2 标准化 / 3 检查样（CYCLE_START_REQUEST）。</summary>
     Task SendCycleStartAsync(int idCycle, string sampleId, double gripHeight, CancellationToken ct);
     Task MeasureHeightAsync(string sampleId, CancellationToken ct);   // 测高指令
 }

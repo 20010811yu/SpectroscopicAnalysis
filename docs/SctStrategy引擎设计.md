@@ -20,9 +20,9 @@ UI → Workflow → SctStrategyEngine（本文） → DeviceInterface / 数据�
 | 职责 | 说明 |
 |---|---|
 | 触发判断 | 按策略配置判断何时插入标准化/控制检查/类型标准化任务 |
-| 样品选择 | 从标样库选出本次任务的目标样品（设置样/控制样/类型标准化样） |
+| 样品选择 | 从标样库选出本次任务的目标样品（控样/检查样/类型标准化样） |
 | 优先级调度 | 维护任务队列，按 P29 固定优先级次序出队 |
-| 超差闭环 | 控制样超差 → 标准化 → 重测验证 → 恢复/报警暂停 的状态推进 |
+| 超差闭环 | 检查样超差 → 标准化 → 重测验证 → 恢复/报警暂停 的状态推进 |
 | 测高联动 | 使用次数达阈值 → NeedMeasure → 插入测高任务 → 厚度流转 |
 | 审计留痕 | 每次触发/选样/闭环判定写 `SCT_OperationLog`（经 `ISctOperationLogRepository`） |
 
@@ -44,8 +44,8 @@ UI → Workflow → SctStrategyEngine（本文） → DeviceInterface / 数据�
 /// <summary>SCT 任务类型（与 CYCLE_START_REQUEST 的 ID_CYCLE 对齐）。</summary>
 public static class SctTaskType
 {
-    public const string Standardize     = "Standardize";     // 设置样标准化（ID_CYCLE=2）
-    public const string ControlCheck    = "ControlCheck";    // 控制样检查（ID_CYCLE=3）
+    public const string Standardize     = "Standardize";     // 控样标准化（ID_CYCLE=2）
+    public const string ControlCheck    = "ControlCheck";    // 检查样检查（ID_CYCLE=3）
     public const string TypeStandardize = "TypeStandardize"; // 类型标准化
     public const string HeightMeasure   = "HeightMeasure";   // 测高
     public const string Production      = "Production";      // 生产样品分析（ID_CYCLE=1）
@@ -73,11 +73,11 @@ public static class SctTaskStatus
 
 | 入口事件 | 判断规则 | 配置项 | 产物 |
 |---|---|---|---|
-| `NotifyAnalysisCompleted` | 每完成 N 个生产样插入控制样 | `ControlInsertMode == ByCount`、`ControlInsertCount` | ControlCheck 任务 |
+| `NotifyAnalysisCompleted` | 每完成 N 个生产样插入检查样 | `ControlInsertMode == ByCount`、`ControlInsertCount` | ControlCheck 任务 |
 | 时钟节拍（每分钟） | 距上次控制检查超时 | `ControlInsertMode == ByTime`、`ControlInsertMinutes` | ControlCheck 任务 |
 | 时钟节拍（每小时） | 距上次标准化超时 | `PeriodicStandardizeEnabled`、`PeriodicStandardizeHours` | Standardize 任务 |
 | `NotifyModeChanged(auto)` | 切入自动模式 | `StandardizeOnAutoMode` | Standardize 任务 |
-| `NotifyControlResult` | 控制样超差（见 §7） | `LimitType`、`LimitValue`、`AutoStandardizeOnControlFail` | Standardize 任务 |
+| `NotifyControlResult` | 检查样超差（见 §7） | `LimitType`、`LimitValue`、`AutoStandardizeOnControlFail` | Standardize 任务 |
 | `NotifyAlloySwitched` | 合金类型切换 | `TypeStandardizeOnAlloySwitch` | TypeStandardize 任务 |
 | 时钟节拍（每日） | 距上次类型标准化超期 | `TypeStandardizePeriodEnabled`、`TypeStandardizePeriodDays` | TypeStandardize 任务 |
 | `NotifyAnalysisCompleted` | 标样使用次数达阈值（见 §8） | 样品档案 `MaxUsageCount` | HeightMeasure 任务 |
@@ -92,7 +92,7 @@ public static class SctTaskStatus
 | 优先级 | 任务 | 说明 |
 |---|---|---|
 | 0（最高） | 急停/故障恢复 | 由 Workflow 直接处理，不经本队列，但入队任务全部置 Cancelled |
-| 1 | 超差触发的 Standardize | `Reason = 控制样超差` |
+| 1 | 超差触发的 Standardize | `Reason = 检查样超差` |
 | 2 | ControlCheck | |
 | 3 | TypeStandardize | |
 | 4 | HeightMeasure | 测高是标样可用的前置条件，优先于生产 |
@@ -112,20 +112,20 @@ public static class SctTaskStatus
 ## 7. 超差闭环（P17）
 
 ```
-控制样分析结果 → 判定 |result - certified| 是否超差
+检查样分析结果 → 判定 |result - certified| 是否超差
   ├─ 未超差 → 记录 ControlCheck 日志（IsPass=true），生产继续
   └─ 超差（按 LimitType/LimitValue 判定）
        ├─ AutoStandardizeOnControlFail = false → 报警，暂停自动模式
-       └─ true → 入队 Standardize（优先级 1，Reason=控制样超差）
+       └─ true → 入队 Standardize（优先级 1，Reason=检查样超差）
              ↓ 标准化完成（系数版本化 +1，审计留痕）
-             → 重测同一控制样（入队 ControlCheck，Reason=超差验证重测，标记 recheck）
+             → 重测同一检查样（入队 ControlCheck，Reason=超差验证重测，标记 recheck）
                   ├─ 通过 → 记录日志，闭环结束，恢复生产
                   └─ 仍超差 → recheck 次数 < ControlRecheckMaxCount？
                         ├─ 是 → 再次 Standardize → 重测（循环）
                         └─ 否 → 报警 + 暂停自动模式（需人工介入）
 ```
 
-- 闭环状态由引擎持有（当前超差的控制样编号、已重测次数），标准化完成事件 `NotifyStandardizeCompleted` 推进状态；
+- 闭环状态由引擎持有（当前超差的检查样编号、已重测次数），标准化完成事件 `NotifyStandardizeCompleted` 推进状态；
 - **系数应用原则**（P96）：重测判定始终用最新 `IsCurrent` 系数版本，原始值与校正值双存；
 - 每次"再标准化"前写审计日志（前后系数、原因=超差重测第 N 次）。
 
@@ -155,7 +155,7 @@ public static class SctTaskStatus
 |---|---|---|---|
 | Standardize | `SampleType=SettingUp`、`Status=Normal`、`IsActive`、匹配当前分析方法 | `SettingSampleSelectionMode`：`LeastUsed`（UsageCount 最少）/ `RoundRobin`（按上次使用时间最早轮询） | 报警（登记错误码）+ 暂停分析 |
 | ControlCheck | `SampleType=Control`、`Status=Normal`、`IsActive` | `ControlRotationEnabled` → 多块轮换（选最久未用） | 同上 |
-| TypeStandardize | `SampleType=TypeStd`、`Status=Normal`、`IsActive`、AlloyType **精确匹配**目标合金 | 同设置样规则 | 同上 |
+| TypeStandardize | `SampleType=TypeStd`、`Status=Normal`、`IsActive`、AlloyType **精确匹配**目标合金 | 同控样规则 | 同上 |
 | HeightMeasure | 目标样品即任务携带的 SampleId | 不选择 | — |
 
 ## 10. 对外接口（草案）
@@ -174,8 +174,8 @@ public interface ISctStrategyEngine
     void CompleteTask(int taskId, bool success, string? error);
 
     // ---- 事件入口（§5 触发判断） ----
-    void NotifyAnalysisCompleted(string sampleId);          // 生产样完成（计数/控制样插入/次数联动）
-    void NotifyControlResult(string sampleId, bool passed); // 控制样判定结果（§7 闭环）
+    void NotifyAnalysisCompleted(string sampleId);          // 生产样完成（计数/检查样插入/次数联动）
+    void NotifyControlResult(string sampleId, bool passed); // 检查样判定结果（§7 闭环）
     void NotifyStandardizeCompleted(string sampleId);       // 标准化完成（闭环推进）
     void NotifyHeightMeasured(string sampleId, double thickness); // 测高结果（§8 流转）
     void NotifyModeChanged(bool autoMode);                  // 系统模式切换
@@ -191,8 +191,8 @@ public interface ISctStrategyEngine
 
 - 全部异常走统一错误链（`IErrorCollector.Collect`），携带 TaskId/SampleId/步骤上下文；禁止空 catch；
 - 新错误码（建议，使用前先登记开发规范 11.1）：
-  - `5101` 设置样选择无可用样品（报警暂停分析）
-  - `5102` 控制样超差闭环重测耗尽（报警暂停自动模式）
+  - `5101` 控样选择无可用样品（报警暂停分析）
+  - `5102` 检查样超差闭环重测耗尽（报警暂停自动模式）
   - `5103` 类型标准化样无匹配（合金无对应标样）
   - `5104` 测高后厚度低于最小厚度（报废更换报警）
 - 触发原因、选样结果、闭环每一步均写 `SCT_OperationLog`（TriggerReason/ResultStatus/系数前后值），满足任务清单第 12 节追溯要求。

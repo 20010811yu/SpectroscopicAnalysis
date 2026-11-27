@@ -104,11 +104,11 @@
             <!-- 顶行四列：GNR 光谱仪(占位) | 激光打标面板 | SCT货架(5×5) | 分析样货架(5×5) -->
             <Grid Margin="{DynamicResource Spacing.CardGap}">
                 <Grid.ColumnDefinitions>
-                    <!-- 光谱仪列加宽、货架列收窄（货架 5×5 后右侧留白偏大） -->
-                    <ColumnDefinition Width="1.2*" MinWidth="240" />
+                    <!-- 光谱仪列微收、货架列微放（保证 5 列架位号完整展示） -->
+                    <ColumnDefinition Width="1.1*" MinWidth="240" />
                     <ColumnDefinition Width="1*" MinWidth="240" />
-                    <ColumnDefinition Width="0.9*" MinWidth="280" />
-                    <ColumnDefinition Width="0.9*" MinWidth="280" />
+                    <ColumnDefinition Width="0.95*" MinWidth="280" />
+                    <ColumnDefinition Width="0.95*" MinWidth="280" />
                 </Grid.ColumnDefinitions>
 
                 <!-- 列0：GNR 光谱仪（静态占位，真实协议 100 接入后联动） -->

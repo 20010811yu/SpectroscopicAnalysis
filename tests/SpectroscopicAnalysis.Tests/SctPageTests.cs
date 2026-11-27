@@ -297,6 +297,69 @@ public sealed class SctPageTests
     }
 
     [Fact]
+    public async Task Threshold_阈值调低后过薄样自动恢复Normal并启用()
+    {
+        var (vm, repo, _, _, _) = Create(new[]
+        {
+            MakeSample("CTL-110", thickness: 10, minThickness: 20, status: SampleStatus.Disabled, isActive: false),
+        });
+        await vm.LoadCommand.ExecuteAsync(null);
+        vm.SelectedSample = vm.SctSamples[0];
+
+        vm.OpenThresholdCommand.Execute(null);
+        vm.EditMinThicknessText = "2";                           // 新阈值低于当前厚度 10 → 过薄解除
+        vm.EditMaxUsageText = "50";
+        await vm.SaveThresholdsCommand.ExecuteAsync(null);
+
+        var sample = repo.GetById("CTL-110")!;
+        Assert.Equal(2, sample.MinThickness);
+        Assert.Equal(SampleStatus.Normal, sample.Status);        // 全量重判：过薄自动恢复
+        Assert.True(sample.IsActive);
+        Assert.Contains("已恢复", vm.PolicySavedMessage);
+    }
+
+    [Fact]
+    public async Task Threshold_上限调大后需测高样自动恢复Normal()
+    {
+        var (vm, repo, _, _, _) = Create(new[]
+        {
+            MakeSample("CTL-103", status: SampleStatus.NeedMeasure, isActive: false, usage: 42, maxUsage: 41),
+        });
+        await vm.LoadCommand.ExecuteAsync(null);
+        vm.SelectedSample = vm.SctSamples[0];
+
+        vm.OpenThresholdCommand.Execute(null);
+        vm.EditMinThicknessText = "6";
+        vm.EditMaxUsageText = "60";                              // 新上限大于次数 42 → 需测高解除
+        await vm.SaveThresholdsCommand.ExecuteAsync(null);
+
+        var sample = repo.GetById("CTL-103")!;
+        Assert.Equal(SampleStatus.Normal, sample.Status);
+        Assert.True(sample.IsActive);
+        Assert.Contains("已恢复", vm.PolicySavedMessage);
+    }
+
+    [Fact]
+    public async Task Threshold_人工停用样调阈值_不自动启用()
+    {
+        var (vm, repo, _, _, _) = Create(new[]
+        {
+            MakeSample("SUS-102", isActive: false),              // 人工停用（Status=Normal）
+        });
+        await vm.LoadCommand.ExecuteAsync(null);
+        vm.SelectedSample = vm.SctSamples[0];
+
+        vm.OpenThresholdCommand.Execute(null);
+        vm.EditMinThicknessText = "6";
+        vm.EditMaxUsageText = "60";
+        await vm.SaveThresholdsCommand.ExecuteAsync(null);
+
+        var sample = repo.GetById("SUS-102")!;
+        Assert.Equal(SampleStatus.Normal, sample.Status);
+        Assert.False(sample.IsActive);                           // 启停用仍由人工控制，不自动启用
+    }
+
+    [Fact]
     public async Task ToggleActive_禁用与启用均需确认并写库()
     {
         var (vm, repo, _, _, dialogs) = Create(new[] { MakeSample("SUS-001", isActive: true) });

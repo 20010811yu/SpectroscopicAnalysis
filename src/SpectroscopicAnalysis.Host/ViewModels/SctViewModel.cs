@@ -697,6 +697,7 @@ public sealed partial class SctViewModel : ObservableObject, IPageLifecycle
         }
 
         var needHeightMeasure = false;
+        var statusChangedText = string.Empty;
         var error = await Task.Run(() =>
         {
             var sample = _samples.GetById(sampleId);
@@ -705,20 +706,48 @@ public sealed partial class SctViewModel : ObservableObject, IPageLifecycle
                 return (string?)$"样品不存在：{sampleId}";
             }
 
+            var statusBefore = sample.Status;
             sample.MinThickness = min;
-            sample.MaxUsageCount = maxUsage;            // 阈值变化可能影响状态联动：
-            // ① 过薄：低于新阈值立即标记 Disabled；恢复需测高登记或更换样品（人工）；
-            // ② 次数：Normal 样次数 ≥ 新最大使用次数 → 置需测高（IsActive 随状态联动停用）
+            sample.MaxUsageCount = maxUsage;
+            // 阈值变化后全量重判状态（不限于 Normal，双向）：
+            // ① 过薄：当前厚度 < 新最小厚度 → Disabled + 报警提示更换（新触发时）；
+            // ② 次数：厚度合格但次数 ≥ 新上限 → NeedMeasure + 补插测高任务（联动同引擎阈值触发）；
+            // ③ 恢复：厚度与次数均达标 → Normal + 重新启用（含阈值调低后过薄样恢复、上限调大后需测高样恢复；
+            //    人工停用样 Status 本为 Normal，不在此自动启用——启停用仍由人工控制）
             if (sample.CurrentThickness < min)
             {
+                var newlyDisabled = sample.Status != SampleStatus.Disabled;
                 sample.Status = SampleStatus.Disabled;
                 sample.IsActive = false;
+                if (newlyDisabled)
+                {
+                    _errors.Collect(ErrorCodes.SctThicknessBelowMinimum,
+                        $"标样 {sampleId} 当前厚度 {sample.CurrentThickness:0.##} 低于新最小厚度 {min:0.##}，请更换", sampleId);
+                }
             }
-            else if (sample.Status == SampleStatus.Normal && sample.UsageCount >= maxUsage)
+            else if (sample.UsageCount >= maxUsage)
             {
+                if (sample.Status != SampleStatus.NeedMeasure)
+                {
+                    needHeightMeasure = true;
+                }
                 sample.Status = SampleStatus.NeedMeasure;
                 sample.IsActive = false;
-                needHeightMeasure = true;
+            }
+            else if (sample.Status != SampleStatus.Normal)
+            {
+                sample.Status = SampleStatus.Normal;
+                sample.IsActive = true;    // 状态类停用（过薄/需测高）随恢复联动启用
+            }
+
+            if (sample.Status != statusBefore)
+            {
+                statusChangedText = statusBefore switch
+                {
+                    SampleStatus.Disabled => "（过薄样已恢复为正常）",
+                    SampleStatus.NeedMeasure => "（需测高样已恢复为正常）",
+                    _ => $"（状态更新为 {StatusTextOf(sample.Status)}）",
+                };
             }
 
             _samples.Update(sample);
@@ -736,7 +765,7 @@ public sealed partial class SctViewModel : ObservableObject, IPageLifecycle
         {
             ThresholdError = null;
             IsThresholdOpen = false;
-            PolicySavedMessage = $"✓ 阈值已更新（{sampleId}）";
+            PolicySavedMessage = $"✓ 阈值已更新（{sampleId}）{statusChangedText}";
             ScheduleSavedMessageHide(PolicySavedMessage);
         });
         await LoadCommand.ExecuteAsync(null);
@@ -747,6 +776,15 @@ public sealed partial class SctViewModel : ObservableObject, IPageLifecycle
         }
         _sampleDataChanged.NotifySampleDataChanged();   // 通知样品档案等台账页面重载
     }
+
+    /// <summary>样品状态中文（阈值联动提示用；与台账状态列口径一致）。</summary>
+    private static string StatusTextOf(string status) => status switch
+    {
+        SampleStatus.Normal => "正常",
+        SampleStatus.NeedMeasure => "需测高",
+        SampleStatus.Disabled => "禁用（过薄）",
+        _ => status,
+    };
 
     // ==================== 启用 / 禁用（危险操作，二次确认） ====================
 

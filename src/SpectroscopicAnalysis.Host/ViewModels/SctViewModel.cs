@@ -739,6 +739,9 @@ public sealed partial class SctViewModel : ObservableObject, IPageLifecycle
                 // 从未测高（新注册未填初始厚度）的样即使次数达标也保持需测高，不自动恢复
                 sample.Status = SampleStatus.NeedMeasure;
                 sample.IsActive = false;
+                // 测高入队（同类型同目标去重：注册时已入队的测高任务不会重复）
+                _strategyEngine?.SubmitTask(SctTaskType.HeightMeasure, sampleId,
+                    sample.LastHeightCheckTime is null ? "从未测高，保持需测高并入队测高" : "次数达到新上限，自动插入测高任务");
             }
             else if (sample.Status != SampleStatus.Normal)
             {

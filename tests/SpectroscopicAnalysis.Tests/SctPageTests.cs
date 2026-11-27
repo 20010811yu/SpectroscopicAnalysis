@@ -236,8 +236,8 @@ public sealed class SctPageTests
         Assert.Equal(20, sample.MaxUsageCount);
         Assert.Equal(SampleStatus.NeedMeasure, sample.Status);
         Assert.False(sample.IsActive);          // 需测高 → IsActive 停用
-        // 阈值调整不触发测高任务
-        Assert.DoesNotContain(engine.GetQueuedTasks(), t => t.TaskType == SctTaskType.HeightMeasure);
+        // 阈值联动自动入队测高任务（队列可见）
+        Assert.Contains(engine.GetQueuedTasks(), t => t.TaskType == SctTaskType.HeightMeasure);
     }
 
     [Fact]

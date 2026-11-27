@@ -341,10 +341,40 @@ public sealed class WorkflowOrchestrator : IWorkflowOrchestrator
         switch (task.TaskType)
         {
             case SctTaskType.HeightMeasure:
+                // 队列去重兜底：样品已在别处闭环（内联前置测高/人工测高登记恢复 Normal，或已 Disabled）→ 跳过不重复测高
+                var measureTarget = _samples.GetAll().FirstOrDefault(s =>
+                    string.Equals(s.SampleId, task.SampleId, StringComparison.Ordinal));
+                if (measureTarget is null || measureTarget.Status != SampleStatus.NeedMeasure)
+                {
+                    WriteTrace(task.SampleId, SctTaskType.HeightMeasure, "样品已无需测高，跳过", "Success");
+                    _systemLog.Log(LogCategoryOf(task.TaskType), $"样品 {task.SampleId} 已无需测高，任务跳过");
+                    _engine.CompleteTask(task.TaskId, success: true, "样品已无需测高，跳过");
+                    return;
+                }
+
                 (thicknessBefore, thicknessAfter, var belowMin) = await RunHeightMeasureAsync(task, ct);
                 if (belowMin)
                 {
                     heightBelowMin = true;   // 低于最小厚度 → 置 Disabled，日志按失败留痕（引擎 §8 同语义）
+                }
+                else if (!string.IsNullOrEmpty(task.SampleId)
+                    && task.Reason.StartsWith(SctTaskType.ReasonRegistrationMeasure, StringComparison.Ordinal))
+                {
+                    // 注册测高（新样未填初始厚度）合格：按样品类型补入注册分析任务（自动入队闭环）
+                    var sct = _samples.GetAll().FirstOrDefault(s =>
+                        string.Equals(s.SampleId, task.SampleId, StringComparison.Ordinal));
+                    var followUp = sct?.SampleType switch
+                    {
+                        SampleType.SettingUp => SctTaskType.Standardize,
+                        SampleType.Control => SctTaskType.ControlCheck,
+                        SampleType.TypeStd => SctTaskType.TypeStandardize,
+                        _ => null,
+                    };
+                    if (followUp is not null)
+                    {
+                        _engine.SubmitTask(followUp, task.SampleId, "测高合格，注册分析任务自动入队");
+                        _systemLog.Log(LogCategoryOf(followUp), $"样品 {task.SampleId} 测高合格，注册分析任务已自动入队");
+                    }
                 }
 
                 break;

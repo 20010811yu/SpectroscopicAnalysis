@@ -170,6 +170,59 @@ public sealed class WorkflowOrchestratorTests
         Assert.Equal(SampleStatus.Disabled, _samples.GetById("SUS-001")!.Status);
     }
 
+    [Fact]
+    public async Task 测高任务_样品已恢复Normal跳过不重复测高()
+    {
+        var sample = MakeSample("SUS-001");                 // Normal（测高已在别处闭环）
+        _samples.Store.Add(sample);
+        var (engine, orchestrator) = Create();
+        engine.SubmitTask(SctTaskType.HeightMeasure, "SUS-001", "使用次数达到上限，自动插入测高任务");
+
+        await orchestrator.StartAsync(CancellationToken.None);
+        await WaitUntilAsync(() => engine.GetRecentTasks().Any(t => t.TaskId == 1 && t.Status == SctTaskStatus.Completed));
+        await orchestrator.StopAsync(CancellationToken.None);
+
+        // 跳过留痕且不触发设备测高指令
+        Assert.Empty(_gateway.MeasuredHeights);
+        Assert.Contains(_logs.Store, l => l.OperationType == "HeightMeasure" && l.TriggerReason == "样品已无需测高，跳过");
+    }
+
+    [Fact]
+    public async Task 注册测高任务_合格后按样品类型补入分析任务()
+    {
+        _samples.Store.Add(MakeSample("SUS-001", status: SampleStatus.NeedMeasure, thickness: 0, minThickness: 8));
+        _gateway.MeasuredThickness = 8.5;
+        var (engine, orchestrator) = Create();
+        engine.SubmitTask(SctTaskType.HeightMeasure, "SUS-001", SctTaskType.ReasonRegistrationMeasure);
+
+        await orchestrator.StartAsync(CancellationToken.None);
+        await WaitUntilAsync(() => engine.GetRecentTasks().Any(t =>
+            t.TaskType == SctTaskType.Standardize && t.Status == SctTaskStatus.Completed));
+        await orchestrator.StopAsync(CancellationToken.None);
+
+        // 测高合格（恢复 Normal）后自动补入注册分析任务（标准化）并执行完成
+        var followUp = engine.GetRecentTasks().First(t => t.TaskType == SctTaskType.Standardize);
+        Assert.Equal("SUS-001", followUp.SampleId);
+        Assert.Equal(SctTaskStatus.Completed, followUp.Status);
+        Assert.Contains(_logs.Store, l => l.OperationType == "Standardization" && l.TriggerReason == "测高合格，注册分析任务自动入队");
+    }
+
+    [Fact]
+    public async Task 注册测高任务_不合格禁用不补分析任务()
+    {
+        _samples.Store.Add(MakeSample("SUS-001", status: SampleStatus.NeedMeasure, thickness: 0, minThickness: 8));
+        _gateway.MeasuredThickness = 4;                     // 低于最小厚度 → Disabled
+        var (engine, orchestrator) = Create();
+        engine.SubmitTask(SctTaskType.HeightMeasure, "SUS-001", SctTaskType.ReasonRegistrationMeasure);
+
+        await orchestrator.StartAsync(CancellationToken.None);
+        await WaitUntilAsync(() => _samples.GetById("SUS-001")!.Status == SampleStatus.Disabled);
+        await orchestrator.StopAsync(CancellationToken.None);
+
+        Assert.DoesNotContain(engine.GetRecentTasks(), t => t.TaskType == SctTaskType.Standardize);
+        Assert.Contains(_errors.Collected, c => c.Code == ErrorCodes.SctThicknessBelowMinimum);
+    }
+
     // ==================== SCT 操作前置测高（需测高样兜底候选） ====================
 
     [Fact]

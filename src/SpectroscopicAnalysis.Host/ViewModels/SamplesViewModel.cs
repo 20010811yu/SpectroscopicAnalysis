@@ -1102,18 +1102,30 @@ public sealed partial class SamplesViewModel : ObservableObject, IPageLifecycle
                 _errors.Collect(ErrorCodes.SampleInsertFailed, "样品入库写库失败", RegSampleId.Trim(), ex);
                 return;
             }
-            // 注册完成自动加入任务队列：四类样品均入分析队列，任务类型按样品类型映射（引擎同目标同类型自动去重）
-            var taskType = productionSample is not null
-                ? SctTaskType.Production
-                : type switch
-                {
-                    SampleType.SettingUp => SctTaskType.Standardize,
-                    SampleType.Control => SctTaskType.ControlCheck,
-                    SampleType.TypeStd => SctTaskType.TypeStandardize,
-                    _ => SctTaskType.Production,
-                };
+            // 注册完成自动加入任务队列：任务类型按样品类型映射（引擎同目标同类型自动去重）。
+            // 未填初始厚度的样（NeedMeasure）先入测高任务确认厚度，测高合格后由编排器按样品类型补入分析任务
+            string taskType;
+            string reason;
+            if (sample is not null && sample.Status == SampleStatus.NeedMeasure)
+            {
+                taskType = SctTaskType.HeightMeasure;
+                reason = SctTaskType.ReasonRegistrationMeasure;
+            }
+            else
+            {
+                taskType = productionSample is not null
+                    ? SctTaskType.Production
+                    : type switch
+                    {
+                        SampleType.SettingUp => SctTaskType.Standardize,
+                        SampleType.Control => SctTaskType.ControlCheck,
+                        SampleType.TypeStd => SctTaskType.TypeStandardize,
+                        _ => SctTaskType.Production,
+                    };
+                reason = "样品注册自动入队";
+            }
             var queuedId = productionSample is not null ? productionSample.SampleId : sample!.SampleId;
-            _strategyEngine.SubmitTask(taskType, queuedId, "样品注册自动入队");
+            _strategyEngine.SubmitTask(taskType, queuedId, reason);
 
             _ui.Invoke(() =>
             {

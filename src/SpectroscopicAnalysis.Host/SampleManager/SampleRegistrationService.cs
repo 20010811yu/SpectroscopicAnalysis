@@ -148,17 +148,29 @@ public sealed class SampleRegistrationService : ISampleRegistrationService
             return $"入库失败：{ex.Message}";
         }
 
-        // 注册完成自动加入任务队列：四类样品均入分析队列，任务类型按样品类型映射（引擎同目标同类型自动去重）
-        var taskType = productionSample is not null
-            ? SctTaskType.Production
-            : type switch
-            {
-                SampleType.SettingUp => SctTaskType.Standardize,
-                SampleType.Control => SctTaskType.ControlCheck,
-                SampleType.TypeStd => SctTaskType.TypeStandardize,
-                _ => SctTaskType.Production,
-            };
-        _engine.SubmitTask(taskType, form.SampleId.Trim(), "样品注册自动入队");
+        // 注册完成自动加入任务队列：任务类型按样品类型映射（引擎同目标同类型自动去重）。
+        // 未填初始厚度的样（NeedMeasure）先入测高任务确认厚度，测高合格后由编排器按样品类型补入分析任务
+        string taskType;
+        string reason;
+        if (sample is not null && sample.Status == SampleStatus.NeedMeasure)
+        {
+            taskType = SctTaskType.HeightMeasure;
+            reason = SctTaskType.ReasonRegistrationMeasure;
+        }
+        else
+        {
+            taskType = productionSample is not null
+                ? SctTaskType.Production
+                : type switch
+                {
+                    SampleType.SettingUp => SctTaskType.Standardize,
+                    SampleType.Control => SctTaskType.ControlCheck,
+                    SampleType.TypeStd => SctTaskType.TypeStandardize,
+                    _ => SctTaskType.Production,
+                };
+            reason = "样品注册自动入队";
+        }
+        _engine.SubmitTask(taskType, form.SampleId.Trim(), reason);
         _systemLog.Log("UI操作", twinSample is null
             ? $"样品注册：{form.SampleId.Trim()}（{form.SampleName}，{form.SampleType}）"
             : $"样品注册：{form.SampleId.Trim()}（{form.SampleName}，{form.SampleType}，兼任类型标准化样，孪生档案 {twinSample.SampleId}）");

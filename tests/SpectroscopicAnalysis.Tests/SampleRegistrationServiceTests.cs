@@ -148,7 +148,10 @@ public sealed class SampleRegistrationServiceTests
         Assert.Equal(0, sample.InitialThickness);
         Assert.Equal(SampleStatus.NeedMeasure, sample.Status);   // 强制首次使用前测高（编排器前置/人工登记恢复）
         Assert.False(sample.IsActive);
-        Assert.Equal(SctTaskType.Standardize, _engine.Submitted.Single().TaskType);  // 仍自动入队，执行前强制前置测高
+        // 仅入队测高任务（Reason 带注册测高标记），测高合格后由编排器补入分析任务
+        var submitted = _engine.Submitted.Single();
+        Assert.Equal(SctTaskType.HeightMeasure, submitted.TaskType);
+        Assert.Equal(SctTaskType.ReasonRegistrationMeasure, submitted.Reason);
     }
 
     [Fact]

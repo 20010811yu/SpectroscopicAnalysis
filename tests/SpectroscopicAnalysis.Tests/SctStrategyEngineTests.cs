@@ -494,7 +494,7 @@ public sealed class SctStrategyEngineTests
     // ==================== 测高联动与厚度流转 ====================
 
     [Fact]
-    public void 测高联动_次数达阈值置NeedMeasure不插测高任务()
+    public void 测高联动_次数达阈值置NeedMeasure并入队测高任务()
     {
         _samples.Store.Add(MakeSample("SUS-001", usage: 50, maxUsage: 50));
         var engine = Create();
@@ -504,8 +504,10 @@ public sealed class SctStrategyEngineTests
         var sample = _samples.GetById("SUS-001")!;
         Assert.Equal(SampleStatus.NeedMeasure, sample.Status);  // 置 NeedMeasure
         Assert.False(sample.IsActive);                          // 需测高 → IsActive 随状态联动停用
-        // 测高仅两条路径：SCT 操作前置测高（编排器强制）与人工测高登记——不再自动插测高任务
-        Assert.False(engine.TryDequeue(out _));
+        // 测高自动入队（队列可见；编排器内联前置测高仍保留为兜底）
+        Assert.True(engine.TryDequeue(out var measure));
+        Assert.Equal(SctTaskType.HeightMeasure, measure.TaskType);
+        Assert.Equal("SUS-001", measure.SampleId);
         Assert.Contains(_logs.Inserted, l => l.OperationType == "HeightMeasure" && l.ResultStatus == "Warning");   // 阈值事件留痕
     }
 
@@ -546,7 +548,7 @@ public sealed class SctStrategyEngineTests
     // ==================== 兼任孪生阈值联动 ====================
 
     [Fact]
-    public void 兼任孪生_主样达阈值孪生同步置NeedMeasure不插测高任务()
+    public void 兼任孪生_主样达阈值孪生同步置NeedMeasure并各自入队测高()
     {
         var main = MakeSample("HC-01", SampleType.Control, usage: 50, maxUsage: 50);
         main.PairSampleId = "HC-01-T";
@@ -562,7 +564,13 @@ public sealed class SctStrategyEngineTests
         Assert.Equal(SampleStatus.NeedMeasure, _samples.GetById("HC-01-T")!.Status);
         Assert.False(_samples.GetById("HC-01")!.IsActive);
         Assert.False(_samples.GetById("HC-01-T")!.IsActive);
-        // 不再自动插测高任务（测高仅 SCT 前置/人工两条路径）
+        // 主样与孪生各自入队测高任务（同类型同目标去重，共 2 条；TryDequeue 一次取一个，完成后才能取下一个）
+        Assert.Equal(2, engine.GetQueuedTasks().Count);
+        Assert.True(engine.TryDequeue(out var t1));
+        Assert.Equal(SctTaskType.HeightMeasure, t1.TaskType);
+        engine.CompleteTask(t1.TaskId, success: true, null);
+        Assert.True(engine.TryDequeue(out var t2));
+        Assert.Equal(SctTaskType.HeightMeasure, t2.TaskType);
         Assert.False(engine.TryDequeue(out _));
     }
 
@@ -578,7 +586,11 @@ public sealed class SctStrategyEngineTests
         engine.NotifyAnalysisCompleted("HC-01");
 
         Assert.Equal(SampleStatus.NeedMeasure, _samples.GetById("HC-01")!.Status);
-        Assert.False(engine.TryDequeue(out _));     // 不自动插测高任务（含重复提交场景）
+        // 仅主样入队 1 条测高（孪生已 NeedMeasure 不重复联动入队）
+        Assert.True(engine.TryDequeue(out var only));
+        Assert.Equal(SctTaskType.HeightMeasure, only.TaskType);
+        Assert.Equal("HC-01", only.SampleId);
+        Assert.False(engine.TryDequeue(out _));
     }
 
     [Fact]
@@ -594,7 +606,11 @@ public sealed class SctStrategyEngineTests
 
         Assert.Equal(SampleStatus.NeedMeasure, _samples.GetById("HC-01")!.Status);
         Assert.Equal(SampleStatus.Normal, _samples.GetById("HC-01-T")!.Status);     // 孪生保持正常
-        Assert.False(engine.TryDequeue(out _));     // 不自动插测高任务
+        // 仅主样入队测高任务
+        Assert.True(engine.TryDequeue(out var mainMeasure));
+        Assert.Equal(SctTaskType.HeightMeasure, mainMeasure.TaskType);
+        Assert.Equal("HC-01", mainMeasure.SampleId);
+        Assert.False(engine.TryDequeue(out _));
     }
 
     // ==================== 检查样与类型标准化样混用 ====================

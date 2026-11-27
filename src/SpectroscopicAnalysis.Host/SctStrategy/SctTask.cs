@@ -20,6 +20,12 @@ public static class SctTaskType
 
     /// <summary>归档。</summary>
     public const string Archive = "Archive";
+
+    /// <summary>
+    /// 注册测高触发原因前缀（新样注册未填初始厚度时入队 HeightMeasure 用）。
+    /// 编排器据此在测高合格后按样品类型补入注册分析任务（自动入队闭环）。
+    /// </summary>
+    public const string ReasonRegistrationMeasure = "新样注册未填初始厚度，先测高确认";
 }
 
 /// <summary>SCT 任务状态（引擎设计文档 §4；命名与任务清单第 7 节一致，禁止自创状态名）。</summary>

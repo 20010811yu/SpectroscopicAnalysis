@@ -79,6 +79,11 @@ public partial class App
                 var workflowOptions = new Workflow.WorkflowOptions();
                 context.Configuration.GetSection("Workflow").Bind(workflowOptions);
                 services.AddSingleton(workflowOptions);
+                // PLC 连接集中配置（appsettings.json "Plc" 节；Modbus 真实现落地后作为构造参数注入网关）
+                var plcConnectionOptions = new DeviceInterface.PlcConnectionOptions();
+                context.Configuration.GetSection("Plc").Bind(plcConnectionOptions);
+                plcConnectionOptions.Validate();
+                services.AddSingleton(plcConnectionOptions);
                 services.AddSingleton<DeviceInterface.StubDeviceGateway>();
                 services.AddSingleton<DeviceInterface.ISendTask>(sp => sp.GetRequiredService<DeviceInterface.StubDeviceGateway>());
                 services.AddSingleton<DeviceInterface.IGetTaskStatus>(sp => sp.GetRequiredService<DeviceInterface.StubDeviceGateway>());

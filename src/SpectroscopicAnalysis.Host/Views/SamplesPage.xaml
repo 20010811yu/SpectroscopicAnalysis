@@ -394,7 +394,7 @@
                             <!-- 列宽按比例（Star）随窗口自动伸缩；≤125% 时操作列固定最右，>125% 由 code-behind 切 Auto -->
                             <DataGridTextColumn Header="SampleID" Binding="{Binding SampleId}" FontFamily="Consolas" Width="1.1*" MinWidth="60" ElementStyle="{StaticResource GridCellText}" />
                             <DataGridTextColumn Header="类型" Binding="{Binding TypeDisplay}" Width="0.9*" MinWidth="50" ElementStyle="{StaticResource GridCellText}" />
-                            <DataGridTextColumn Header="合金" Binding="{Binding AlloyType}" Width="0.7*" MinWidth="40" ElementStyle="{StaticResource GridCellText}" />
+                            <DataGridTextColumn Header="关联合金" Binding="{Binding AlloyType}" Width="0.7*" MinWidth="40" ElementStyle="{StaticResource GridCellText}" />
                             <DataGridTextColumn Header="兼任类型" Binding="{Binding PairText}" FontFamily="Consolas" Width="0.9*" MinWidth="55" ElementStyle="{StaticResource GridCellText}" />
                             <DataGridTextColumn Header="当前/初始厚度 (mm)" Binding="{Binding ThicknessText}" Width="1.5*" MinWidth="80" ElementStyle="{StaticResource GridCellText}" />
                             <DataGridTextColumn Header="最小厚度" Binding="{Binding MinThicknessText}" Width="0.8*" MinWidth="50" ElementStyle="{StaticResource GridCellText}" />
@@ -632,7 +632,7 @@
                         <DataGrid.Columns>
                             <DataGridTextColumn Header="SampleID" Binding="{Binding SampleId}" FontFamily="Consolas" Width="1.2*" MinWidth="70" ElementStyle="{StaticResource GridCellText}" />
                             <DataGridTextColumn Header="样品名称" Binding="{Binding SampleName}" Width="1.2*" MinWidth="70" ElementStyle="{StaticResource GridCellText}" />
-                            <DataGridTextColumn Header="合金" Binding="{Binding AlloyType}" Width="0.7*" MinWidth="40" ElementStyle="{StaticResource GridCellText}" />
+                            <DataGridTextColumn Header="关联合金" Binding="{Binding AlloyType}" Width="0.7*" MinWidth="40" ElementStyle="{StaticResource GridCellText}" />
                                                         <DataGridTemplateColumn Header="状态" Width="1*" MinWidth="70">
                                 <DataGridTemplateColumn.CellTemplate>
                                     <DataTemplate>

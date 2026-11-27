@@ -213,8 +213,8 @@
                     <StackPanel Grid.Column="0" Margin="0,0,12,0">
                         <DockPanel Margin="0,0,0,8" LastChildFill="False">
                             <TextBlock DockPanel.Dock="Right" Style="{StaticResource Text.Caption}" VerticalAlignment="Center"
-                                       Text="{Binding RackOutOfRangeCount, StringFormat='示意范围外占用 {0} 位'}" />
-                            <TextBlock Text="SCT货架（A–E × 1–5）" Style="{StaticResource Text.CardTitle}" VerticalAlignment="Center" />
+                                       Text="{Binding RackOutOfRangeCount, StringFormat='范围外 {0} 位'}" ToolTip="示意范围外架位占用数" />
+                            <TextBlock Text="SCT货架（5×5）" Style="{StaticResource Text.CardTitle}" VerticalAlignment="Center" />
                         </DockPanel>
 
                         <ItemsControl ItemsSource="{Binding RackRows}">
@@ -341,8 +341,8 @@
                     <StackPanel Grid.Column="0" Margin="0,0,12,0">
                         <DockPanel Margin="0,0,0,8" LastChildFill="False">
                             <TextBlock DockPanel.Dock="Right" Style="{StaticResource Text.Caption}" VerticalAlignment="Center"
-                                       Text="{Binding ProdOutOfRangeCount, StringFormat='示意范围外占用 {0} 位'}" />
-                            <TextBlock Text="分析样货架（A–E × 1–5）" Style="{StaticResource Text.CardTitle}" VerticalAlignment="Center" />
+                                       Text="{Binding ProdOutOfRangeCount, StringFormat='范围外 {0} 位'}" ToolTip="示意范围外架位占用数" />
+                            <TextBlock Text="分析样货架（5×5）" Style="{StaticResource Text.CardTitle}" VerticalAlignment="Center" />
                         </DockPanel>
 
                         <ItemsControl ItemsSource="{Binding ProductionRows}">

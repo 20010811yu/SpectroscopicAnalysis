@@ -226,11 +226,12 @@ public sealed class DbInitializer
             cleanAlloy.ExecuteNonQuery();
         }
         // 过薄自动禁用兜底（幂等）：运行时各写厚度路径（测高回喂/手动测高登记/阈值调整）均已判定，
-        // 此处兜住存量/导入数据——当前厚度低于最小厚度的样品状态统一归一为 Disabled（报废更换）
+        // 此处兜住存量/导入数据——当前厚度低于最小厚度的样品状态统一归一为 Disabled（报废更换）；
+        // CurrentThickness > 0 守卫：0=厚度未知（新注册未测高样），不得误判过薄
         using (var thinDisabled = conn.CreateCommand())
         {
             thinDisabled.Transaction = tx;
-            thinDisabled.CommandText = "UPDATE SCT_Sample SET Status = 'Disabled' WHERE CurrentThickness < MinThickness AND Status != 'Disabled'";
+            thinDisabled.CommandText = "UPDATE SCT_Sample SET Status = 'Disabled' WHERE CurrentThickness > 0 AND CurrentThickness < MinThickness AND Status != 'Disabled'";
             thinDisabled.ExecuteNonQuery();
         }
         // 启停用归一（幂等）：IsActive 随状态联动（需测高/过薄禁用 → 停用）；

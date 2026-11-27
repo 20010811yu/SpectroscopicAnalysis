@@ -231,16 +231,18 @@ public sealed partial class SampleRegisterFormViewModel : ObservableObject
             return valid;
         }
 
-        // SCT 样（标准化样/检查样/类型标准化样）：架位、厚度、使用次数
+        // SCT 样（标准化样/检查样/类型标准化样）：架位、厚度（初始厚度非必填）、使用次数
         if (string.IsNullOrWhiteSpace(RackPosition))
         {
             RackPositionError = "请填写样品架位置";
             valid = false;
         }
 
-        var hasInitial = double.TryParse(InitialThickness, out var initial);
+        // 初始厚度：留空合法（注册后强制先测高）；填了才校验 >0 且 > 最小厚度
         var hasMin = double.TryParse(MinThickness, out var min);
-        if (!hasInitial || initial <= 0)
+        var initialBlank = string.IsNullOrWhiteSpace(InitialThickness);
+        var hasInitial = double.TryParse(InitialThickness, out var initial);
+        if (!initialBlank && (!hasInitial || initial <= 0))
         {
             ThicknessError = "初始厚度必须为大于 0 的数值";
             valid = false;
@@ -250,7 +252,7 @@ public sealed partial class SampleRegisterFormViewModel : ObservableObject
             ThicknessError = "最小厚度必须为大于 0 的数值";
             valid = false;
         }
-        else if (initial <= min)
+        else if (hasInitial && initial <= min)
         {
             ThicknessError = "初始厚度必须大于最小厚度";
             valid = false;

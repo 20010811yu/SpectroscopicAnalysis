@@ -718,10 +718,12 @@ public sealed partial class SctViewModel : ObservableObject, IPageLifecycle
             sample.MaxUsageCount = maxUsage;
             // 阈值变化后全量重判状态（不限于 Normal，双向）：
             // ① 过薄：当前厚度 < 新最小厚度 → Disabled + 报警提示更换（新触发时）；
+            //    CurrentThickness <= 0（未测高，厚度未知）不判过薄，保持需测高；
             // ② 次数：厚度合格但次数 ≥ 新上限 → NeedMeasure（不触发测高任务——测高仅 SCT 前置/人工两条路径）；
-            // ③ 恢复：厚度与次数均达标 → Normal + 重新启用（含阈值调低后过薄样恢复、上限调大后需测高样恢复；
+            // ③ 恢复：厚度与次数均达标且已测过高（LastHeightCheckTime 非空）→ Normal + 重新启用
+            //    （阈值调低后过薄样恢复、上限调大后需测高样恢复；从未测高的新注册需测高样不自动恢复，必须先测高；
             //    人工停用样 Status 本为 Normal，不在此自动启用——启停用仍由人工控制）
-            if (sample.CurrentThickness < min)
+            if (sample.CurrentThickness > 0 && sample.CurrentThickness < min)
             {
                 var newlyDisabled = sample.Status != SampleStatus.Disabled;
                 sample.Status = SampleStatus.Disabled;
@@ -732,8 +734,9 @@ public sealed partial class SctViewModel : ObservableObject, IPageLifecycle
                         $"标样 {sampleId} 当前厚度 {sample.CurrentThickness:0.##} 低于新最小厚度 {min:0.##}，请更换", sampleId);
                 }
             }
-            else if (sample.UsageCount >= maxUsage)
+            else if (sample.UsageCount >= maxUsage || sample.LastHeightCheckTime is null)
             {
+                // 从未测高（新注册未填初始厚度）的样即使次数达标也保持需测高，不自动恢复
                 sample.Status = SampleStatus.NeedMeasure;
                 sample.IsActive = false;
             }
@@ -1226,7 +1229,8 @@ public sealed partial class SctViewModel : ObservableObject, IPageLifecycle
         },
         AlloyType = s.AlloyType,
         RackPosition = s.RackPosition,
-        ThicknessText = $"{s.CurrentThickness:0.0#} / {s.InitialThickness:0.0#}",
+        // 厚度未知（新注册未填初始厚度，存 0 哨兵）显示 "—"
+        ThicknessText = s.CurrentThickness > 0 ? $"{s.CurrentThickness:0.0#} / {s.InitialThickness:0.0#}" : "—",
         MinThicknessText = $"{s.MinThickness:0.0#}",
         UsageText = $"{s.UsageCount}/{s.MaxUsageCount}",
         Status = s.Status,

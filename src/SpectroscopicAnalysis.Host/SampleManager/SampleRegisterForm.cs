@@ -27,7 +27,7 @@ public sealed class SampleRegisterForm
     /// <summary>货架位置（SCT 样必填，全库唯一）。</summary>
     public string? RackPosition { get; set; }
 
-    /// <summary>初始厚度文本（SCT 样必填，>0）。</summary>
+    /// <summary>初始厚度文本（SCT 样非必填；填了须 >0 且 > 最小厚度，留空则注册后强制先测高）。</summary>
     public string InitialThickness { get; set; } = string.Empty;
 
     /// <summary>最小厚度文本（SCT 样必填，>0）。</summary>

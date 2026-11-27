@@ -1009,8 +1009,9 @@ public sealed partial class SamplesViewModel : ObservableObject, IPageLifecycle
                 MinThickness = sample.MinThickness,
                 UsageCount = 0,
                 MaxUsageCount = sample.MaxUsageCount,
-                Status = SampleStatus.Normal,
-                IsActive = true,
+                // 孪生随主样：未填初始厚度同样置需测高（首次使用前强制测高）
+                Status = sample.Status,
+                IsActive = sample.IsActive,
                 CreatedTime = DateTime.Now,
                 PairSampleId = sample.SampleId,
             };
@@ -1200,12 +1201,14 @@ public sealed partial class SamplesViewModel : ObservableObject, IPageLifecycle
             return null;
         }
 
-        // 控样/检查样/类型标准样：架位 + 厚度 + 使用次数
+        // 控样/检查样/类型标准样：架位 + 使用次数（初始厚度非必填：未填则注册后强制先测高）
         if (string.IsNullOrWhiteSpace(RegRackPosition))
         {
             return "样品架位置不能为空";
         }
-        if (!double.TryParse(RegInitialThickness, out var init) || init <= 0)
+        // 初始厚度：填了才校验（>0 且 > 最小厚度）；留空合法，注册后置需测高
+        var hasInitial = double.TryParse(RegInitialThickness, out var init) && init > 0;
+        if (!string.IsNullOrWhiteSpace(RegInitialThickness) && !hasInitial)
         {
             return "初始厚度必须为大于 0 的数值";
         }
@@ -1213,7 +1216,7 @@ public sealed partial class SamplesViewModel : ObservableObject, IPageLifecycle
         {
             return "最小厚度必须为大于 0 的数值";
         }
-        if (init <= min)
+        if (hasInitial && init <= min)
         {
             return "初始厚度必须大于最小厚度";
         }
@@ -1253,22 +1256,30 @@ public sealed partial class SamplesViewModel : ObservableObject, IPageLifecycle
         CreatedTime = DateTime.Now,
     };
 
-    private SctSample BuildSampleFromForm() => new()
+    /// <summary>
+    /// SCT 样注册构造（与服务层同规则）：初始厚度已填 → CurrentThickness=Initial、Normal 直接可用；
+    /// 未填 → 厚度未知存 0 哨兵（展示层显示 "—"）、Status=NeedMeasure 强制首次使用前测高。
+    /// </summary>
+    private SctSample BuildSampleFromForm()
     {
-        SampleId = RegSampleId.Trim(),
-        SampleName = RegSampleName.Trim(),
-        SampleType = TypeDisplayToKey(RegSampleType),
-        AlloyType = string.IsNullOrWhiteSpace(RegAlloyType) ? null : RegAlloyType.Trim(),
-        RackPosition = RegRackPosition?.Trim(), // 校验已确保非空
-        InitialThickness = double.Parse(RegInitialThickness),
-        CurrentThickness = double.Parse(RegInitialThickness), // 入库初始化：当前厚度 = 初始厚度
-        MinThickness = double.Parse(RegMinThickness),
-        UsageCount = 0,
-        MaxUsageCount = int.Parse(RegMaxUsageCount),
-        Status = SampleStatus.Normal,
-        IsActive = true,
-        CreatedTime = DateTime.Now,
-    };
+        var hasInitial = double.TryParse(RegInitialThickness, out var init) && init > 0;
+        return new SctSample
+        {
+            SampleId = RegSampleId.Trim(),
+            SampleName = RegSampleName.Trim(),
+            SampleType = TypeDisplayToKey(RegSampleType),
+            AlloyType = string.IsNullOrWhiteSpace(RegAlloyType) ? null : RegAlloyType.Trim(),
+            RackPosition = RegRackPosition?.Trim(), // 校验已确保非空
+            InitialThickness = hasInitial ? init : 0,
+            CurrentThickness = hasInitial ? init : 0, // 已填：当前厚度 = 初始厚度；未填：0=厚度未知
+            MinThickness = double.Parse(RegMinThickness),
+            UsageCount = 0,
+            MaxUsageCount = int.Parse(RegMaxUsageCount),
+            Status = hasInitial ? SampleStatus.Normal : SampleStatus.NeedMeasure,
+            IsActive = hasInitial,
+            CreatedTime = DateTime.Now,
+        };
+    }
 
     private void ClearRegisterForm()
     {
@@ -1959,7 +1970,8 @@ public sealed partial class SamplesViewModel : ObservableObject, IPageLifecycle
         IsActive = s.IsActive,
         RackPosition = s.RackPosition,
         AssociatedMethodText = s.AssociatedMethod ?? string.Empty,
-        ThicknessText = $"{s.CurrentThickness:0.0#} / {s.InitialThickness:0.0#}",
+        // 厚度未知（新注册未填初始厚度，存 0 哨兵）显示 "—"
+        ThicknessText = s.CurrentThickness > 0 ? $"{s.CurrentThickness:0.0#} / {s.InitialThickness:0.0#}" : "—",
         MinThicknessText = $"{s.MinThickness:0.0#}",
         UsageText = $"{s.UsageCount}/{s.MaxUsageCount}",
         Status = s.Status,

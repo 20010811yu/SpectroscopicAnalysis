@@ -135,6 +135,35 @@ public sealed class SampleRegistrationServiceTests
     }
 
     [Fact]
+    public async Task 控样_未填初始厚度注册置需测高厚度未知()
+    {
+        var form = MakeSctForm(SampleType.SettingUp);
+        form.InitialThickness = "";                          // 初始厚度留空（非必填）
+
+        var error = await Create().RegisterAsync(form);
+
+        Assert.Null(error);
+        var sample = _samples.Store.Single();
+        Assert.Equal(0, sample.CurrentThickness);            // 厚度未知存 0 哨兵（展示层显示 "—"）
+        Assert.Equal(0, sample.InitialThickness);
+        Assert.Equal(SampleStatus.NeedMeasure, sample.Status);   // 强制首次使用前测高（编排器前置/人工登记恢复）
+        Assert.False(sample.IsActive);
+        Assert.Equal(SctTaskType.Standardize, _engine.Submitted.Single().TaskType);  // 仍自动入队，执行前强制前置测高
+    }
+
+    [Fact]
+    public async Task 控样_初始厚度填非法值仍被拒()
+    {
+        var form = MakeSctForm(SampleType.SettingUp);
+        form.InitialThickness = "-3";
+
+        var error = await Create().RegisterAsync(form);
+
+        Assert.Equal("初始厚度必须为大于 0 的数值", error);
+        Assert.Empty(_samples.Store);
+    }
+
+    [Fact]
     public async Task 检查样_入队控制检查()
     {
         var error = await Create().RegisterAsync(MakeSctForm(SampleType.Control, "CTL-001"));

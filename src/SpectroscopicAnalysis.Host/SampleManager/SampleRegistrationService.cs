@@ -66,8 +66,9 @@ public sealed class SampleRegistrationService : ISampleRegistrationService
                 MinThickness = sample.MinThickness,
                 UsageCount = 0,
                 MaxUsageCount = sample.MaxUsageCount,
-                Status = SampleStatus.Normal,
-                IsActive = true,
+                // 孪生随主样：未填初始厚度同样置需测高（首次使用前强制测高）
+                Status = sample.Status,
+                IsActive = sample.IsActive,
                 CreatedTime = DateTime.Now,
                 PairSampleId = sample.SampleId,
             };
@@ -194,12 +195,14 @@ public sealed class SampleRegistrationService : ISampleRegistrationService
             return null;
         }
 
-        // 控样/检查样/类型标准样：架位 + 厚度 + 使用次数
+        // 控样/检查样/类型标准样：架位 + 使用次数（初始厚度非必填：未填则注册后强制先测高）
         if (string.IsNullOrWhiteSpace(form.RackPosition))
         {
             return "样品架位置不能为空";
         }
-        if (!double.TryParse(form.InitialThickness, out var init) || init <= 0)
+        // 初始厚度：填了才校验（>0 且 > 最小厚度）；留空合法，注册后置需测高
+        var hasInitial = double.TryParse(form.InitialThickness, out var init) && init > 0;
+        if (!string.IsNullOrWhiteSpace(form.InitialThickness) && !hasInitial)
         {
             return "初始厚度必须为大于 0 的数值";
         }
@@ -207,7 +210,7 @@ public sealed class SampleRegistrationService : ISampleRegistrationService
         {
             return "最小厚度必须为大于 0 的数值";
         }
-        if (init <= min)
+        if (hasInitial && init <= min)
         {
             return "初始厚度必须大于最小厚度";
         }
@@ -247,21 +250,30 @@ public sealed class SampleRegistrationService : ISampleRegistrationService
         CreatedTime = DateTime.Now,
     };
 
-    /// <summary>SCT 样注册：入库初始化（CurrentThickness=Initial、UsageCount=0、Status=Normal）。</summary>
-    private static SctSample BuildSample(SampleRegisterForm form) => new()
+    /// <summary>
+    /// SCT 样注册：入库初始化（UsageCount=0）。
+    /// 初始厚度已填 → CurrentThickness=Initial、Status=Normal 直接可用；
+    /// 未填 → 厚度未知存 0 哨兵（展示层显示 "—"）、Status=NeedMeasure 强制首次使用前测高（编排器前置测高/人工测高登记恢复）。
+    /// </summary>
+    private static SctSample BuildSample(SampleRegisterForm form)
     {
-        SampleId = form.SampleId.Trim(),
-        SampleName = form.SampleName.Trim(),
-        SampleType = form.SampleType,
-        AlloyType = string.IsNullOrWhiteSpace(form.AlloyType) ? null : form.AlloyType.Trim(),
-        RackPosition = form.RackPosition?.Trim(), // 校验已确保非空
-        InitialThickness = double.Parse(form.InitialThickness),
-        CurrentThickness = double.Parse(form.InitialThickness), // 入库初始化：当前厚度 = 初始厚度
-        MinThickness = double.Parse(form.MinThickness),
-        UsageCount = 0,
-        MaxUsageCount = int.Parse(form.MaxUsageCount),
-        Status = SampleStatus.Normal,
-        IsActive = true,
-        CreatedTime = DateTime.Now,
-    };
+        // 初始厚度非必填：留空 = 厚度未知（0 哨兵），注册即需测高
+        var hasInitial = double.TryParse(form.InitialThickness, out var init) && init > 0;
+        return new SctSample
+        {
+            SampleId = form.SampleId.Trim(),
+            SampleName = form.SampleName.Trim(),
+            SampleType = form.SampleType,
+            AlloyType = string.IsNullOrWhiteSpace(form.AlloyType) ? null : form.AlloyType.Trim(),
+            RackPosition = form.RackPosition?.Trim(), // 校验已确保非空
+            InitialThickness = hasInitial ? init : 0,
+            CurrentThickness = hasInitial ? init : 0, // 已填：当前厚度 = 初始厚度；未填：0=厚度未知
+            MinThickness = double.Parse(form.MinThickness),
+            UsageCount = 0,
+            MaxUsageCount = int.Parse(form.MaxUsageCount),
+            Status = hasInitial ? SampleStatus.Normal : SampleStatus.NeedMeasure,
+            IsActive = hasInitial,
+            CreatedTime = DateTime.Now,
+        };
+    }
 }

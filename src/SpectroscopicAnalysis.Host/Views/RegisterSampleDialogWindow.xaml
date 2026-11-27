@@ -189,9 +189,11 @@
                             <ColumnDefinition Width="Auto" SharedSizeGroup="Label" />
                             <ColumnDefinition Width="*" />
                         </Grid.ColumnDefinitions>
-                        <TextBlock Grid.Column="0" Text="初始厚度 (mm)*" Style="{StaticResource Text.Caption}" Width="110" VerticalAlignment="Center" />
+                        <TextBlock Grid.Column="0" Text="初始厚度 (mm)" Style="{StaticResource Text.Caption}" Width="110" VerticalAlignment="Center" />
                         <StackPanel Grid.Column="1" Margin="8,0,16,0">
+                            <!-- 初始厚度非必填：留空则注册后强制先测高 -->
                             <TextBox Text="{Binding InitialThickness, UpdateSourceTrigger=PropertyChanged}" />
+                            <TextBlock Text="未填则注册后需先测高" Foreground="{DynamicResource Brush.Text.Secondary}" Style="{StaticResource Text.Caption}" />
                             <TextBlock Text="{Binding ThicknessError}" Style="{StaticResource FieldError}" />
                         </StackPanel>
                         <TextBlock Grid.Column="2" Text="最小厚度 (mm)*" Style="{StaticResource Text.Caption}" Width="110" VerticalAlignment="Center" />

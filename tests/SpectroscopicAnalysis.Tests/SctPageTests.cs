@@ -21,7 +21,8 @@ public sealed class SctPageTests
         double minThickness = 5,
         bool isActive = true,
         int usage = 0,
-        int maxUsage = 50) => new()
+        int maxUsage = 50,
+        bool hasMeasuredHeight = true) => new()
     {
         SampleId = id,
         SampleName = $"标样 {id}",
@@ -35,6 +36,8 @@ public sealed class SctPageTests
         MaxUsageCount = maxUsage,
         Status = status,
         IsActive = isActive,
+        // 默认视为已测过高（历史样）；hasMeasuredHeight: false 模拟新注册未测高样
+        LastHeightCheckTime = hasMeasuredHeight ? new DateTime(2026, 1, 1) : null,
     };
 
     private static (SctViewModel Vm, FakeSampleRepository Repo, FakeOperationLogRepository Logs, FakeSctPolicyStore Policy, FakeDialogService Dialogs) Create(
@@ -338,6 +341,30 @@ public sealed class SctPageTests
         Assert.Equal(SampleStatus.Normal, sample.Status);
         Assert.True(sample.IsActive);
         Assert.Contains("已恢复", vm.PolicySavedMessage);
+    }
+
+    [Fact]
+    public async Task Threshold_从未测高样调阈值不自动恢复保持需测高()
+    {
+        var (vm, repo, _, _, _) = Create(new[]
+        {
+            // 新注册未填初始厚度样：NeedMeasure + 从未测高（LastHeightCheckTime=null）+ 厚度未知 0
+            MakeSample("CTL-900", status: SampleStatus.NeedMeasure, isActive: false,
+                thickness: 0, minThickness: 5, hasMeasuredHeight: false),
+        });
+        await vm.LoadCommand.ExecuteAsync(null);
+        vm.SelectedSample = vm.SctSamples[0];
+
+        vm.OpenThresholdCommand.Execute(null);
+        vm.EditMinThicknessText = "3";
+        vm.EditMaxUsageText = "60";                              // 次数 0 达标、新阈值也宽松
+        await vm.SaveThresholdsCommand.ExecuteAsync(null);
+
+        var sample = repo.GetById("CTL-900")!;
+        Assert.Equal(SampleStatus.NeedMeasure, sample.Status);   // 从未测高不得自动恢复，必须先测高
+        Assert.False(sample.IsActive);
+        // 厚度未知（0）也不得误判过薄禁用
+        Assert.NotEqual(SampleStatus.Disabled, sample.Status);
     }
 
     [Fact]

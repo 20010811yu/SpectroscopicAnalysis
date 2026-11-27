@@ -161,10 +161,12 @@
                                 <TextBox Text="{Binding RegMaxUsageCount, UpdateSourceTrigger=PropertyChanged}" />
                             </StackPanel>
                         </StackPanel>
-                        <!-- 控样/检查样/类型标准样：初始/最小厚度 -->
+                        <!-- 控样/检查样/类型标准样：初始（非必填）/最小厚度（初始厚度留空则注册后强制先测高） -->
                         <StackPanel Orientation="Horizontal" Margin="0,0,0,8" Style="{StaticResource StdRow}">
-                            <TextBlock Text="初始厚度 (mm)*" Style="{StaticResource Text.Caption}" Width="110" VerticalAlignment="Center" />
-                            <TextBox Text="{Binding RegInitialThickness, UpdateSourceTrigger=PropertyChanged}" />
+                            <TextBlock Text="初始厚度 (mm)" Style="{StaticResource Text.Caption}" Width="110" VerticalAlignment="Center" />
+                            <TextBox Text="{Binding RegInitialThickness, UpdateSourceTrigger=PropertyChanged}" MinWidth="110" />
+                            <TextBlock Text="未填则注册后需先测高" Foreground="{DynamicResource Brush.Text.Secondary}"
+                                       Style="{StaticResource Text.Caption}" VerticalAlignment="Center" Margin="4,0,0,0" />
                             <TextBlock Text="最小厚度 (mm)*" Style="{StaticResource Text.Caption}" Width="110" VerticalAlignment="Center" Margin="24,0,0,0" />
                             <TextBox Text="{Binding RegMinThickness, UpdateSourceTrigger=PropertyChanged}" />
                         </StackPanel>

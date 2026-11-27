@@ -337,8 +337,8 @@ public sealed class SeedData
     }
 
     /// <summary>
-    /// 生产样演示数据（确定性）：10000 条生产样（入库时间近 30 天内多日期分布；架位循环复用货架示意 E 行，
-    /// RackPosition 码均在示意范围 A01–E05 内；与标样占用互斥由 AvailablePositions 按占用集合保证）
+    /// 生产样演示数据（确定性）：10000 条生产样（入库时间近 30 天内多日期分布；架位落生产样独立编号空间 P01–P25，
+    /// 不占 SCT 货架 A01–E05；与标样占用互不冲突）
     /// + 每样 1~2 条分析结果（共约 7500 条，原始/校正后双存、系数版本可追溯）。
     /// </summary>
     private static void SeedProductionSamples(SqliteConnection conn, SqliteTransaction tx)
@@ -364,7 +364,7 @@ public sealed class SeedData
                 cmd.Parameters.AddWithValue("$id", $"PRD-G{seq:000}");
                 cmd.Parameters.AddWithValue("$name", $"生产样 G-{seq:000}");
                 cmd.Parameters.AddWithValue("$alloy", alloys[seq % alloys.Length]);
-                cmd.Parameters.AddWithValue("$rack", $"E{seq % 5 + 1:00}");   // 货架示意 E 行循环复用（E01–E05）
+                cmd.Parameters.AddWithValue("$rack", $"P{seq % 25 + 1:00}");   // 生产样独立编号空间 P01–P25 循环复用
                 cmd.Parameters.AddWithValue("$method", methods[seq % methods.Length]);
                 cmd.Parameters.AddWithValue("$status", status);
                 cmd.Parameters.AddWithValue("$created", created.ToString("yyyy-MM-dd HH:mm:ss"));

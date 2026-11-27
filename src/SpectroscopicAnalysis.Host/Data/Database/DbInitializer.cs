@@ -243,6 +243,17 @@ public sealed class DbInitializer
         }
         // 生产样档案独立建表后，清理存量库 SCT_Sample 中的生产样行（先删子表引用再删本体，生产样数据由 Production_Sample 提供）
         PurgeProductionFromSctSample(conn, tx);
+        // 生产样架位归 P 编号空间（幂等）：存量库生产样残留的 SCT 货架码（A01–E05）一律清空释放，
+        // 生产样与 SCT 样货架互不占用，E 排等 SCT 架位全部还给标样库
+        using (var releaseSctRack = conn.CreateCommand())
+        {
+            releaseSctRack.Transaction = tx;
+            releaseSctRack.CommandText = """
+                UPDATE Production_Sample SET RackPosition = NULL
+                WHERE RackPosition IS NOT NULL AND RackPosition GLOB '[A-E][0-9][0-9]'
+                """;
+            releaseSctRack.ExecuteNonQuery();
+        }
         // 校正系数版本化修复（幂等，须在建唯一索引前执行）：
         // ① 历史库无版本唯一约束时种子数据可能重复播种，先按（方法,元素,版本,来源）去重，保留最小 CoeffID
         //   （来源参与唯一性：同方法/元素/版本允许控样与类型标准化样两套系数并存）；

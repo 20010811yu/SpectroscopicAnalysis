@@ -121,6 +121,8 @@ public sealed class RackSlotItem
     public string SlotState { get; init; } = StateEmpty;
     /// <summary>状态中文（ToolTip 用）。</summary>
     public string StateText { get; init; } = "空位";
+    /// <summary>ToolTip 完整文案（占用=样品号+状态中文；空位=「空位」）。</summary>
+    public string ToolTipText { get; init; } = "空位";
 }
 
 /// <summary>货架示意行（一行 8 个库位）。</summary>

@@ -268,9 +268,10 @@ public sealed partial class ConsoleViewModel : ObservableObject, IPageLifecycle
             var (state, text) = s.Status switch
             {
                 // 人工停用只翻 IsActive 不写 Status；过薄报废是 Status=Disabled + IsActive=false，二者据此区分
+                // 人工停用优先于需测高（停用的需测高样按人工停用展示，不误导为待测高）
+                _ when !s.IsActive && s.Status != SampleStatus.Disabled => (RackSlotItem.StateManualDisabled, "人工禁用"),
                 SampleStatus.Disabled => (RackSlotItem.StateDisabled, "禁用（过薄）"),
                 SampleStatus.NeedMeasure => (RackSlotItem.StateNeedMeasure, "需测高"),
-                _ when !s.IsActive => (RackSlotItem.StateManualDisabled, "人工禁用"),
                 _ => (RackSlotItem.StateNormal, "可用"),
             };
             occupancy.TryAdd(s.RackPosition, (s.SampleId, state, text));
@@ -298,6 +299,7 @@ public sealed partial class ConsoleViewModel : ObservableObject, IPageLifecycle
                         IsOccupied = true,
                         SlotState = slot.State,
                         StateText = slot.StateText,
+                        ToolTipText = $"{slot.SampleId}（{slot.StateText}）",
                     }
                     : new RackSlotItem { PositionCode = code, SampleIdText = string.Empty, IsOccupied = false, SlotState = RackSlotItem.StateEmpty, StateText = "空位" });
             }

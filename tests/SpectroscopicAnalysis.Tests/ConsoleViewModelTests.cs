@@ -231,6 +231,12 @@ public sealed class ConsoleViewModelTests
             AlloyType = "AL", RackPosition = "A02", Status = SampleStatus.Disabled,
             IsActive = false,   // 过薄报废：Status=Disabled + IsActive=false → 货架红色「禁用（过薄）」
         });
+        samples.Store.Add(new SctSample
+        {
+            SampleId = "TS-103", SampleName = "标样3", SampleType = SampleType.Control,
+            AlloyType = "AL", RackPosition = "A03", Status = SampleStatus.NeedMeasure,
+            IsActive = false,   // 需测高样再被人工停用：人工停用优先 → 橙色「人工禁用」而非黄色
+        });
 
         var vm = CreateVm(samples: samples);
         vm.OnNavigatedTo();
@@ -240,6 +246,8 @@ public sealed class ConsoleViewModelTests
         Assert.Equal("人工禁用", vm.RackRows[0].Slots[0].StateText);
         Assert.Equal(RackSlotItem.StateDisabled, vm.RackRows[0].Slots[1].SlotState);         // A02 过薄禁用
         Assert.Equal("禁用（过薄）", vm.RackRows[0].Slots[1].StateText);
+        Assert.Equal(RackSlotItem.StateManualDisabled, vm.RackRows[0].Slots[2].SlotState);   // A03 停用的需测高样
+        Assert.Equal("TS-103（人工禁用）", vm.RackRows[0].Slots[2].ToolTipText);
     }
 
     [Fact]

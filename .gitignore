@@ -64,3 +64,6 @@ desktop.ini
 *.db
 *.db-wal
 *.db-shm
+
+# 测试临时备用输出（程序运行锁定 bin 时使用）
+bin-alt/

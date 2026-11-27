@@ -369,7 +369,11 @@ public sealed partial class SctViewModel : ObservableObject, IPageLifecycle
                 .Where(s => s.SampleType != SampleType.Production)
                 .Select(MapRow)
                 .ToList();
-            var logs = _logs.GetAll().Select(MapLogRow).ToList();
+            // SCT 执行记录只展示 SCT 任务（标准化/控制检查/测高）；生产/归档/急停等留待生产日志与运行日志查看
+            var logs = _logs.GetAll()
+                .Where(l => l.OperationType is "Standardization" or "ControlCheck" or "HeightMeasure")
+                .Select(MapLogRow)
+                .ToList();
             return (samples, logs);
         });
 

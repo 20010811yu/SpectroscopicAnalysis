@@ -86,7 +86,7 @@ public sealed class SampleRegistrationService : ISampleRegistrationService
                 {
                     errors.Add($"样品编号已存在：{productionSample.SampleId}");
                 }
-                // 架位占用查重（共用 A01–E05 编号空间，同时查 SCT 表与生产样表）
+                // 架位占用查重（生产样独立 P01–P25 编号空间；防御性同时查 SCT 表与生产样表）
                 var sctOccupant = _samples.GetAll().FirstOrDefault(s =>
                     string.Equals(s.RackPosition?.Trim(), productionSample.RackPosition, StringComparison.Ordinal));
                 var prodOccupant = _production.GetAll().FirstOrDefault(p =>

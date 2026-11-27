@@ -189,12 +189,12 @@ public sealed class ConsoleViewModelTests
         var production = new FakeProductionSampleRepository();
         production.Store.Add(new ProductionSample
         {
-            SampleId = "P-100", SampleName = "生产样", RackPosition = "C03",
+            SampleId = "P-100", SampleName = "生产样", RackPosition = "P03",
             Status = ProductionStatus.Pending,
         });
         production.Store.Add(new ProductionSample
         {
-            SampleId = "P-101", SampleName = "生产样2", RackPosition = "D04",
+            SampleId = "P-101", SampleName = "生产样2", RackPosition = "P14",
             Status = ProductionStatus.Completed,
         });
 
@@ -218,15 +218,17 @@ public sealed class ConsoleViewModelTests
         Assert.Equal(1, vm.RackOutOfRangeCount);                                 // B12 示意外
         Assert.Equal(25, vm.RackTotalCount);
 
-        // 分析样货架：待分析=黄、已完成=绿
+        // 分析样货架：待分析=黄、已完成=绿（独立编号 P01–P25，行标签 1–5）
         Assert.Equal(5, vm.ProductionRows.Count);
-        Assert.Equal(RackSlotItem.StatePending, vm.ProductionRows[2].Slots[2].SlotState);          // C03 待分析
-        Assert.Equal("P-100", vm.ProductionRows[2].Slots[2].SampleIdText);
-        Assert.Equal("待分析", vm.ProductionRows[2].Slots[2].StateText);
-        Assert.Equal("P-100（待分析）", vm.ProductionRows[2].Slots[2].ToolTipText);
-        Assert.Equal(RackSlotItem.StateCompleted, vm.ProductionRows[3].Slots[3].SlotState);        // D04 已完成
-        Assert.Equal("已完成", vm.ProductionRows[3].Slots[3].StateText);
-        Assert.Equal(RackSlotItem.StateEmpty, vm.ProductionRows[0].Slots[0].SlotState);            // A01 空位
+        Assert.All(vm.ProductionRows, r => Assert.Equal(5, r.Slots.Count));
+        Assert.Equal(RackSlotItem.StatePending, vm.ProductionRows[0].Slots[2].SlotState);          // P03 待分析
+        Assert.Equal("P03", vm.ProductionRows[0].Slots[2].PositionCode);
+        Assert.Equal("P-100", vm.ProductionRows[0].Slots[2].SampleIdText);
+        Assert.Equal("待分析", vm.ProductionRows[0].Slots[2].StateText);
+        Assert.Equal("P-100（待分析）", vm.ProductionRows[0].Slots[2].ToolTipText);
+        Assert.Equal(RackSlotItem.StateCompleted, vm.ProductionRows[2].Slots[3].SlotState);        // P14 已完成
+        Assert.Equal("已完成", vm.ProductionRows[2].Slots[3].StateText);
+        Assert.Equal(RackSlotItem.StateEmpty, vm.ProductionRows[0].Slots[0].SlotState);            // P01 空位
 
         Assert.Equal(2, vm.ProdOccupiedCount);
         Assert.Equal(0, vm.ProdOutOfRangeCount);

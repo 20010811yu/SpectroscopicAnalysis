@@ -891,6 +891,16 @@ public sealed partial class SamplesViewModel : ObservableObject, IPageLifecycle
     [ObservableProperty]
     private string _regSampleType = SampleType.Production;
 
+    partial void OnRegSampleTypeChanged(string value)
+    {
+        OnPropertyChanged(nameof(RegCurrentRackOptions));
+        // 切类型后已选架位若不在新编号空间（A01–E05 ↔ P01–P25）则清空，避免跨空间残留
+        if (!string.IsNullOrEmpty(RegRackPosition) && !RegCurrentRackOptions.Contains(RegRackPosition, StringComparer.Ordinal))
+        {
+            RegRackPosition = null;
+        }
+    }
+
     /// <summary>分析方法（生产样注册必选；其余类型不显示）。</summary>
     [ObservableProperty]
     private string? _regAnalysisMethod;
@@ -905,9 +915,17 @@ public sealed partial class SamplesViewModel : ObservableObject, IPageLifecycle
     [ObservableProperty]
     private string? _regRackPosition;
 
-    /// <summary>可用架位下拉选项（注册时加载空闲架位；LoadAsync 后台计算，占用架位不出现）。</summary>
+    /// <summary>SCT 样可用架位下拉选项（A01–E05；注册时加载空闲架位，LoadAsync 后台计算）。</summary>
     [ObservableProperty]
     private IReadOnlyList<string> _availableRackPositions = SampleManager.RackDirectory.AllPositions;
+
+    /// <summary>生产样可用架位下拉选项（P01–P25 独立编号空间，与 SCT 货架互不占用）。</summary>
+    [ObservableProperty]
+    private IReadOnlyList<string> _productionAvailableRackPositions = SampleManager.RackDirectory.ProductionAllPositions;
+
+    /// <summary>注册表单当前类型的架位选项（生产样用 P 编号空间，SCT 样用 A01–E05；随类型切换刷新）。</summary>
+    public IReadOnlyList<string> RegCurrentRackOptions =>
+        TypeDisplayToKey(RegSampleType) == SampleType.Production ? ProductionAvailableRackPositions : AvailableRackPositions;
 
     [ObservableProperty]
     private string _regInitialThickness = string.Empty;
@@ -1005,7 +1023,7 @@ public sealed partial class SamplesViewModel : ObservableObject, IPageLifecycle
                     {
                         errors.Add($"样品编号已存在：{productionSample.SampleId}");
                     }
-                    // 架位占用查重（共用 A01–E05 编号空间，同时查 SCT 表与生产样表）
+                    // 架位占用查重（生产样独立 P01–P25 编号空间；防御性同时查 SCT 表与生产样表）
                     var sctOccupant = _samples.GetAll().FirstOrDefault(s =>
                         string.Equals(s.RackPosition?.Trim(), productionSample.RackPosition, StringComparison.Ordinal));
                     var prodOccupant = _production.GetAll().FirstOrDefault(p =>
@@ -1324,12 +1342,17 @@ public sealed partial class SamplesViewModel : ObservableObject, IPageLifecycle
         }
     }
 
-    /// <summary>刷新注册表单可用架位下拉（货架共用，占用来自标样库与生产样；后台查询回 UI 线程）。</summary>
+    /// <summary>刷新注册表单可用架位下拉（SCT 用 A01–E05，生产样用独立 P01–P25；后台查询回 UI 线程）。</summary>
     private async Task RefreshAvailableRackPositionsAsync()
     {
-        var available = await Task.Run(() =>
-            SampleManager.RackDirectory.AvailablePositions(_samples.GetAll(), _production.GetAll()));
-        _ui.Invoke(() => AvailableRackPositions = available);
+        var (sctAvailable, prodAvailable) = await Task.Run(() => (
+            SampleManager.RackDirectory.AvailablePositions(_samples.GetAll(), _production.GetAll()),
+            SampleManager.RackDirectory.ProductionAvailablePositions(_production.GetAll())));
+        _ui.Invoke(() =>
+        {
+            AvailableRackPositions = sctAvailable;
+            ProductionAvailableRackPositions = prodAvailable;
+        });
     }
 
     /// <summary>加载样品台账（含生产样，供类型筛选切换查看）。</summary>

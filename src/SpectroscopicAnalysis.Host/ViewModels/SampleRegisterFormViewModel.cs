@@ -50,12 +50,30 @@ public sealed partial class SampleRegisterFormViewModel : ObservableObject
     [ObservableProperty]
     private bool _registerAsTypeStdTwin;
 
+    /// <summary>SCT 样可用架位（A01–E05；打开弹窗前由调用方按当前占用填充，默认全布局兜底）。</summary>
+    public IReadOnlyList<string> SctRackPositions { get; set; } =
+        SampleManager.RackDirectory.AllPositions;
+
+    /// <summary>生产样可用架位（P01–P25 独立编号空间，与 SCT 货架互不占用；打开弹窗前由调用方填充）。</summary>
+    public IReadOnlyList<string> ProductionRackPositions { get; set; } =
+        SampleManager.RackDirectory.ProductionAllPositions;
+
+    /// <summary>当前类型的可用架位选项（生产样用 P 编号空间，SCT 样用 A01–E05；随类型切换刷新）。</summary>
+    public IReadOnlyList<string> CurrentRackOptions =>
+        SampleType == Data.Models.SampleType.Production ? ProductionRackPositions : SctRackPositions;
+
     [ObservableProperty]
     private string? _rackPosition;
 
-    /// <summary>可用架位下拉选项（打开弹窗前由调用方按当前占用填充；默认全布局兜底）。</summary>
-    public IReadOnlyList<string> AvailableRackPositions { get; set; } =
-        SampleManager.RackDirectory.AllPositions;
+    partial void OnSampleTypeChanged(string value)
+    {
+        OnPropertyChanged(nameof(CurrentRackOptions));
+        // 切类型后已选架位若不在新编号空间（A01–E05 ↔ P01–P25）则清空，避免跨空间残留
+        if (!string.IsNullOrEmpty(RackPosition) && !CurrentRackOptions.Contains(RackPosition, StringComparer.Ordinal))
+        {
+            RackPosition = null;
+        }
+    }
 
     [ObservableProperty]
     private string _initialThickness = string.Empty;

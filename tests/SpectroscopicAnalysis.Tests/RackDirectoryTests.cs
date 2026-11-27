@@ -79,4 +79,43 @@ public sealed class RackDirectoryTests
         // A12 不在布局内：布局 25 位不受影响，仍全部可用
         Assert.Equal(25, available.Count);
     }
+
+    // ==================== 生产样独立编号空间（P01–P25） ====================
+
+    [Fact]
+    public void ProductionAvailablePositions_空库返回全部25位且P编号()
+    {
+        var available = RackDirectory.ProductionAvailablePositions([]);
+
+        Assert.Equal(25, available.Count);
+        Assert.Equal("P01", available[0]);
+        Assert.Equal("P05", available[4]);
+        Assert.Equal("P25", available[^1]);
+        Assert.DoesNotContain(available, c => c.StartsWith("A"));   // 与 SCT 编号空间独立
+    }
+
+    [Fact]
+    public void ProductionAvailablePositions_生产样占用剔除且不受SCT占用影响()
+    {
+        var prod = new[] { new ProductionSample { SampleId = "P-1", RackPosition = "P01" },
+                           new ProductionSample { SampleId = "P-2", RackPosition = " P07 " } };   // 带空白归一剔除
+        var sct = new[] { new SctSample { SampleId = "SUS-001", RackPosition = "A01" } };
+
+        var available = RackDirectory.ProductionAvailablePositions(prod);
+
+        Assert.Equal(23, available.Count);
+        Assert.DoesNotContain("P01", available);
+        Assert.DoesNotContain("P07", available);
+    }
+
+    [Fact]
+    public void ProductionAvailablePositions_SCT占用不影响生产样空间()
+    {
+        // SCT 样占满 A01–E05 不影响生产样 P 编号可用清单（修复共用编号导致下拉为空的问题）
+        var sct = RackDirectory.AllPositions.Select((code, i) => new SctSample { SampleId = $"S-{i:00}", RackPosition = code });
+
+        var available = RackDirectory.ProductionAvailablePositions([]);
+
+        Assert.Equal(25, available.Count);
+    }
 }

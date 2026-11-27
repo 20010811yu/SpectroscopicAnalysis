@@ -47,4 +47,33 @@ public static class RackDirectory
 
         return AllPositions.Where(code => !occupied.Contains(code)).ToList();
     }
+
+    /// <summary>生产样货架（分析样货架）行数（独立编号空间，与 SCT 货架 A01–E05 互不冲突）。</summary>
+    public const int ProductionRows = 5;
+
+    /// <summary>生产样货架每列架位数。</summary>
+    public const int ProductionColumns = 5;
+
+    /// <summary>生产样全部架位码（P01–P25，行优先排序）。</summary>
+    public static IReadOnlyList<string> ProductionAllPositions { get; } =
+        Enumerable.Range(1, ProductionRows * ProductionColumns).Select(i => $"P{i:00}").ToList();
+
+    /// <summary>
+    /// 查询生产样当前可用（空闲）架位：P01–P25 减去生产样已占用的 RackPosition。
+    /// 生产样与 SCT 样架位编号空间独立，互不占用。
+    /// </summary>
+    public static IReadOnlyList<string> ProductionAvailablePositions(
+        IEnumerable<ProductionSample> productionSamples)
+    {
+        var occupied = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var p in productionSamples)
+        {
+            if (!string.IsNullOrEmpty(p.RackPosition))
+            {
+                occupied.Add(p.RackPosition.Trim());
+            }
+        }
+
+        return ProductionAllPositions.Where(code => !occupied.Contains(code)).ToList();
+    }
 }

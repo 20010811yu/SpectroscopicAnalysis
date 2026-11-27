@@ -139,7 +139,7 @@
                         <!-- 架位（四类样品均必选，下拉仅当前空闲架位）+ 最大使用次数（仅 SCT 样） -->
                         <StackPanel Orientation="Horizontal" Margin="0,0,0,8" Style="{StaticResource RackRow}">
                             <TextBlock Text="样品架位置*" Style="{StaticResource Text.Caption}" Width="110" VerticalAlignment="Center" />
-                            <ComboBox ItemsSource="{Binding AvailableRackPositions}" SelectedItem="{Binding RegRackPosition}" MinWidth="110" />
+                            <ComboBox ItemsSource="{Binding RegCurrentRackOptions}" SelectedItem="{Binding RegRackPosition}" MinWidth="110" />
                             <StackPanel Orientation="Horizontal" Style="{StaticResource StdRow}" Margin="24,0,0,0">
                                 <TextBlock Text="最大使用次数*" Style="{StaticResource Text.Caption}" Width="110" VerticalAlignment="Center" />
                                 <TextBox Text="{Binding RegMaxUsageCount, UpdateSourceTrigger=PropertyChanged}" />

@@ -331,7 +331,7 @@
                     </Grid>
                 </Border>
 
-                <!-- 列3：分析样货架（生产样；共用 A01–E05 编号，待分析=黄 / 已完成=绿 / 灰=空位） -->
+                <!-- 列3：分析样货架（生产样；独立编号 P01–P25，待分析=黄 / 已完成=绿 / 灰=空位） -->
                 <Border Grid.Column="3" Style="{StaticResource Card}" Margin="6,0,0,0">
                     <Grid>
                     <Grid.ColumnDefinitions>

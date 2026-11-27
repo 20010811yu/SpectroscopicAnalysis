@@ -26,6 +26,9 @@ public sealed partial class ConsoleViewModel : ObservableObject, IPageLifecycle
     public const int RackColumnsCount = 5;
     private static readonly string[] RackRowLabels = { "A", "B", "C", "D", "E" };
 
+    /// <summary>分析样货架行标签（独立编号空间 P01–P25，行首架位序号）。</summary>
+    private static readonly string[] ProdRackRowLabels = { "1", "2", "3", "4", "5" };
+
     private readonly IErrorCollector _errors;
     private readonly ISystemLogCollector _systemLog;
     private readonly ISctSampleRepository _samples;
@@ -252,7 +255,7 @@ public sealed partial class ConsoleViewModel : ObservableObject, IPageLifecycle
     [ObservableProperty]
     private ObservableCollection<RackRowItem> _rackRows = new();
 
-    /// <summary>分析样货架行（生产样；A01–E05 编号与 SCT 货架共用，仅展示分卡）。</summary>
+    /// <summary>分析样货架行（生产样；独立编号 P01–P25，与 SCT 货架分卡展示）。</summary>
     [ObservableProperty]
     private ObservableCollection<RackRowItem> _productionRows = new();
 
@@ -263,7 +266,7 @@ public sealed partial class ConsoleViewModel : ObservableObject, IPageLifecycle
     public int ProdOutOfRangeCount { get; private set; }
 
     /// <summary>刷新货架占用（档案查询在后台线程，避免 UI 卡顿；公开供测试确定性刷新）。
-    /// SCT 货架与分析样货架共用 A01–E05 编号空间，分卡展示互不混画。</summary>
+    /// SCT 货架用 A01–E05，分析样货架用独立 P01–P25 编号空间，分卡展示互不混画、互不占用。</summary>
     public void RefreshRack()
     {
         // SCT 货架：SampleID → (样品号, 库位状态)。
@@ -303,8 +306,8 @@ public sealed partial class ConsoleViewModel : ObservableObject, IPageLifecycle
             prodOccupancy.TryAdd(p.RackPosition, (p.SampleId, state, text));
         }
 
-        var sctRows = BuildRackRows(sctOccupancy, out var sctOutOfRange);
-        var prodRows = BuildRackRows(prodOccupancy, out var prodOutOfRange);
+        var sctRows = BuildRackRows(sctOccupancy, RackRowLabels, (label, col) => $"{label}{col:00}", out var sctOutOfRange);
+        var prodRows = BuildRackRows(prodOccupancy, ProdRackRowLabels, (label, col) => $"P{((int.Parse(label) - 1) * RackColumnsCount + col):00}", out var prodOutOfRange);
 
         _ui.Invoke(() =>
         {
@@ -320,18 +323,22 @@ public sealed partial class ConsoleViewModel : ObservableObject, IPageLifecycle
         });
     }
 
-    /// <summary>按 5×5 生成货架行（占用表剩余条目即示意范围外架位数）。</summary>
+    /// <summary>按 5×5 生成货架行（占用表剩余条目即示意范围外架位数）。
+    /// rowLabels 为行标签（生产样货架用行首架位序号 1–5）；codeOf 由行标签+列号生成架位码
+    /// （SCT 货架 A01–E05，分析样货架独立编号 P01–P25，与 SCT 互不占用）。</summary>
     private List<RackRowItem> BuildRackRows(
         Dictionary<string, (string SampleId, string State, string StateText)> occupancy,
+        string[] rowLabels,
+        Func<string, int, string> codeOf,
         out int outOfRangeCount)
     {
         var rows = new List<RackRowItem>();
-        foreach (var rowLabel in RackRowLabels)
+        foreach (var rowLabel in rowLabels)
         {
             var slots = new List<RackSlotItem>();
             for (var col = 1; col <= RackColumnsCount; col++)
             {
-                var code = $"{rowLabel}{col:00}";
+                var code = codeOf(rowLabel, col);
                 slots.Add(occupancy.Remove(code, out var slot)
                     ? new RackSlotItem
                     {

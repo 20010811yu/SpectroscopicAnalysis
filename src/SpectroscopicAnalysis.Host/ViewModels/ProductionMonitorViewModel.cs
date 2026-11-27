@@ -460,9 +460,11 @@ public sealed partial class ProductionMonitorViewModel : ObservableObject, IPage
             }
         });
 
-        // 注册前加载当前可用（空闲）架位：下拉选择代替手输，占用来自标样库与生产样
-        form.AvailableRackPositions = SampleManager.RackDirectory.AvailablePositions(
+        // 注册前加载当前可用（空闲）架位：SCT 样用 A01–E05，生产样用独立 P01–P25 编号空间（下拉随类型切换）
+        form.SctRackPositions = SampleManager.RackDirectory.AvailablePositions(
             _samples.GetAll(), _production.GetAll());
+        form.ProductionRackPositions = SampleManager.RackDirectory.ProductionAvailablePositions(
+            _production.GetAll());
 
         if (_dialogs.ShowSampleRegister(form))
         {

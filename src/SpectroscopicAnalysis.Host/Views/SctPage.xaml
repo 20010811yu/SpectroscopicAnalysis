@@ -15,46 +15,142 @@
         <!-- 行0：页标题 -->
         <TextBlock Grid.Row="0" Text="SCT 管理" Style="{StaticResource Text.PageTitle}" Margin="{DynamicResource Spacing.CardGap}" />
 
-        <!-- 行1：状态监控概览（4 统计卡 + 最近操作摘要行） -->
+        <!-- 行1：状态监控概览（4 KPI 卡：图标+标签+大数值+徽章 + 最近操作摘要行） -->
         <StackPanel Grid.Row="1" Margin="{DynamicResource Spacing.CardGap}">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" /><ColumnDefinition Width="*" />
                     <ColumnDefinition Width="*" /><ColumnDefinition Width="*" />
                 </Grid.ColumnDefinitions>
+
+                <!-- 卡1：控样（SettingUp） -->
                 <Border Grid.Column="0" Style="{StaticResource Card}" Margin="0,0,12,0">
-                    <StackPanel>
-                        <TextBlock Text="控样" Style="{StaticResource Text.Caption}" />
-                        <TextBlock Text="{Binding SettingUpCount, Mode=OneWay}" Style="{StaticResource Text.CardTitle}" />
-                    </StackPanel>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <Border Grid.Column="0" Style="{StaticResource Kpi.IconBadge}" Background="{DynamicResource Brush.Primary}" Margin="0,0,12,0">
+                            <Path Style="{StaticResource Kpi.Icon}" Data="{StaticResource Icon.SettingUp}" Fill="{DynamicResource Brush.Bg.Card}" />
+                        </Border>
+                        <StackPanel Grid.Column="1">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="控样" Style="{StaticResource Text.Caption}" />
+                                <Border Style="{StaticResource Badge.Base}" Background="{DynamicResource Brush.Badge.Info.Bg}" Margin="8,0,0,0">
+                                    <TextBlock Text="标准化" Style="{StaticResource Kpi.BadgeText}" Foreground="{DynamicResource Brush.Badge.Info.Fg}" />
+                                </Border>
+                            </StackPanel>
+                            <TextBlock Text="{Binding SettingUpCount, Mode=OneWay}" Style="{StaticResource Text.Display}" />
+                        </StackPanel>
+                    </Grid>
                 </Border>
+
+                <!-- 卡2：检查样（Control） -->
                 <Border Grid.Column="1" Style="{StaticResource Card}" Margin="0,0,12,0">
-                    <StackPanel>
-                        <TextBlock Text="检查样" Style="{StaticResource Text.Caption}" />
-                        <TextBlock Text="{Binding ControlCount, Mode=OneWay}" Style="{StaticResource Text.CardTitle}" />
-                    </StackPanel>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <Border Grid.Column="0" Style="{StaticResource Kpi.IconBadge}" Background="{DynamicResource Brush.Status.Running}" Margin="0,0,12,0">
+                            <Path Style="{StaticResource Kpi.Icon}" Data="{StaticResource Icon.ControlCheck}" Fill="{DynamicResource Brush.Bg.Card}" />
+                        </Border>
+                        <StackPanel Grid.Column="1">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="检查样" Style="{StaticResource Text.Caption}" />
+                                <Border Style="{StaticResource Badge.Base}" Background="{DynamicResource Brush.Badge.Running.Bg}" Margin="8,0,0,0">
+                                    <TextBlock Text="控制检查" Style="{StaticResource Kpi.BadgeText}" Foreground="{DynamicResource Brush.Status.Running}" />
+                                </Border>
+                            </StackPanel>
+                            <TextBlock Text="{Binding ControlCount, Mode=OneWay}" Style="{StaticResource Text.Display}" />
+                        </StackPanel>
+                    </Grid>
                 </Border>
+
+                <!-- 卡3：类型标准化样 -->
                 <Border Grid.Column="2" Style="{StaticResource Card}" Margin="0,0,12,0">
-                    <StackPanel>
-                        <TextBlock Text="类型标准化样" Style="{StaticResource Text.Caption}" />
-                        <TextBlock Text="{Binding TypeStdCount, Mode=OneWay}" Style="{StaticResource Text.CardTitle}" />
-                    </StackPanel>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <Border Grid.Column="0" Style="{StaticResource Kpi.IconBadge}" Background="{DynamicResource Brush.Status.Info}" Margin="0,0,12,0">
+                            <Path Style="{StaticResource Kpi.Icon}" Data="{StaticResource Icon.TypeStd}" Fill="{DynamicResource Brush.Bg.Card}" />
+                        </Border>
+                        <StackPanel Grid.Column="1">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="类型标准化样" Style="{StaticResource Text.Caption}" />
+                                <Border Style="{StaticResource Badge.Base}" Background="{DynamicResource Brush.Badge.Info.Bg}" Margin="8,0,0,0">
+                                    <TextBlock Text="类型标准化" Style="{StaticResource Kpi.BadgeText}" Foreground="{DynamicResource Brush.Badge.Info.Fg}" />
+                                </Border>
+                            </StackPanel>
+                            <TextBlock Text="{Binding TypeStdCount, Mode=OneWay}" Style="{StaticResource Text.Display}" />
+                        </StackPanel>
+                    </Grid>
                 </Border>
+
+                <!-- 卡4：待维护（需测高/过薄）：>0 Warning / =0 Idle（颜色+徽章文字双表达） -->
                 <Border Grid.Column="3" Style="{StaticResource Card}">
-                    <StackPanel>
-                        <TextBlock Text="待维护（需测高/过薄）" Style="{StaticResource Text.Caption}" />
-                        <TextBlock Text="{Binding NeedMaintenanceCount, Mode=OneWay}">
-                            <TextBlock.Style>
-                                <Style TargetType="TextBlock" BasedOn="{StaticResource Text.CardTitle}">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <Border Grid.Column="0" Margin="0,0,12,0">
+                            <Border.Style>
+                                <Style TargetType="Border" BasedOn="{StaticResource Kpi.IconBadge}">
                                     <Style.Triggers>
                                         <DataTrigger Binding="{Binding NeedMaintenanceCount}" Value="0">
-                                            <Setter Property="Foreground" Value="{DynamicResource Brush.Status.Idle}" />
+                                            <Setter Property="Background" Value="{DynamicResource Brush.Status.Idle}" />
                                         </DataTrigger>
                                     </Style.Triggers>
                                 </Style>
-                            </TextBlock.Style>
-                        </TextBlock>
-                    </StackPanel>
+                            </Border.Style>
+                            <Path Style="{StaticResource Kpi.Icon}" Data="{StaticResource Icon.Maintenance}" Fill="{DynamicResource Brush.Bg.Card}" />
+                        </Border>
+                        <StackPanel Grid.Column="1">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="待维护（需测高/过薄）" Style="{StaticResource Text.Caption}" />
+                                <Border Margin="8,0,0,0">
+                                    <Border.Style>
+                                        <Style TargetType="Border" BasedOn="{StaticResource Badge.Base}">
+                                            <Setter Property="Background" Value="{DynamicResource Brush.Badge.Warning.Bg}" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding NeedMaintenanceCount}" Value="0">
+                                                    <Setter Property="Background" Value="{DynamicResource Brush.Badge.Idle.Bg}" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Border.Style>
+                                    <TextBlock>
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock" BasedOn="{StaticResource Kpi.BadgeText}">
+                                                <Setter Property="Foreground" Value="{DynamicResource Brush.Badge.Warning.Fg}" />
+                                                <Setter Property="Text" Value="需维护" />
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding NeedMaintenanceCount}" Value="0">
+                                                        <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Secondary}" />
+                                                        <Setter Property="Text" Value="无需维护" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
+                                </Border>
+                            </StackPanel>
+                            <TextBlock Text="{Binding NeedMaintenanceCount, Mode=OneWay}">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock" BasedOn="{StaticResource Text.Display}">
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding NeedMaintenanceCount}" Value="0">
+                                                <Setter Property="Foreground" Value="{DynamicResource Brush.Status.Idle}" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
+                        </StackPanel>
+                    </Grid>
                 </Border>
             </Grid>
             <!-- 最近操作摘要行 -->

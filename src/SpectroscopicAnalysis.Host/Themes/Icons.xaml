@@ -1,0 +1,25 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <!-- 矢量图标 Geometry 资源（界面规范第 5 节图标白名单：图标字体/Geometry，尺寸克制）。
+         画布均为 24×24，使用时 Path 指定 Width/Height≈18 并 Stretch=Uniform，Fill 按语义引用 Brush.* -->
+
+    <!-- 控样（原设置样 SettingUp）：锥形烧杯 -->
+    <StreamGeometry x:Key="Icon.SettingUp">
+        M10 2 H14 V4 L13 5 V9.6 L18.3 18.1 A2.2 2.2 0 0 1 16.5 21.5 H7.5 A2.2 2.2 0 0 1 5.7 18.1 L11 9.6 V5 L10 4 Z
+    </StreamGeometry>
+
+    <!-- 检查样（原控制样 Control）：圆内对勾 -->
+    <StreamGeometry x:Key="Icon.ControlCheck">
+        M12 2 A10 10 0 1 0 12 22 A10 10 0 0 0 12 2 Z M10.8 16.3 L6.8 12.3 L8.2 10.9 L10.8 13.5 L16.4 7.9 L17.8 9.3 Z
+    </StreamGeometry>
+
+    <!-- 类型标准化样（TypeStd）：三层叠放 -->
+    <StreamGeometry x:Key="Icon.TypeStd">
+        M12 2.5 L22 7.5 L12 12.5 L2 7.5 Z M3.5 11 L12 15.2 L20.5 11 L22 11.8 L12 16.8 L2 11.8 Z M3.5 15 L12 19.2 L20.5 15 L22 15.8 L12 20.8 L2 15.8 Z
+    </StreamGeometry>
+
+    <!-- 待维护（需测高/过薄）：扳手 -->
+    <StreamGeometry x:Key="Icon.Maintenance">
+        M21.5 6.3 A5.8 5.8 0 0 1 13.6 12.4 L7.1 18.9 A2.3 2.3 0 0 1 3.8 15.6 L10.3 9.1 A5.8 5.8 0 0 1 18.4 3.2 L15.3 6.3 L16.2 8.9 L18.8 9.8 L21.5 6.3 Z
+    </StreamGeometry>
+</ResourceDictionary>

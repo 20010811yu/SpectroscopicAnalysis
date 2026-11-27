@@ -62,12 +62,19 @@ public sealed partial class SampleRegisterFormViewModel : ObservableObject
     public IReadOnlyList<string> CurrentRackOptions =>
         SampleType == Data.Models.SampleType.Production ? ProductionRackPositions : SctRackPositions;
 
+    /// <summary>SCT 货架已满提示（检查样/控样/类型标准化样且 A01–E05 无空闲架位时红字提示；生产样 P 空间独立不在此列）。</summary>
+    public string? RackFullHint =>
+        SampleType == Data.Models.SampleType.Production || SctRackPositions.Count > 0
+            ? null
+            : "SCT 货架已满（A01–E05 全部占用），请先清理架位后再注册";
+
     [ObservableProperty]
     private string? _rackPosition;
 
     partial void OnSampleTypeChanged(string value)
     {
         OnPropertyChanged(nameof(CurrentRackOptions));
+        OnPropertyChanged(nameof(RackFullHint));
         // 切类型后已选架位若不在新编号空间（A01–E05 ↔ P01–P25）则清空，避免跨空间残留
         if (!string.IsNullOrEmpty(RackPosition) && !CurrentRackOptions.Contains(RackPosition, StringComparer.Ordinal))
         {

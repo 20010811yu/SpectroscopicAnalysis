@@ -894,6 +894,7 @@ public sealed partial class SamplesViewModel : ObservableObject, IPageLifecycle
     partial void OnRegSampleTypeChanged(string value)
     {
         OnPropertyChanged(nameof(RegCurrentRackOptions));
+        OnPropertyChanged(nameof(RegRackFullHint));
         // 切类型后已选架位若不在新编号空间（A01–E05 ↔ P01–P25）则清空，避免跨空间残留
         if (!string.IsNullOrEmpty(RegRackPosition) && !RegCurrentRackOptions.Contains(RegRackPosition, StringComparer.Ordinal))
         {
@@ -917,15 +918,23 @@ public sealed partial class SamplesViewModel : ObservableObject, IPageLifecycle
 
     /// <summary>SCT 样可用架位下拉选项（A01–E05；注册时加载空闲架位，LoadAsync 后台计算）。</summary>
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(RegRackFullHint))]
     private IReadOnlyList<string> _availableRackPositions = SampleManager.RackDirectory.AllPositions;
 
     /// <summary>生产样可用架位下拉选项（P01–P25 独立编号空间，与 SCT 货架互不占用）。</summary>
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(RegRackFullHint))]
     private IReadOnlyList<string> _productionAvailableRackPositions = SampleManager.RackDirectory.ProductionAllPositions;
 
     /// <summary>注册表单当前类型的架位选项（生产样用 P 编号空间，SCT 样用 A01–E05；随类型切换刷新）。</summary>
     public IReadOnlyList<string> RegCurrentRackOptions =>
         TypeDisplayToKey(RegSampleType) == SampleType.Production ? ProductionAvailableRackPositions : AvailableRackPositions;
+
+    /// <summary>SCT 货架已满提示（检查样/控样/类型标准化样且 A01–E05 无空闲架位时红字提示；生产样 P 空间独立不在此列）。</summary>
+    public string? RegRackFullHint =>
+        TypeDisplayToKey(RegSampleType) == SampleType.Production || AvailableRackPositions.Count > 0
+            ? null
+            : "SCT 货架已满（A01–E05 全部占用），请先清理架位后再注册";
 
     [ObservableProperty]
     private string _regInitialThickness = string.Empty;

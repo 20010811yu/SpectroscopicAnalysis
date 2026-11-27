@@ -139,7 +139,23 @@
                         <!-- 架位（四类样品均必选，下拉仅当前空闲架位）+ 最大使用次数（仅 SCT 样） -->
                         <StackPanel Orientation="Horizontal" Margin="0,0,0,8" Style="{StaticResource RackRow}">
                             <TextBlock Text="样品架位置*" Style="{StaticResource Text.Caption}" Width="110" VerticalAlignment="Center" />
-                            <ComboBox ItemsSource="{Binding RegCurrentRackOptions}" SelectedItem="{Binding RegRackPosition}" MinWidth="110" />
+                            <StackPanel>
+                                <ComboBox ItemsSource="{Binding RegCurrentRackOptions}" SelectedItem="{Binding RegRackPosition}" MinWidth="110" />
+                                <!-- SCT 货架已满提示（A01–E05 无空闲架位时红字；生产样不显示） -->
+                                <TextBlock Text="{Binding RegRackFullHint}" Foreground="{DynamicResource Brush.Status.Failed}"
+                                           TextWrapping="Wrap" Margin="0,2,0,0">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock" BasedOn="{StaticResource Text.Caption}">
+                                            <Setter Property="Margin" Value="0,2,0,0" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding RegRackFullHint}" Value="{x:Null}">
+                                                    <Setter Property="Visibility" Value="Collapsed" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                            </StackPanel>
                             <StackPanel Orientation="Horizontal" Style="{StaticResource StdRow}" Margin="24,0,0,0">
                                 <TextBlock Text="最大使用次数*" Style="{StaticResource Text.Caption}" Width="110" VerticalAlignment="Center" />
                                 <TextBox Text="{Binding RegMaxUsageCount, UpdateSourceTrigger=PropertyChanged}" />

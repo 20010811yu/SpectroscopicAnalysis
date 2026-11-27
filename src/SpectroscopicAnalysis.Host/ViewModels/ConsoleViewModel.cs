@@ -4,6 +4,7 @@ using CommunityToolkit.Mvvm.Input;
 using SpectroscopicAnalysis.Host.Data.Models;
 using SpectroscopicAnalysis.Host.Data.Repositories;
 using SpectroscopicAnalysis.Host.LoggingAlarm;
+using SpectroscopicAnalysis.Host.SampleManager;
 using SpectroscopicAnalysis.Host.SctStrategy;
 using SpectroscopicAnalysis.Host.Ui;
 using SpectroscopicAnalysis.Host.Workflow;
@@ -31,6 +32,7 @@ public sealed partial class ConsoleViewModel : ObservableObject, IPageLifecycle
     private readonly IProductionSampleRepository _production;
     private readonly ISctPolicyStore _policyStore;
     private readonly IUiDispatcher _ui;
+    private readonly ISampleDataChangeNotifier _sampleDataChanged;
     private readonly LaserMarkingViewModel _laserMarking;
 
     private PeriodicTimer? _refreshTimer;
@@ -38,7 +40,7 @@ public sealed partial class ConsoleViewModel : ObservableObject, IPageLifecycle
     public ConsoleViewModel(IErrorCollector errors, ISystemLogCollector systemLog,
         ISctSampleRepository samples, IProductionSampleRepository production,
         ISctPolicyStore policyStore, IUiDispatcher ui, LaserMarkingViewModel laserMarking,
-        IWorkflowOrchestrator orchestrator)
+        IWorkflowOrchestrator orchestrator, ISampleDataChangeNotifier sampleDataChanged)
     {
         _errors = errors;
         _systemLog = systemLog;
@@ -46,6 +48,7 @@ public sealed partial class ConsoleViewModel : ObservableObject, IPageLifecycle
         _production = production;
         _policyStore = policyStore;
         _ui = ui;
+        _sampleDataChanged = sampleDataChanged;
         _laserMarking = laserMarking;
         Laser = laserMarking;
         // 日志写入即时刷新（事件驱动；Log 可能在任意线程，经 IUiDispatcher 切回 UI 线程）
@@ -54,6 +57,8 @@ public sealed partial class ConsoleViewModel : ObservableObject, IPageLifecycle
         errors.AlarmRaised += () => _ui.Invoke(RefreshAlarms);
         // 当前任务卡与任务队列执行中任务绑定：编排器状态变化（出队/阶段推进/完成）即时刷新
         orchestrator.StateChanged += (_, e) => _ui.Invoke(() => RefreshCurrentTask(e.Snapshot));
+        // 样品档案变更（含 SCT 页人工启停用）即时刷新货架，不再等 30 秒定时兜底（事件可能在任意线程）
+        sampleDataChanged.SampleDataChanged += () => _ = Task.Run(RefreshRack);
         RefreshCurrentTask(orchestrator.Snapshot);
     }
 
@@ -251,7 +256,7 @@ public sealed partial class ConsoleViewModel : ObservableObject, IPageLifecycle
     public void RefreshRack()
     {
         // SampleID → (样品号, 库位状态) 映射（SCT 标样优先，生产样兜底；注册时已保证架位唯一）。
-        // 库位状态按样品状态区分：禁用=红、需测高=黄、可用=蓝；生产样无状态机，占用即视为可用。
+        // 库位状态按样品状态区分：过薄禁用=红、人工停用=橙、需测高=黄、可用=蓝；生产样无状态机，占用即视为可用。
         var occupancy = new Dictionary<string, (string SampleId, string State, string StateText)>();
         foreach (var s in _samples.GetAll())
         {
@@ -262,8 +267,10 @@ public sealed partial class ConsoleViewModel : ObservableObject, IPageLifecycle
 
             var (state, text) = s.Status switch
             {
-                SampleStatus.Disabled => (RackSlotItem.StateDisabled, "禁用"),
+                // 人工停用只翻 IsActive 不写 Status；过薄报废是 Status=Disabled + IsActive=false，二者据此区分
+                SampleStatus.Disabled => (RackSlotItem.StateDisabled, "禁用（过薄）"),
                 SampleStatus.NeedMeasure => (RackSlotItem.StateNeedMeasure, "需测高"),
+                _ when !s.IsActive => (RackSlotItem.StateManualDisabled, "人工禁用"),
                 _ => (RackSlotItem.StateNormal, "可用"),
             };
             occupancy.TryAdd(s.RackPosition, (s.SampleId, state, text));

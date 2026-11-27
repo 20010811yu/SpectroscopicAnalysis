@@ -1,6 +1,7 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using SpectroscopicAnalysis.Host.Data.Models;
 using SpectroscopicAnalysis.Host.LoggingAlarm;
+using SpectroscopicAnalysis.Host.SampleManager;
 using SpectroscopicAnalysis.Host.SctStrategy;
 using SpectroscopicAnalysis.Host.ViewModels;
 using SpectroscopicAnalysis.Host.Workflow;
@@ -15,13 +16,14 @@ public sealed class ConsoleViewModelTests
         FakeSampleRepository? samples = null,
         FakeProductionSampleRepository? production = null,
         FakeSctPolicyStore? policy = null,
-        FakeWorkflowOrchestrator? orchestrator = null)
+        FakeWorkflowOrchestrator? orchestrator = null,
+        SampleDataChangeNotifier? notifier = null)
     {
         return new ConsoleViewModel(errors ?? new FakeErrorCollector(), new SystemLogCollector(),
             samples ?? new FakeSampleRepository(), production ?? new FakeProductionSampleRepository(),
             policy ?? new FakeSctPolicyStore(),
             new FakeUiDispatcher(), new LaserMarkingViewModel(new FakeLaserMarkingService(), new MainViewModelTests.FakeEzCad2Controller(), new FakeUiDispatcher()),
-            orchestrator ?? new FakeWorkflowOrchestrator());
+            orchestrator ?? new FakeWorkflowOrchestrator(), notifier ?? new SampleDataChangeNotifier());
     }
 
     // ==================== 当前任务卡（与任务队列执行中任务绑定） ====================
@@ -211,6 +213,63 @@ public sealed class ConsoleViewModelTests
         Assert.Equal(4, vm.RackOccupiedCount);
         Assert.Equal(1, vm.RackOutOfRangeCount);                                 // B12 示意外
         Assert.Equal(25, vm.RackTotalCount);
+    }
+
+    [Fact]
+    public void Rack_人工停用样映射为ManualDisabled_过薄禁用仍为Disabled()
+    {
+        var samples = new FakeSampleRepository();
+        samples.Store.Add(new SctSample
+        {
+            SampleId = "TS-101", SampleName = "标样1", SampleType = SampleType.SettingUp,
+            AlloyType = "AL", RackPosition = "A01", Status = SampleStatus.Normal,
+            IsActive = false,   // 人工停用只翻 IsActive 不写 Status → 货架橙色「人工禁用」
+        });
+        samples.Store.Add(new SctSample
+        {
+            SampleId = "TS-102", SampleName = "标样2", SampleType = SampleType.Control,
+            AlloyType = "AL", RackPosition = "A02", Status = SampleStatus.Disabled,
+            IsActive = false,   // 过薄报废：Status=Disabled + IsActive=false → 货架红色「禁用（过薄）」
+        });
+
+        var vm = CreateVm(samples: samples);
+        vm.OnNavigatedTo();
+        vm.RefreshRack();                           // 货架查询为后台任务，同步再刷一轮保证确定性
+
+        Assert.Equal(RackSlotItem.StateManualDisabled, vm.RackRows[0].Slots[0].SlotState);   // A01 人工禁用
+        Assert.Equal("人工禁用", vm.RackRows[0].Slots[0].StateText);
+        Assert.Equal(RackSlotItem.StateDisabled, vm.RackRows[0].Slots[1].SlotState);         // A02 过薄禁用
+        Assert.Equal("禁用（过薄）", vm.RackRows[0].Slots[1].StateText);
+    }
+
+    [Fact]
+    public async Task SampleDataChanged_通知后台架即时重载()
+    {
+        var notifier = new SampleDataChangeNotifier();
+        var samples = new FakeSampleRepository();
+        samples.Store.Add(new SctSample
+        {
+            SampleId = "TS-201", SampleName = "标样", SampleType = SampleType.SettingUp,
+            AlloyType = "AL", RackPosition = "A01", Status = SampleStatus.Normal, IsActive = true,
+        });
+        var vm = CreateVm(samples: samples, notifier: notifier);
+        vm.OnNavigatedTo();
+        vm.RefreshRack();
+        Assert.Equal(RackSlotItem.StateNormal, vm.RackRows[0].Slots[0].SlotState);
+
+        // 模拟 SCT 页人工停用后发布通知（不经主控台导航，不等 30 秒定时器）
+        samples.Store.Single(s => s.SampleId == "TS-201").IsActive = false;
+        notifier.NotifySampleDataChanged();
+
+        // 通知触发的货架刷新在后台线程执行，轮询等待其落回 UI（与真实异步刷新语义一致）
+        var deadline = DateTime.UtcNow.AddSeconds(3);
+        while (DateTime.UtcNow < deadline && vm.RackRows[0].Slots[0].SlotState != RackSlotItem.StateManualDisabled)
+        {
+            await Task.Delay(10);
+        }
+
+        Assert.Equal(RackSlotItem.StateManualDisabled, vm.RackRows[0].Slots[0].SlotState);
+        Assert.Equal("人工禁用", vm.RackRows[0].Slots[0].StateText);
     }
 
     // ==================== 全流程运行日志 ====================

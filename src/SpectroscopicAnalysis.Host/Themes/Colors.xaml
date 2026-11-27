@@ -36,4 +36,7 @@
     <Color x:Key="Color.Badge.Failed.Fg">#991B1B</Color>
     <Color x:Key="Color.Badge.Info.Bg">#DBEAFE</Color>
     <Color x:Key="Color.Badge.Info.Fg">#1E40AF</Color>
+    <!-- 人工禁用（货架库位专用；橙=人为干预停用，与过薄红区分） -->
+    <Color x:Key="Color.Badge.ManualDisabled.Bg">#FFEDD5</Color>
+    <Color x:Key="Color.Badge.ManualDisabled.Fg">#C2410C</Color>
 </ResourceDictionary>

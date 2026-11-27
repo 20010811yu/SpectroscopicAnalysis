@@ -38,6 +38,8 @@
     <SolidColorBrush x:Key="Brush.Badge.Failed.Fg" Color="{StaticResource Color.Badge.Failed.Fg}" />
     <SolidColorBrush x:Key="Brush.Badge.Info.Bg" Color="{StaticResource Color.Badge.Info.Bg}" />
     <SolidColorBrush x:Key="Brush.Badge.Info.Fg" Color="{StaticResource Color.Badge.Info.Fg}" />
+    <SolidColorBrush x:Key="Brush.Badge.ManualDisabled.Bg" Color="{StaticResource Color.Badge.ManualDisabled.Bg}" />
+    <SolidColorBrush x:Key="Brush.Badge.ManualDisabled.Fg" Color="{StaticResource Color.Badge.ManualDisabled.Fg}" />
 
     <!-- HandyControl 主题键覆盖（核心集；合并顺序保证覆盖生效） -->
     <SolidColorBrush x:Key="PrimaryBrush" Color="{StaticResource Color.Primary}" />

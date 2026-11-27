@@ -237,7 +237,7 @@
                                                                 <Setter Property="Background" Value="{DynamicResource Brush.Badge.Idle.Bg}" />
                                                                 <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border.Default}" />
                                                                 <Style.Triggers>
-                                                                    <!-- 库位状态着色：蓝=可用 / 黄=需测高 / 红=禁用 / 灰=空位 -->
+                                                                    <!-- 库位状态着色：蓝=可用 / 黄=需测高 / 红=过薄禁用 / 橙=人工禁用 / 灰=空位 -->
                                                                     <DataTrigger Binding="{Binding SlotState}" Value="Normal">
                                                                         <Setter Property="Background" Value="{DynamicResource Brush.Badge.Info.Bg}" />
                                                                         <Setter Property="BorderBrush" Value="{DynamicResource Brush.Badge.Info.Bg}" />
@@ -249,6 +249,10 @@
                                                                     <DataTrigger Binding="{Binding SlotState}" Value="Disabled">
                                                                         <Setter Property="Background" Value="{DynamicResource Brush.Badge.Failed.Bg}" />
                                                                         <Setter Property="BorderBrush" Value="{DynamicResource Brush.Badge.Failed.Bg}" />
+                                                                    </DataTrigger>
+                                                                    <DataTrigger Binding="{Binding SlotState}" Value="ManualDisabled">
+                                                                        <Setter Property="Background" Value="{DynamicResource Brush.Badge.ManualDisabled.Bg}" />
+                                                                        <Setter Property="BorderBrush" Value="{DynamicResource Brush.Badge.ManualDisabled.Bg}" />
                                                                     </DataTrigger>
                                                                 </Style.Triggers>
                                                             </Style>
@@ -266,6 +270,9 @@
                                                                         </DataTrigger>
                                                                         <DataTrigger Binding="{Binding SlotState}" Value="Disabled">
                                                                             <Setter Property="Foreground" Value="{DynamicResource Brush.Badge.Failed.Fg}" />
+                                                                        </DataTrigger>
+                                                                        <DataTrigger Binding="{Binding SlotState}" Value="ManualDisabled">
+                                                                            <Setter Property="Foreground" Value="{DynamicResource Brush.Badge.ManualDisabled.Fg}" />
                                                                         </DataTrigger>
                                                                     </Style.Triggers>
                                                                 </Style>

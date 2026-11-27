@@ -86,6 +86,16 @@ public sealed class SampleRegistrationService : ISampleRegistrationService
                 {
                     errors.Add($"样品编号已存在：{productionSample.SampleId}");
                 }
+                // 架位占用查重（共用 A01–E05 编号空间，同时查 SCT 表与生产样表）
+                var sctOccupant = _samples.GetAll().FirstOrDefault(s =>
+                    string.Equals(s.RackPosition?.Trim(), productionSample.RackPosition, StringComparison.Ordinal));
+                var prodOccupant = _production.GetAll().FirstOrDefault(p =>
+                    string.Equals(p.RackPosition?.Trim(), productionSample.RackPosition, StringComparison.Ordinal));
+                var occupant = sctOccupant is not null ? sctOccupant.SampleId : prodOccupant?.SampleId;
+                if (occupant is not null)
+                {
+                    errors.Add($"货架位置已占用：{productionSample.RackPosition}（现有样品 {occupant}）");
+                }
             }
             else if (sample is not null)
             {
@@ -168,7 +178,7 @@ public sealed class SampleRegistrationService : ISampleRegistrationService
 
         if (form.SampleType == SampleType.Production)
         {
-            // 生产样：编号/名称 + 分析方法 + 合金类型（必填）
+            // 生产样：编号/名称 + 分析方法 + 合金类型 + 架位（必填，注册即确定分析样货架位置）
             if (string.IsNullOrWhiteSpace(form.AnalysisMethod))
             {
                 return "请选择分析方法";
@@ -176,6 +186,10 @@ public sealed class SampleRegistrationService : ISampleRegistrationService
             if (string.IsNullOrWhiteSpace(form.AlloyType))
             {
                 return "请填写合金类型";
+            }
+            if (string.IsNullOrWhiteSpace(form.RackPosition))
+            {
+                return "样品架位置不能为空";
             }
             return null;
         }
@@ -228,6 +242,7 @@ public sealed class SampleRegistrationService : ISampleRegistrationService
         SampleType = SampleType.Production,
         AlloyType = form.AlloyType!.Trim(),             // 校验已确保非空
         AssociatedMethod = form.AnalysisMethod!.Trim(), // 校验已确保非空
+        RackPosition = form.RackPosition?.Trim(),       // 校验已确保非空
         Status = ProductionStatus.Pending,
         CreatedTime = DateTime.Now,
     };

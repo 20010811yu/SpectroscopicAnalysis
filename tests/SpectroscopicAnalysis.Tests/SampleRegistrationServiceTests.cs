@@ -22,6 +22,7 @@ public sealed class SampleRegistrationServiceTests
         SampleName = "生产样",
         AnalysisMethod = "GB/T 7999-A",
         AlloyType = alloy,
+        RackPosition = "C-01",
     };
 
     private static SampleRegisterForm MakeSctForm(string type, string id = "SUS-001", string alloy = "") => new()
@@ -48,9 +49,51 @@ public sealed class SampleRegistrationServiceTests
         Assert.Equal(ProductionStatus.Pending, _production.Store[0].Status);
         Assert.Equal("GB/T 7999-A", _production.Store[0].AssociatedMethod);
         Assert.Equal("3003", _production.Store[0].AlloyType);   // 生产样合金必填并落库
+        Assert.Equal("C-01", _production.Store[0].RackPosition); // 生产样架位必选并落库
         Assert.Single(_engine.Submitted);
         Assert.Equal(SctTaskType.Production, _engine.Submitted[0].TaskType);
         Assert.Equal("P-001", _engine.Submitted[0].SampleId);
+    }
+
+    [Fact]
+    public async Task 生产样_缺架位被拒且不进错误链()
+    {
+        var form = MakeProductionForm();
+        form.RackPosition = "";
+
+        var error = await Create().RegisterAsync(form);
+
+        Assert.Equal("样品架位置不能为空", error);
+        Assert.Empty(_production.Store);
+        Assert.Empty(_errors.Collected);
+    }
+
+    [Fact]
+    public async Task 生产样_架位被SCT样占用被拒()
+    {
+        _samples.Store.Add(new SctSample
+        {
+            SampleId = "SUS-001", SampleName = "标样", SampleType = SampleType.SettingUp,
+            RackPosition = "C-01", InitialThickness = 10, CurrentThickness = 10,
+            MinThickness = 5, MaxUsageCount = 50, Status = SampleStatus.Normal,
+        });
+
+        var error = await Create().RegisterAsync(MakeProductionForm());
+
+        Assert.Contains("货架位置已占用：C-01（现有样品 SUS-001）", error);
+        Assert.Empty(_production.Store);
+    }
+
+    [Fact]
+    public async Task 生产样_架位被其他生产样占用被拒()
+    {
+        var service = Create();
+        await service.RegisterAsync(MakeProductionForm());
+
+        var error = await service.RegisterAsync(MakeProductionForm("P-002"));
+
+        Assert.Contains("货架位置已占用：C-01（现有样品 P-001）", error);
+        Assert.Single(_production.Store);
     }
 
     [Fact]
@@ -155,7 +198,9 @@ public sealed class SampleRegistrationServiceTests
         var service = Create();
         await service.RegisterAsync(MakeProductionForm());
 
-        var error = await service.RegisterAsync(MakeProductionForm());
+        var form = MakeProductionForm();
+        form.RackPosition = "C-02";   // 换架位隔离编号重复断言（架位占用另有专门用例）
+        var error = await service.RegisterAsync(form);
 
         Assert.Equal("样品编号已存在：P-001", error);
         Assert.Single(_production.Store);

@@ -141,6 +141,21 @@
                         </StackPanel>
                     </Grid>
                 </StackPanel>
+                <!-- 生产样：架位选择（必选，注册即确定分析样货架位置；与 SCT 架位共用 A01–E05 占用集合） -->
+                <StackPanel Orientation="Vertical" Margin="0,0,0,8" Style="{StaticResource ProductionRow}">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" SharedSizeGroup="Label" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="0" Text="样品架位置*" Style="{StaticResource Text.Caption}" Width="110" VerticalAlignment="Center" />
+                        <StackPanel Grid.Column="1" Margin="8,0,0,0">
+                            <!-- 可用架位下拉选择（打开弹窗时按当前占用加载空闲架位） -->
+                            <ComboBox ItemsSource="{Binding AvailableRackPositions}" SelectedItem="{Binding RackPosition}" />
+                            <TextBlock Text="{Binding RackPositionError}" Style="{StaticResource FieldError}" />
+                        </StackPanel>
+                    </Grid>
+                </StackPanel>
                 <!-- 控样/检查样/类型标准样：架位 + 最大使用次数（双列） -->
                 <StackPanel Margin="0,0,0,8" Style="{StaticResource StdRow}">
                     <Grid>

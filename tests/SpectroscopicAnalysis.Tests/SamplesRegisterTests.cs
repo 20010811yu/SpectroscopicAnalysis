@@ -272,6 +272,7 @@ public sealed class SamplesRegisterTests
             RegSampleType = SampleType.Production,
             RegAnalysisMethod = "GB/T 7999-A",
             RegAlloyType = "3003",   // 生产样合金必填
+            RegRackPosition = "C01", // 生产样架位必选
         };
         await prodVm.RegisterCommand.ExecuteAsync(null);
 
@@ -279,5 +280,52 @@ public sealed class SamplesRegisterTests
         Assert.Equal((SctTaskType.Standardize, "REG-001"), (engine.Submitted[0].TaskType, engine.Submitted[0].SampleId));
         Assert.Single(prodEngine.Submitted);
         Assert.Equal((SctTaskType.Production, "PRD-REG-001"), (prodEngine.Submitted[0].TaskType, prodEngine.Submitted[0].SampleId));
+        Assert.Equal("C01", prodRepo.Store.Single().RackPosition);  // 生产样架位落库
+   }
+
+    [Fact]
+    public async Task 生产样注册_缺架位被拒()
+    {
+        var prodRepo = new FakeProductionSampleRepository();
+        var prodVm = new SamplesViewModel(new FakeSampleRepository(), prodRepo, new FakeCertifiedValueRepository(), new FakeControlLimitRepository(),
+            new FakeCoefficientRepository(), new FakeOperationLogRepository(), new FakeSctStrategyEngine(),
+            new FakeUiDispatcher(), new FakeDialogService(), new FakeErrorCollector())
+        {
+            RegSampleId = "PRD-REG-002",
+            RegSampleName = "注册生产样",
+            RegSampleType = SampleType.Production,
+            RegAnalysisMethod = "GB/T 7999-A",
+            RegAlloyType = "3003",
+            RegRackPosition = "",    // 缺架位
+        };
+        await prodVm.RegisterCommand.ExecuteAsync(null);
+
+        Assert.Equal("样品架位置不能为空", prodVm.RegisterError);
+        Assert.Empty(prodRepo.Store);
+    }
+
+    [Fact]
+    public async Task 生产样注册_架位被SCT样占用被拒()
+    {
+        var repo = new FakeSampleRepository();
+        var sct = MakeSample("SUS-001", SampleType.SettingUp);
+        sct.RackPosition = "C01";
+        repo.Store.Add(sct);
+        var prodRepo = new FakeProductionSampleRepository();
+        var prodVm = new SamplesViewModel(repo, prodRepo, new FakeCertifiedValueRepository(), new FakeControlLimitRepository(),
+            new FakeCoefficientRepository(), new FakeOperationLogRepository(), new FakeSctStrategyEngine(),
+            new FakeUiDispatcher(), new FakeDialogService(), new FakeErrorCollector())
+        {
+            RegSampleId = "PRD-REG-003",
+            RegSampleName = "注册生产样",
+            RegSampleType = SampleType.Production,
+            RegAnalysisMethod = "GB/T 7999-A",
+            RegAlloyType = "3003",
+            RegRackPosition = "C01", // 与 SCT 样共用编号空间，占用
+        };
+        await prodVm.RegisterCommand.ExecuteAsync(null);
+
+        Assert.Contains("货架位置已占用：C01", prodVm.RegisterError);
+        Assert.Empty(prodRepo.Store);
    }
 }

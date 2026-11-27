@@ -1005,6 +1005,16 @@ public sealed partial class SamplesViewModel : ObservableObject, IPageLifecycle
                     {
                         errors.Add($"样品编号已存在：{productionSample.SampleId}");
                     }
+                    // 架位占用查重（共用 A01–E05 编号空间，同时查 SCT 表与生产样表）
+                    var sctOccupant = _samples.GetAll().FirstOrDefault(s =>
+                        string.Equals(s.RackPosition?.Trim(), productionSample.RackPosition, StringComparison.Ordinal));
+                    var prodOccupant = _production.GetAll().FirstOrDefault(p =>
+                        string.Equals(p.RackPosition?.Trim(), productionSample.RackPosition, StringComparison.Ordinal));
+                    var occupant = sctOccupant is not null ? sctOccupant.SampleId : prodOccupant?.SampleId;
+                    if (occupant is not null)
+                    {
+                        errors.Add($"货架位置已占用：{productionSample.RackPosition}（现有样品 {occupant}）");
+                    }
                 }
                 else if (sample is not null)
                 {
@@ -1147,7 +1157,7 @@ public sealed partial class SamplesViewModel : ObservableObject, IPageLifecycle
         var type = TypeDisplayToKey(RegSampleType);
         if (type == SampleType.Production)
         {
-            // 生产样：编号/名称 + 分析方法 + 合金类型（必填）
+            // 生产样：编号/名称 + 分析方法 + 合金类型 + 架位（必填，注册即确定分析样货架位置）
             if (string.IsNullOrWhiteSpace(RegAnalysisMethod))
             {
                 return "请选择分析方法";
@@ -1155,6 +1165,10 @@ public sealed partial class SamplesViewModel : ObservableObject, IPageLifecycle
             if (string.IsNullOrWhiteSpace(RegAlloyType))
             {
                 return "请填写合金类型";
+            }
+            if (string.IsNullOrWhiteSpace(RegRackPosition))
+            {
+                return "样品架位置不能为空";
             }
             return null;
         }
@@ -1207,6 +1221,7 @@ public sealed partial class SamplesViewModel : ObservableObject, IPageLifecycle
         SampleType = SampleType.Production,
         AlloyType = RegAlloyType!.Trim(),             // 校验已确保非空
         AssociatedMethod = RegAnalysisMethod!.Trim(), // 校验已确保非空
+        RackPosition = RegRackPosition?.Trim(),       // 校验已确保非空
         Status = ProductionStatus.Pending,
         CreatedTime = DateTime.Now,
     };

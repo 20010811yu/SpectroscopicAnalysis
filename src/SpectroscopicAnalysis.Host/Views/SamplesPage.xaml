@@ -77,6 +77,24 @@
                                     </DataTrigger>
                                 </Style.Triggers>
                             </Style>
+                            <!-- 架位行：四类样品均必选（生产样注册即确定分析样货架位置） -->
+                            <Style x:Key="RackRow" TargetType="FrameworkElement">
+                                <Setter Property="Visibility" Value="Collapsed" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding RegSampleType}" Value="Production">
+                                        <Setter Property="Visibility" Value="Visible" />
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding RegSampleType}" Value="SettingUp">
+                                        <Setter Property="Visibility" Value="Visible" />
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding RegSampleType}" Value="Control">
+                                        <Setter Property="Visibility" Value="Visible" />
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding RegSampleType}" Value="TypeStd">
+                                        <Setter Property="Visibility" Value="Visible" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
                             <Style x:Key="TypeStdRow" TargetType="FrameworkElement">
                                 <Setter Property="Visibility" Value="Collapsed" />
                                 <Style.Triggers>
@@ -118,12 +136,14 @@
                             <TextBlock Text="合金类型*" Style="{StaticResource Text.Caption}" Width="110" VerticalAlignment="Center" />
                             <TextBox Text="{Binding RegAlloyType, UpdateSourceTrigger=PropertyChanged}" />
                         </StackPanel>
-                        <!-- 控样/检查样/类型标准样：架位（下拉选择当前可用架位）+ 最大使用次数 -->
-                        <StackPanel Orientation="Horizontal" Margin="0,0,0,8" Style="{StaticResource StdRow}">
+                        <!-- 架位（四类样品均必选，下拉仅当前空闲架位）+ 最大使用次数（仅 SCT 样） -->
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,8" Style="{StaticResource RackRow}">
                             <TextBlock Text="样品架位置*" Style="{StaticResource Text.Caption}" Width="110" VerticalAlignment="Center" />
                             <ComboBox ItemsSource="{Binding AvailableRackPositions}" SelectedItem="{Binding RegRackPosition}" MinWidth="110" />
-                            <TextBlock Text="最大使用次数*" Style="{StaticResource Text.Caption}" Width="110" VerticalAlignment="Center" Margin="24,0,0,0" />
-                            <TextBox Text="{Binding RegMaxUsageCount, UpdateSourceTrigger=PropertyChanged}" />
+                            <StackPanel Orientation="Horizontal" Style="{StaticResource StdRow}" Margin="24,0,0,0">
+                                <TextBlock Text="最大使用次数*" Style="{StaticResource Text.Caption}" Width="110" VerticalAlignment="Center" />
+                                <TextBox Text="{Binding RegMaxUsageCount, UpdateSourceTrigger=PropertyChanged}" />
+                            </StackPanel>
                         </StackPanel>
                         <!-- 控样/检查样/类型标准样：初始/最小厚度 -->
                         <StackPanel Orientation="Horizontal" Margin="0,0,0,8" Style="{StaticResource StdRow}">

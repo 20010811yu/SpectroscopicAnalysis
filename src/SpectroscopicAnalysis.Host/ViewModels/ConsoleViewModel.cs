@@ -267,11 +267,11 @@ public sealed partial class ConsoleViewModel : ObservableObject, IPageLifecycle
 
             var (state, text) = s.Status switch
             {
-                // 人工停用只翻 IsActive 不写 Status；过薄报废是 Status=Disabled + IsActive=false，二者据此区分
-                // 人工停用优先于需测高（停用的需测高样按人工停用展示，不误导为待测高）
-                _ when !s.IsActive && s.Status != SampleStatus.Disabled => (RackSlotItem.StateManualDisabled, "人工禁用"),
+                // Status 优先：过薄报废（Disabled）红、需测高黄，均不受人工停用影响；
+                // 仅 Status 正常（其余状态跟随 Status 归一）且被人工停用（IsActive=false）才展示橙色「人工禁用」
                 SampleStatus.Disabled => (RackSlotItem.StateDisabled, "禁用（过薄）"),
                 SampleStatus.NeedMeasure => (RackSlotItem.StateNeedMeasure, "需测高"),
+                _ when !s.IsActive => (RackSlotItem.StateManualDisabled, "人工禁用"),
                 _ => (RackSlotItem.StateNormal, "可用"),
             };
             occupancy.TryAdd(s.RackPosition, (s.SampleId, state, text));

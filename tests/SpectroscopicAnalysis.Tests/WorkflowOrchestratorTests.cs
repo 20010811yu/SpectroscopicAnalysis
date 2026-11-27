@@ -170,6 +170,69 @@ public sealed class WorkflowOrchestratorTests
         Assert.Equal(SampleStatus.Disabled, _samples.GetById("SUS-001")!.Status);
     }
 
+    // ==================== SCT 操作前置测高（需测高样兜底候选） ====================
+
+    [Fact]
+    public async Task 标准化任务_需测高样前置测高合格后继续执行()
+    {
+        _samples.Store.Add(MakeSample("SUS-A", status: SampleStatus.NeedMeasure, thickness: 9, minThickness: 8));
+        _gateway.MeasuredThickness = 8.5;                   // 测高合格（≥ 最小厚度）
+        var (engine, orchestrator) = Create();
+        engine.SubmitTask(SctTaskType.Standardize, "SUS-A", "人工触发");
+
+        await orchestrator.StartAsync(CancellationToken.None);
+        await WaitUntilAsync(() => _samples.GetById("SUS-A")!.UsageCount > 0);
+        await orchestrator.StopAsync(CancellationToken.None);
+
+        // 先测高后标准化：测高指令与 ID_CYCLE=2 均下发，测高合格恢复 Normal 后原操作完成
+        Assert.Contains(_gateway.MeasuredHeights, id => id == "SUS-A");
+        Assert.Contains(_gateway.SentCycles, c => c.IdCycle == 2 && c.SampleId == "SUS-A");
+        Assert.Equal(SampleStatus.Normal, _samples.GetById("SUS-A")!.Status);
+        Assert.Contains(_logs.Store, l => l.TriggerReason == "执行前测高（需测高样强制前置）");
+    }
+
+    [Fact]
+    public async Task 标准化任务_前置测高不合格禁用并任务内换样继续()
+    {
+        _samples.Store.Add(MakeSample("SUS-A", status: SampleStatus.NeedMeasure, thickness: 9, minThickness: 8));
+        _samples.Store.Add(MakeSample("SUS-B"));            // 替代样（Normal）
+        _gateway.MeasuredThickness = 4;                     // 测高不合格（< 最小厚度 8）
+        var (engine, orchestrator) = Create();
+        engine.SubmitTask(SctTaskType.Standardize, "SUS-A", "人工触发");
+
+        await orchestrator.StartAsync(CancellationToken.None);
+        await WaitUntilAsync(() => engine.GetRecentTasks().Any(t => t.Reason.Contains("人工触发") && t.Status == SctTaskStatus.Completed));
+        await orchestrator.StopAsync(CancellationToken.None);
+
+        // SUS-A 测高不合格禁用；同一任务换 SUS-B 继续并成功完成（任务不失败）
+        Assert.Equal(SampleStatus.Disabled, _samples.GetById("SUS-A")!.Status);
+        Assert.Contains(_gateway.SentCycles, c => c.IdCycle == 2 && c.SampleId == "SUS-B");
+        Assert.DoesNotContain(_gateway.SentCycles, c => c.IdCycle == 2 && c.SampleId == "SUS-A");
+        Assert.Contains(_logs.Store, l => l.TriggerReason != null && l.TriggerReason.Contains("测高不合格禁用"));
+        var task = engine.GetRecentTasks().Single(t => t.Reason.Contains("人工触发"));
+        Assert.Equal(SctTaskStatus.Completed, task.Status);
+        Assert.Equal("SUS-B", task.SampleId);               // 任务记录已换样
+        Assert.Contains("前置测高不合格禁用", task.Reason);   // 换样原因留痕在任务记录
+    }
+
+    [Fact]
+    public async Task 标准化任务_前置测高不合格且无替代样_任务失败()
+    {
+        _samples.Store.Add(MakeSample("SUS-A", status: SampleStatus.NeedMeasure, thickness: 9, minThickness: 8));
+        _gateway.MeasuredThickness = 4;                     // 测高不合格且无其他可用样
+        var (engine, orchestrator) = Create();
+        engine.SubmitTask(SctTaskType.Standardize, "SUS-A", "人工触发");
+
+        await orchestrator.StartAsync(CancellationToken.None);
+        await WaitUntilAsync(() => _errors.Collected.Any(c => c.Message.Contains("无替代样品")));
+        await orchestrator.StopAsync(CancellationToken.None);
+
+        Assert.Equal(SampleStatus.Disabled, _samples.GetById("SUS-A")!.Status);
+        Assert.DoesNotContain(_gateway.SentCycles, c => c.IdCycle == 2);    // 未激发任何标准化
+        var task = engine.GetRecentTasks().Single(t => t.Reason.Contains("人工触发"));
+        Assert.Equal(SctTaskStatus.Failed, task.Status);
+    }
+
     // ==================== 急停 ====================
 
     [Fact]

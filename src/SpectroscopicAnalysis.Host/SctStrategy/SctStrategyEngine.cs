@@ -288,6 +288,56 @@ public sealed class SctStrategyEngine : ISctStrategyEngine
     }
 
     /// <inheritdoc />
+    public string? SelectSampleForTask(string taskType, string? alloyType)
+    {
+        var policy = _policyStore.Load();
+        return taskType switch
+        {
+            SctTaskType.Standardize => SelectStandardSample(policy.SettingSampleSelectionMode)?.SampleId,
+            SctTaskType.ControlCheck => SelectControlSample(policy)?.SampleId,
+            SctTaskType.TypeStandardize => SelectTypeStdSample(alloyType, policy)?.SampleId,
+            _ => null,    // 测高/生产/归档任务无 SCT 选样语义
+        };
+    }
+
+    /// <inheritdoc />
+    public bool ReplaceTaskSample(int taskId, string newSampleId, string reason)
+    {
+        lock (_gate)
+        {
+            // 运行中任务换样（编排器前置测高不合格禁用后的任务内换样）：SampleId 为 init-only，重建记录；
+            // _history 持有同一引用，CompleteTask 归档时自然带上新样品编号
+            if (_running?.TaskId == taskId)
+            {
+                _running = CloneWithSample(_running, newSampleId, reason);
+                return true;
+            }
+
+            var idx = _queue.FindIndex(t => t.TaskId == taskId);
+            if (idx >= 0)
+            {
+                _queue[idx] = CloneWithSample(_queue[idx], newSampleId, reason);
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /// <summary>重建任务记录并替换目标样品编号（原触发原因后追加换样原因留痕）。</summary>
+    private static SctTask CloneWithSample(SctTask task, string newSampleId, string reason) => new()
+    {
+        TaskId = task.TaskId,
+        TaskType = task.TaskType,
+        SampleId = newSampleId,
+        Reason = $"{task.Reason}；{reason}",
+        EnqueueTime = task.EnqueueTime,
+        Priority = task.Priority,
+        ManualSortKey = task.ManualSortKey,
+        Status = task.Status,
+        IsRecheck = task.IsRecheck,
+    };
+
+    /// <inheritdoc />
     public void EmergencyReset()
     {
         int cancelledCount;
@@ -740,8 +790,12 @@ public sealed class SctStrategyEngine : ISctStrategyEngine
     /// </summary>
     private SctSample? SelectStandardSample(string mode)
     {
+        // 需测高（NeedMeasure）样兜底候选：可被选中承担 SCT 操作，执行前由编排器强制前置测高
+        // （合格恢复 Normal 继续；不合格禁用并换样）。Disabled/人工停用（Normal+IsActive=false）仍排除。
         var candidates = _samples.GetAll()
-            .Where(s => s.SampleType == SampleType.SettingUp && s.Status == SampleStatus.Normal && s.IsActive)
+            .Where(s => s.SampleType == SampleType.SettingUp)
+            .Where(s => (s.Status == SampleStatus.Normal && s.IsActive) || s.Status == SampleStatus.NeedMeasure)
+            .OrderBy(s => s.Status == SampleStatus.Normal ? 0 : 1)   // Normal 优先，NeedMeasure 兜底
             .ToList();
         if (candidates.Count == 0)
         {
@@ -749,8 +803,10 @@ public sealed class SctStrategyEngine : ISctStrategyEngine
         }
 
         return mode == SettingSampleSelectionMode.RoundRobin
-            ? candidates.OrderBy(s => s.LastUseTime ?? DateTime.MinValue).First()
-            : candidates.OrderBy(s => s.UsageCount).First();
+            ? candidates.OrderBy(s => s.Status == SampleStatus.Normal ? 0 : 1)
+                .ThenBy(s => s.LastUseTime ?? DateTime.MinValue).First()
+            : candidates.OrderBy(s => s.Status == SampleStatus.Normal ? 0 : 1)
+                .ThenBy(s => s.UsageCount).First();
     }
 
     /// <summary>
@@ -760,8 +816,9 @@ public sealed class SctStrategyEngine : ISctStrategyEngine
     /// </summary>
     private SctSample? SelectControlSample(SctPolicyOptions policy)
     {
+        // 需测高样兜底候选语义同 SelectStandardSample（执行前由编排器强制前置测高）
         var candidates = _samples.GetAll()
-            .Where(s => s.Status == SampleStatus.Normal && s.IsActive)
+            .Where(s => (s.Status == SampleStatus.Normal && s.IsActive) || s.Status == SampleStatus.NeedMeasure)
             .Where(s => s.SampleType == SampleType.Control
                         || (policy.ControlTypeStdMixed && s.SampleType == SampleType.TypeStd))
             .ToList();
@@ -770,16 +827,17 @@ public sealed class SctStrategyEngine : ISctStrategyEngine
             return null;
         }
 
-        // 混用：使用次数最少优先，次数并列本类型（Control）优先，再按轮换；非混用保持现状轮换语义
-        return policy.ControlTypeStdMixed
+        // Normal 优先、NeedMeasure 兜底；混用：使用次数最少优先，次数并列本类型（Control）优先，再按轮换；非混用保持轮换语义
+        IOrderedEnumerable<SctSample> ordered = policy.ControlTypeStdMixed
             ? candidates
-                .OrderBy(s => s.UsageCount)
+                .OrderBy(s => s.Status == SampleStatus.Normal ? 0 : 1)
+                .ThenBy(s => s.UsageCount)
                 .ThenBy(s => s.SampleType == SampleType.Control ? 0 : 1)
                 .ThenBy(s => s.LastUseTime ?? DateTime.MinValue)
-                .First()
             : candidates
-                .OrderBy(s => s.LastUseTime ?? DateTime.MinValue)
-                .First();
+                .OrderBy(s => s.Status == SampleStatus.Normal ? 0 : 1)
+                .ThenBy(s => s.LastUseTime ?? DateTime.MinValue);
+        return ordered.First();
     }
 
     /// <summary>类型标准化样选择（任务清单第 5 节⑤）：TypeStd/Normal/IsActive 且合金精确匹配；
@@ -787,12 +845,14 @@ public sealed class SctStrategyEngine : ISctStrategyEngine
     /// 未混用时排除控制样孪生（兼任类型标准化的检查样孪生档案按控制样对待，类型互斥）。</summary>
     private SctSample? SelectTypeStdSample(string? alloyType, SctPolicyOptions policy)
     {
+        // 需测高样兜底候选语义同 SelectStandardSample（执行前由编排器强制前置测高）
         return _samples.GetAll()
-            .Where(s => s.Status == SampleStatus.Normal && s.IsActive)
+            .Where(s => (s.Status == SampleStatus.Normal && s.IsActive) || s.Status == SampleStatus.NeedMeasure)
             .Where(s => (s.SampleType == SampleType.TypeStd && (alloyType is null || s.AlloyType == alloyType))
                         || (policy.ControlTypeStdMixed && s.SampleType == SampleType.Control))
             .Where(s => policy.ControlTypeStdMixed || s.SampleType != SampleType.TypeStd || !IsControlTwin(s.SampleId))
-            .OrderBy(s => s.UsageCount)
+            .OrderBy(s => s.Status == SampleStatus.Normal ? 0 : 1)      // Normal 优先，NeedMeasure 兜底
+            .ThenBy(s => s.UsageCount)
             .ThenBy(s => s.SampleType == SampleType.TypeStd ? 0 : 1)    // 次数并列优先本类型
             .FirstOrDefault();
     }

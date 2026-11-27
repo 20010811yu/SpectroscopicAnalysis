@@ -284,6 +284,60 @@ public sealed class WorkflowOrchestrator : IWorkflowOrchestrator
         double? thicknessAfter = null;
         var heightBelowMin = false;
 
+        // SCT 操作前置测高（需测高样兜底候选语义）：需测高样被选中或队列遗留时，执行原操作前必须先测高——
+        // 合格（引擎回喂恢复 Normal）继续原操作；不合格（引擎置 Disabled+报警）任务内换样继续，循环上限防换样链死循环
+        if (task.TaskType is SctTaskType.Standardize or SctTaskType.ControlCheck or SctTaskType.TypeStandardize)
+        {
+            for (var attempt = 0; attempt < 3; attempt++)
+            {
+                var sct = _samples.GetAll().FirstOrDefault(s =>
+                    string.Equals(s.SampleId, task.SampleId, StringComparison.Ordinal));
+                if (sct is null || sct.Status != SampleStatus.NeedMeasure)
+                {
+                    break;   // 正常样（含前置测高后已恢复 Normal）直接执行原操作
+                }
+
+                WriteTrace(task.SampleId, task.TaskType, "执行前测高（需测高样强制前置）", "Success");
+                _systemLog.Log(LogCategoryOf(task.TaskType), $"样品 {task.SampleId} 需测高，执行原操作前先测高");
+                (_, _, var preBelowMin) = await RunHeightMeasureAsync(task, ct);
+                if (!preBelowMin)
+                {
+                    break;   // 测高合格：状态已恢复 Normal，继续原 SCT 操作
+                }
+
+                // 不合格：引擎回喂已置 Disabled + 报警 → 任务内换样（被禁用样 IsActive=false，选样自然排除）
+                var replacement = _engine.SelectSampleForTask(task.TaskType, sct.AlloyType);
+                if (replacement is null)
+                {
+                    WriteTrace(task.SampleId, task.TaskType, "前置测高不合格禁用且无替代样品", "Fail");
+                    _systemLog.Log(LogCategoryOf(task.TaskType), $"样品 {task.SampleId} 测高不合格禁用，无替代样品，任务失败", "Failed");
+                    _errors.Collect(ErrorCodes.SctSettingSampleUnavailable,
+                        $"样品 {task.SampleId} 前置测高不合格禁用，无替代样品，任务失败", task.SampleId);
+                    _engine.CompleteTask(task.TaskId, success: false, "前置测高不合格禁用且无替代样品");
+                    return;
+                }
+
+                _engine.ReplaceTaskSample(task.TaskId, replacement,
+                    $"前置测高不合格禁用（{task.SampleId}），换样 {replacement}");
+                _systemLog.Log(LogCategoryOf(task.TaskType),
+                    $"样品 {task.SampleId} 测高不合格禁用，任务内换样 → {replacement}");
+                WriteTrace(task.SampleId, task.TaskType, $"测高不合格禁用，换样 {replacement}", "Warning");
+                // 取换样后的任务记录继续执行（SampleId 为 init-only，编排器本地引用需刷新）
+                task = _engine.GetRecentTasks().First(t => t.TaskId == task.TaskId);
+            }
+
+            // 换样链耗尽仍为需测高（连续 3 个候选均测高不合格）：按失败收场，不再激发
+            var stillNeedMeasure = _samples.GetAll().FirstOrDefault(s =>
+                string.Equals(s.SampleId, task.SampleId, StringComparison.Ordinal));
+            if (stillNeedMeasure is not null && stillNeedMeasure.Status == SampleStatus.NeedMeasure)
+            {
+                WriteTrace(task.SampleId, task.TaskType, "连续换样仍需测高，任务失败", "Fail");
+                _systemLog.Log(LogCategoryOf(task.TaskType), $"任务连续换样后样品 {task.SampleId} 仍需测高，任务失败", "Failed");
+                _engine.CompleteTask(task.TaskId, success: false, "连续换样仍需测高");
+                return;
+            }
+        }
+
         switch (task.TaskType)
         {
             case SctTaskType.HeightMeasure:

@@ -135,4 +135,37 @@ internal sealed class FakeSctStrategyEngine : ISctStrategyEngine
         TypeStdEnabled: false, TypeStdDueTime: null);
 
     public SctStandardizeCountdown GetStandardizeCountdown() => StandardizeCountdown;
+
+    /// <summary>换样选样预设（null=无可用样；供编排器前置测高换样用例预置）。</summary>
+    public string? ReplacementSampleId { get; set; }
+
+    public string? SelectSampleForTask(string taskType, string? alloyType) => ReplacementSampleId;
+
+    /// <summary>ReplaceTaskSample 调用记录 (taskId, newSampleId, reason) 供断言。</summary>
+    public List<(int TaskId, string NewSampleId, string Reason)> ReplacedSamples { get; } = new();
+
+    public bool ReplaceTaskSample(int taskId, string newSampleId, string reason)
+    {
+        ReplacedSamples.Add((taskId, newSampleId, reason));
+        var task = RecentTasks.FirstOrDefault(t => t.TaskId == taskId);
+        if (task is null)
+        {
+            return false;
+        }
+
+        RecentTasks.Remove(task);
+        RecentTasks.Insert(0, new SctTask
+        {
+            TaskId = task.TaskId,
+            TaskType = task.TaskType,
+            SampleId = newSampleId,
+            Reason = $"{task.Reason}；{reason}",
+            EnqueueTime = task.EnqueueTime,
+            Priority = task.Priority,
+            ManualSortKey = task.ManualSortKey,
+            Status = task.Status,
+            IsRecheck = task.IsRecheck,
+        });
+        return true;
+    }
 }

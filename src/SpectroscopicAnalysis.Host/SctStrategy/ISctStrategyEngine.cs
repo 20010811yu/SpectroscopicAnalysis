@@ -65,4 +65,12 @@ public interface ISctStrategyEngine
 
     /// <summary>定期标准化与类型标准化期限倒计时快照（到期时刻；生产监控 KPI 展示；开关关闭或无记录返回 null 到期时刻）。</summary>
     SctStandardizeCountdown GetStandardizeCountdown();
+
+    /// <summary>按任务类型选一个 SCT 样（选样规则同入队时；Normal 优先、需测高样兜底，禁用样排除）。
+    /// 供编排器在前置测高不合格禁用后任务内换样；无可用样返回 null。alloyType 仅类型标准化任务使用。</summary>
+    string? SelectSampleForTask(string taskType, string? alloyType);
+
+    /// <summary>任务内换样：更新排队/运行中任务的目标样品编号（原触发原因后追加换样原因留痕）。
+    /// 供编排器前置测高不合格禁用后调用；任务不存在返回 false。</summary>
+    bool ReplaceTaskSample(int taskId, string newSampleId, string reason);
 }

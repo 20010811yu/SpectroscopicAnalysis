@@ -381,16 +381,40 @@ public sealed class SctStrategyEngineTests
     }
 
     [Fact]
-    public void 选样_NeedMeasure与Disabled不参与且无可用报警()
+    public void 选样_Disabled与人工停用不参与且无可用报警()
     {
-        _samples.Store.Add(MakeSample("SUS-A", status: SampleStatus.NeedMeasure));
         _samples.Store.Add(MakeSample("SUS-B", status: SampleStatus.Disabled));
-        _samples.Store.Add(MakeSample("SUS-C", isActive: false));
+        _samples.Store.Add(MakeSample("SUS-C", isActive: false));   // 人工停用（Normal+IsActive=false）
         var engine = Create();
 
         engine.NotifyModeChanged(true);
         Assert.False(engine.TryDequeue(out _));
         Assert.Contains(_errors.Collected, c => c.Code == ErrorCodes.SctSettingSampleUnavailable);
+    }
+
+    [Fact]
+    public void 选样_仅剩需测高样时兜底入选()
+    {
+        _samples.Store.Add(MakeSample("SUS-A", status: SampleStatus.NeedMeasure));
+        _samples.Store.Add(MakeSample("SUS-B", status: SampleStatus.Disabled));
+        var engine = Create();
+
+        engine.NotifyModeChanged(true);
+        Assert.True(engine.TryDequeue(out var task));
+        Assert.Equal("SUS-A", task.SampleId);       // 需测高样兜底候选（执行前编排器强制前置测高）
+    }
+
+    [Fact]
+    public void 选样_正常样优先于需测高样()
+    {
+        _policy.Current.SettingSampleSelectionMode = SettingSampleSelectionMode.LeastUsed;
+        _samples.Store.Add(MakeSample("SUS-A", status: SampleStatus.NeedMeasure, usage: 1));   // 次数最少但需测高
+        _samples.Store.Add(MakeSample("SUS-B", usage: 9));                                      // 正常样
+        var engine = Create();
+
+        engine.NotifyModeChanged(true);
+        Assert.True(engine.TryDequeue(out var task));
+        Assert.Equal("SUS-B", task.SampleId);       // Normal 优先，NeedMeasure 仅兜底
     }
 
     [Fact]

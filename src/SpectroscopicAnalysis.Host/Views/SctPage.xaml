@@ -222,7 +222,7 @@
                             <Button Content="登记" Command="{Binding ApplyMeasureCommand}" Style="{StaticResource PrimaryBtn}" Margin="12,0,0,0" Padding="14,5" />
                             <Button Content="取消" Command="{Binding CancelMeasureCommand}" Style="{StaticResource SecondaryBtn}" Margin="8,0,0,0" Padding="14,5" />
                         </StackPanel>
-                        <TextBlock Text="低于最小厚度将自动标记「禁用（过薄）」并报警更换；否则恢复「正常」；本次登记写入操作日志留痕"
+                        <TextBlock Text="低于最小厚度将自动标记「过薄」并报警更换；否则恢复「正常」；本次登记写入操作日志留痕"
                                    Style="{StaticResource Text.Caption}" Margin="0,8,0,0" />
                         <TextBlock Text="{Binding MeasureError}" Foreground="{DynamicResource Brush.Status.Failed}" Margin="0,4,0,0">
                             <TextBlock.Style>

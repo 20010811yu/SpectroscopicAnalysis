@@ -767,7 +767,7 @@ public sealed partial class SctViewModel : ObservableObject, IPageLifecycle
     {
         SampleStatus.Normal => "正常",
         SampleStatus.NeedMeasure => "需测高",
-        SampleStatus.Disabled => "禁用（过薄）",
+        SampleStatus.Disabled => "过薄",
         _ => status,
     };
 
@@ -1221,7 +1221,7 @@ public sealed partial class SctViewModel : ObservableObject, IPageLifecycle
             SampleStatus.Normal => "● 正常",
             SampleStatus.NeedMeasure => "▲ 需测高",
             SampleStatus.Warning => "▲ 超差预警",
-            SampleStatus.Disabled => "✖ 禁用（过薄）",
+            SampleStatus.Disabled => "✖ 过薄",
             _ => s.Status,
         },
         LastHeightText = s.LastHeightCheckTime?.ToString("MM-dd HH:mm") ?? "—",

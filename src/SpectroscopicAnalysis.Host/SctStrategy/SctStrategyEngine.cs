@@ -554,6 +554,12 @@ public sealed class SctStrategyEngine : ISctStrategyEngine
             return;
         }
 
+        // 首次测高回填：初始厚度未知（注册未填，存 0 哨兵）时，第一次测得的高度同时作为初始厚度与当前厚度
+        if (sample.InitialThickness <= 0)
+        {
+            sample.InitialThickness = thickness;
+        }
+
         sample.CurrentThickness = thickness;
         sample.Status = SampleStatus.Normal;    // 清 NeedMeasure
         sample.IsActive = true;                 // 测高合格恢复 → 同步恢复启用

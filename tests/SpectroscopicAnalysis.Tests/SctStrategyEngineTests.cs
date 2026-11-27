@@ -512,6 +512,22 @@ public sealed class SctStrategyEngineTests
     }
 
     [Fact]
+    public void 测高回填_初始厚度未知时首测高度同时作初始与当前厚度()
+    {
+        var sample = MakeSample("SUS-001", status: SampleStatus.NeedMeasure, thickness: 0, minThickness: 8);
+        sample.InitialThickness = 0;                        // 注册未填初始厚度（0 哨兵）
+        _samples.Store.Add(sample);
+        var engine = Create();
+
+        engine.NotifyHeightMeasured("SUS-001", thickness: 8.5);
+
+        var saved = _samples.GetById("SUS-001")!;
+        Assert.Equal(8.5, saved.InitialThickness);          // 首测高度回填初始厚度
+        Assert.Equal(8.5, saved.CurrentThickness);          // 当前厚度同步
+        Assert.Equal(SampleStatus.Normal, saved.Status);
+    }
+
+    [Fact]
     public void 测高联动_厚度充足恢复正常()
     {
         _samples.Store.Add(MakeSample("SUS-001", status: SampleStatus.NeedMeasure, thickness: 9, minThickness: 8));

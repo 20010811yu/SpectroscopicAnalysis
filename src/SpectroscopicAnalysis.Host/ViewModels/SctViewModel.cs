@@ -604,6 +604,11 @@ public sealed partial class SctViewModel : ObservableObject, IPageLifecycle
             {
                 newStatus = SampleStatus.NeedMeasure;
             }
+            // 首次测高回填：初始厚度未知（注册未填，存 0 哨兵）时，第一次测得的高度同时作为初始厚度与当前厚度（引擎回喂同规则）
+            if (sample.InitialThickness <= 0)
+            {
+                sample.InitialThickness = thickness;
+            }
             sample.CurrentThickness = thickness;
             sample.Status = newStatus;
             sample.IsActive = newStatus == SampleStatus.Normal;   // IsActive 随状态联动：过薄/需测高停用、测高合格恢复启用
